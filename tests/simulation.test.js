@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation, segmentHitsBox, PLAYER, SPEED } from '../src/simulation.js';
-import { trackAt, COURSE_LENGTH, obstaclesNear, roadPoint } from '../src/track.js';
+import { trackAt, COURSE_LENGTH, VEHICLE_SEEDS, roadPoint } from '../src/track.js';
+import { vehicleSeed, createVehicle } from '../src/neutral-traffic.js';
 
 test('track has continuous width and center, including the lap seam', () => {
   for (let s = -1; s <= COURSE_LENGTH + 1; s += 0.5) {
@@ -55,9 +56,9 @@ test('pause and death stop simulation; reset clears previous run', () => {
   assert.equal(sim.health, 100); assert.equal(sim.enemies.length, 0); assert.equal(sim.status, 'ready');
 });
 
-test('obstacles repeat at correct world positions on later laps', () => {
-  const first = obstaclesNear(640, 10, 10)[0];
-  const second = obstaclesNear(640 + COURSE_LENGTH, 10, 10)[0];
+test('neutral vehicle seeds repeat at correct world positions on later laps', () => {
+  const first = createVehicle(vehicleSeed(3), 1);
+  const second = createVehicle(vehicleSeed(3 + VEHICLE_SEEDS.length), 2);
   assert.equal(first.x, second.x); assert.equal(second.s - first.s, COURSE_LENGTH);
 });
 

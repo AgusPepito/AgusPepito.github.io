@@ -17,7 +17,7 @@ npm run dev
 
 Use WASD / arrows or drag on the play area. Hold Space / Shift / OVERDRIVE to race. On touchscreens, steer with one finger and hold OVERDRIVE with another. Weapons fire automatically. P / Escape pauses; R restarts. The settings panel allows camera and speed changes to be compared independently.
 
-The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 004: lethal yellow barriers, six enemy merge ramps per lap, and purple armored shield rows. Release overdrive and concentrate fire to open a gap. Shield wings retract as the road narrows; destroyed slots stay open. Tune includes independent camera-shake and wind-streak sliders (18% and 30% defaults; zero disables each). Practice mode still prevents damage, including barrier death.
+The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 005: slow neutral yellow vehicles with 160 HP, six enemy merge ramps per lap, and purple shield rows firing from left to right. Race past a formation before it deploys, or release overdrive and shoot a gap. Destroyed slots stay open as the road narrows and leave holes in the firing sequence. Yellow vehicle contact remains fatal except in practice mode. Drops and upgrades are not implemented yet. Tune includes independent camera-shake and wind-streak sliders (18% and 30% defaults; zero disables each).
 
 The ship follows bends automatically; steering moves across the road. Ships, camera, lane marks, barriers, and shots share the road's local orientation. Shots leave along that direction and then fly straight.
 

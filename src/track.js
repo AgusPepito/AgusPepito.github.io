@@ -126,7 +126,8 @@ export function drivableBounds(s) {
   return { left, right };
 }
 
-export const OBSTACLES = [
+// Initial positions for slow neutral traffic, streamed ahead of the camera.
+export const VEHICLE_SEEDS = [
   { s: 190, offset: -10, w: 4.5, d: 5.5 },
   { s: 275, offset: 9, w: 4.5, d: 5.5 },
   { s: 365, offset: 0, w: 5, d: 5.5 },
@@ -141,15 +142,3 @@ export const OBSTACLES = [
   { s: 1790, offset: 5.2, w: 3.3, d: 4.8 },
   { s: 1870, offset: -5.2, w: 3.3, d: 4.8 },
 ];
-
-export function obstaclesNear(distance, behind = 25, ahead = 180) {
-  const result = [];
-  const first = Math.max(0, Math.floor((distance - behind) / COURSE_LENGTH));
-  const last = Math.floor((distance + ahead) / COURSE_LENGTH);
-  for (let lap = first; lap <= last; lap++) for (const obstacle of OBSTACLES) {
-    const s = lap * COURSE_LENGTH + obstacle.s;
-    if (s < distance - behind || s > distance + ahead) continue;
-    result.push({ ...obstacle, s, ...roadPoint(s, obstacle.offset), yaw: roadFrame(s).yaw });
-  }
-  return result;
-}

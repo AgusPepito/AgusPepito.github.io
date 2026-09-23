@@ -48,6 +48,7 @@ try {
   await page.waitForFunction(() => window.__GAME__.armored > 0 && window.__GAME__.distance > 550, { timeout: 30000 });
   await page.keyboard.up('Space');
   await page.click('#tune-toggle');
+  assert.ok(await page.evaluate(() => window.__GAME__.vehicles > 0), 'neutral traffic is present');
   await page.$eval('#shake', e => { e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.$eval('#wind', e => { e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true })); });
   await page.waitForFunction(() => window.__GAME__.options.shake === 0 && window.__GAME__.options.wind === 0);

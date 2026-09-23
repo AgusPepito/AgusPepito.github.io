@@ -1,5 +1,6 @@
-import { COURSE_LENGTH, clamp, lerp, trackAt, obstaclesNear, roadFrame, roadPoint, roadCoordinates, advanceOnRoad, rampsNear, rampSample, drivableBounds } from './track.js';
-import { FORMATION, placeEnemy } from './enemies.js';
+import { COURSE_LENGTH, clamp, lerp, trackAt, roadFrame, roadPoint, roadCoordinates, advanceOnRoad, rampsNear, rampSample, drivableBounds } from './track.js';
+import { FORMATION, placeEnemy, SHIELD_VOLLEY, shieldVolley } from './enemies.js';
+import { vehicleSeed, createVehicle, moveVehicle } from './neutral-traffic.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
 export const SPEED = { combat: 26, racing: 82 };
@@ -47,14 +48,16 @@ export class Simulation {
     this.shotTimer = 0; this.nextId = 1; this.deathReason = '';
     this.groups = []; this.spawnedRamps = new Map();
     this.enemies = []; this.bullets = []; this.events = [];
+    this.vehicles = []; this.nextVehicleSeed = 0; this.vehiclesDestroyed = 0;
+    this.streamVehicles();
   }
   start() { if (this.status === 'ready') this.status = 'playing'; }
   hurt(amount, kind) {
     if (this.status !== 'playing') return;
-    // Solid yellow barriers are lethal, even during the grace period after a hit.
+    // Yellow traffic collisions remain lethal, even during the grace period after a hit.
     // Explicit no-damage practice mode remains available for mechanics testing.
     if (kind === 'obstacle' && !this.options.invincible) {
-      this.health = 0; this.hits++; this.status = 'over'; this.deathReason = 'Yellow barrier collision';
+      this.health = 0; this.hits++; this.status = 'over'; this.deathReason = 'Yellow vehicle collision';
       this.events.push({ kind: 'hit', x: this.x, z: this.z, s: this.s });
       return;
     }
@@ -77,6 +80,13 @@ export class Simulation {
         hp: armored ? FORMATION.hp : 3, maxHp: armored ? FORMATION.hp : 3,
         halfWidth: 1.2, halfDepth: armored ? 1.5 : 1.6,
         active: false, deployed: 0, yaw: roadFrame(ramp.start).yaw, age: 0, fire: 1.5 + slot * 0.3 });
+    }
+  }
+  streamVehicles() {
+    if (this.options.neutralTraffic === false) return;
+    while (vehicleSeed(this.nextVehicleSeed).s <= this.s + 320) {
+      const seed = vehicleSeed(this.nextVehicleSeed++);
+      if (seed.s >= this.s - 40) this.vehicles.push(createVehicle(seed, this.nextId++));
     }
   }
   step(dt, input = { x: 0, y: 0 }) {
@@ -121,8 +131,10 @@ export class Simulation {
       this.events.push({ kind: 'lap', x: this.x, z: this.z, s: this.s });
     }
 
-    for (const o of obstaclesNear(this.s, 8, 8)) {
-      if (sweptHitsEntity(oldX, oldZ, this.x, this.z, o, o.w / 2 + PLAYER.halfWidth, o.d / 2 + PLAYER.halfDepth)) {
+    this.streamVehicles();
+    for (const o of this.vehicles) {
+      moveVehicle(o, dt);
+      if (o.hp > 0 && sweptHitsEntity(oldX, oldZ, this.x, this.z, o, o.halfWidth + PLAYER.halfWidth, o.halfDepth + PLAYER.halfDepth)) {
         this.hurt(22, 'obstacle');
         if (this.status === 'over') return;
       }
@@ -174,15 +186,30 @@ export class Simulation {
       }
       if (e.s < this.s - 10 && !e.passed) { e.passed = true; this.passed++; this.score += 40; }
     }
+    for (const group of this.groups) {
+      if (group.ramp.kind !== 'armored' || this.options.shieldFire === false) continue;
+      const members = this.enemies.filter(e => e.groupId === group.id);
+      for (const e of shieldVolley(group, members, this.s)) {
+        const f = roadFrame(e.s), muzzle = e.halfDepth + 0.5;
+        this.bullets.push({ id: this.nextId++, sourceId: e.id, pattern: 'shield', slot: e.slot,
+          x: e.x - f.fx * muzzle, z: e.z - f.fz * muzzle, s: e.s - muzzle,
+          vx: -f.fx * SHIELD_VOLLEY.speed, vz: -f.fz * SHIELD_VOLLEY.speed, friendly: false, life: 4 });
+      }
+    }
     for (const b of this.bullets) {
       const bx = b.x, bz = b.z;
       b.x += b.vx * dt; b.z += b.vz * dt; b.life -= dt;
       const projected = roadCoordinates(b.x, b.z); b.s = projected.s;
       if (b.friendly) {
-        for (const e of this.enemies) if (e.active && e.hp > 0 && sweptHitsEntity(bx, bz, b.x, b.z, e, e.halfWidth + 0.05, e.halfDepth + 0.2)) {
+        // Process targets from the shot's origin so a truck absorbs shots before
+        // enemies behind it. Swept tests still account for target motion.
+        const targets = [...this.enemies, ...this.vehicles].filter(e => e.active && e.hp > 0)
+          .sort((a, c) => Math.hypot(a.x - bx, a.z - bz) - Math.hypot(c.x - bx, c.z - bz));
+        for (const e of targets) if (sweptHitsEntity(bx, bz, b.x, b.z, e, e.halfWidth + 0.05, e.halfDepth + 0.2)) {
           b.life = 0; e.hp--;
           if (e.hp === 0) {
-            this.kills++; this.score += e.armored ? 400 : 100;
+            if (e.neutral) this.vehiclesDestroyed++;
+            else { this.kills++; this.score += e.armored ? 400 : 100; }
             this.events.push({ kind: 'kill', x: e.x, z: e.z, s: e.s });
           } else this.events.push({ kind: 'spark', x: e.x, z: e.z, s: e.s });
           break;
@@ -194,6 +221,7 @@ export class Simulation {
       if (projected.lateral < lane.left || projected.lateral > lane.right) b.life = 0;
     }
     this.enemies = this.enemies.filter(e => e.hp > 0 && (!e.active || e.s > this.s - 25));
+    this.vehicles = this.vehicles.filter(v => v.hp > 0 && v.s > this.s - 60);
     this.groups = this.groups.filter(g => this.enemies.some(e => e.groupId === g.id));
     this.bullets = this.bullets.filter(b => b.life > 0 && b.s > this.s - 20 && b.s < this.s + 170);
   }

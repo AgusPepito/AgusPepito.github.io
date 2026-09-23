@@ -199,6 +199,8 @@ function frame(now) {
     armored: sim.enemies.filter(e => e.active && e.armored).length,
     deathReason: sim.deathReason,
     followingShield: sim.followingShield,
+    vehicles: sim.vehicles.length, vehiclesDestroyed: sim.vehiclesDestroyed,
+    shieldShots: sim.bullets.filter(b => b.pattern === 'shield').length,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },
   };

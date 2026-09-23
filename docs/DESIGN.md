@@ -1,6 +1,12 @@
 # Mechanics experiments
 
-## Current experiment: 004 — merging traffic and shield rows
+## Current experiment: 005 — firing rows and neutral traffic
+
+Keep the established merge timing: the player can race past an arriving formation before it closes the road. Purple rows only arm after deploying and only when the player is behind them within 12–105 metres. They fire single rearward shots from left to right, with 0.18 seconds between slots and 3.8 seconds between sweep starts. A 0.7-second charge cue precedes the first shot. Destroyed carriers leave empty beats in the pattern. Passing the row cancels further fire; it does not chase or turn its guns around. Existing 12 HP, 22 m/s speed, combat following and contact recovery remain.
+
+Yellow blocks are now neutral cargo vehicles moving at 8 m/s (29 km/h), with 160 HP. They follow the road and preserve their relative lane position as it narrows. Player shots damage them and are absorbed; destruction removes the vehicle. They neither shoot nor award enemy kills/score. Drops and weapon upgrades are deliberately deferred. Contact remains instant death except in practice mode, preserving the previously requested collision rule. Vehicles stream outside the visible road range, retain health while active, and never respawn at their old position after destruction.
+
+## Previous experiment: 004 — merging traffic and shield rows
 
 Yellow barriers end the run instantly at any speed, bypassing hit immunity. Explicit no-damage practice remains an exception. Walls and ordinary enemies retain recoverable, speed-scaled impact damage.
 

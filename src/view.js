@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { trackAt, obstaclesNear, roadFrame, roadPoint, roadLineYaw, rampsNear, rampSample, rampOpensRail, RAMP_WIDTH, RAMP_LENGTH } from './track.js';
+import { trackAt, roadFrame, roadPoint, roadLineYaw, rampsNear, rampSample, rampOpensRail, RAMP_WIDTH, RAMP_LENGTH } from './track.js';
 import makePlayer from './placeholders/player.js';
 import makeEnemy from './placeholders/enemy.js';
 import makeArmored from './placeholders/armored.js';
@@ -10,6 +10,7 @@ import { cameraPose } from './camera.js';
 // The simulation owns dimensions and collisions; render assets never determine hitboxes.
 const GREEN = new THREE.Color('#caff64');
 const ORANGE = new THREE.Color('#ffb25c');
+const PURPLE_SHOT = new THREE.Color('#cb9aff'), PINK_SHOT = new THREE.Color('#ff687d');
 
 export class GameView {
   constructor(canvas) {
@@ -49,8 +50,11 @@ export class GameView {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.obstacles = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xfab35e, roughness: 0.6 }));
     this.obstacleMarks = this.batch(20, new THREE.MeshBasicMaterial({ color: 0x2b2825 }));
+    this.vehicleCabs = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xffd986, roughness: 0.6 }));
+    this.vehicleWheels = this.batch(80, new THREE.MeshStandardMaterial({ color: 0x192129 }));
+    this.vehicleHealth = this.batch(20, new THREE.MeshBasicMaterial({ color: 0xfff0c2 }));
     this.shots = this.batch(220, new THREE.MeshBasicMaterial({ color: 0xcaff64 }));
-    this.hostileShots = this.batch(220, new THREE.MeshBasicMaterial({ color: 0xff687d }));
+    this.hostileShots = this.batch(220, new THREE.MeshBasicMaterial({ color: 0xffffff }));
     this.particlesBatch = this.batch(250, new THREE.MeshBasicMaterial({ color: 0xffffff }));
     this.shadows = this.batch(70, new THREE.MeshBasicMaterial({ color: 0x081015, transparent: true, opacity: 0.65 }));
     this.player = makePlayer(THREE); this.scene.add(this.player);
@@ -131,13 +135,26 @@ export class GameView {
     positions.needsUpdate = true; this.roadGeometry.computeVertexNormals();
     this.finish(this.rails, rails); this.finish(this.edgeLights, rails); this.finish(this.ticks, ticks);
     this.finish(this.posts, posts); this.finish(this.postLights, posts);
-    let count = 0;
-    for (const o of obstaclesNear(s, 45, 220)) {
+  }
+  updateVehicles(sim) {
+    let count = 0, wheels = 0, health = 0;
+    for (const o of sim.vehicles) {
+      if (o.s < sim.s - 45 || o.s > sim.s + 220) continue;
+      const f = { fx: -Math.sin(o.yaw), fz: -Math.cos(o.yaw), rx: Math.cos(o.yaw), rz: -Math.sin(o.yaw) };
+      const frontX = o.x + f.fx * o.d * 0.27, frontZ = o.z + f.fz * o.d * 0.27;
       this.put(this.obstacles, count, o.x, 0.95, o.z, o.w, 1.9, o.d, o.yaw);
-      this.put(this.obstacleMarks, count, o.x, 1.915, o.z, o.w - 0.35, 0.025, 0.4, o.yaw);
+      this.put(this.vehicleCabs, count, frontX, 1.93, frontZ, o.w * 0.82, 0.65, o.d * 0.32, o.yaw);
+      this.put(this.obstacleMarks, count, frontX, 2.27, frontZ, o.w * 0.7, 0.025, 0.55, o.yaw);
+      for (const side of [-1, 1]) for (const end of [-1, 1]) {
+        this.put(this.vehicleWheels, wheels++, o.x + f.rx * side * (o.halfWidth - 0.05) + f.fx * end * o.d * 0.3,
+          0.45, o.z + f.rz * side * (o.halfWidth - 0.05) + f.fz * end * o.d * 0.3, 0.3, 0.85, 0.9, o.yaw);
+      }
+      if (o.hp < o.maxHp) this.put(this.vehicleHealth, health++, o.x - f.fx * o.d * 0.25, 1.92,
+        o.z - f.fz * o.d * 0.25, (o.w - 0.5) * o.hp / o.maxHp, 0.03, 0.22, o.yaw);
       count++;
     }
     this.finish(this.obstacles, count); this.finish(this.obstacleMarks, count);
+    this.finish(this.vehicleCabs, count); this.finish(this.vehicleWheels, wheels); this.finish(this.vehicleHealth, health);
   }
   updateRamps(ramps) {
     const active = new Set(); let rails = 0, ticks = 0;
@@ -192,6 +209,7 @@ export class GameView {
   }
   render(sim, dt, settings) {
     this.updateRoad(sim.s);
+    this.updateVehicles(sim);
     const pose = cameraPose(sim, this.camera.aspect, settings.cameraShift);
     this.tempPosition.fromArray(pose.position); this.tempAim.fromArray(pose.target);
     const follow = this.cameraInitialized ? 1 - Math.exp(-5 * dt) : 1;
@@ -221,6 +239,9 @@ export class GameView {
         mesh.getObjectByName('shield').scale.x = e.halfWidth * 2;
         const bar = mesh.getObjectByName('health');
         bar.scale.x = 1.4 * e.hp / e.maxHp; bar.position.x = (bar.scale.x - 1.4) / 2;
+        const charge = mesh.getObjectByName('charge');
+        charge.visible = (e.charge || 0) > 0;
+        charge.scale.setScalar(0.4 + (e.charge || 0) * 0.9);
       }
       this.put(this.shadows, shadow++, e.x + 0.4, 0.022, e.z - 0.1, e.halfWidth * 2 + 0.2, 0.025, 3.4, e.yaw);
     }
@@ -230,7 +251,7 @@ export class GameView {
     for (const b of sim.bullets) {
       const yaw = Math.atan2(b.vx, b.vz);
       if (b.friendly && friendly < 220) this.put(this.shots, friendly++, b.x, 1, b.z, 0.14, 0.15, 1.7, yaw);
-      if (!b.friendly && hostile < 220) this.put(this.hostileShots, hostile++, b.x, 1, b.z, 0.48, 0.48, 0.7, yaw);
+      if (!b.friendly && hostile < 220) this.put(this.hostileShots, hostile++, b.x, 1, b.z, 0.48, 0.48, 0.7, yaw, b.pattern === 'shield' ? PURPLE_SHOT : PINK_SHOT);
     }
     this.finish(this.shots, friendly); this.finish(this.hostileShots, hostile);
     let particles = 0;

@@ -5,14 +5,14 @@ import { rampsNear, rampSample, trackAt, roadPoint, COURSE_LENGTH, MERGE_RAMPS, 
 import { FORMATION, formationSlot, placeEnemy } from '../src/enemies.js';
 import { effectStrength, EFFECT_DEFAULTS } from '../src/speed-effects.js';
 
-test('yellow barrier collision is fatal at either speed, including during hit immunity', () => {
+test('yellow vehicle collision is fatal at either speed, including during hit immunity', () => {
   for (const speed of [SPEED.combat, SPEED.racing]) {
     const sim = new Simulation({ traffic: false }); sim.start();
     sim.s = sim.distance = 185; sim.lateral = -10; sim.speed = speed;
     sim.invulnerability = 0.7; Object.assign(sim, roadPoint(sim.s, sim.lateral));
     for (let i = 0; i < 60 && sim.status === 'playing'; i++) sim.step(1 / 120, { racing: speed === SPEED.racing });
     assert.equal(sim.status, 'over'); assert.equal(sim.health, 0);
-    assert.equal(sim.deathReason, 'Yellow barrier collision');
+    assert.equal(sim.deathReason, 'Yellow vehicle collision');
   }
   const practice = new Simulation({ invincible: true }); practice.start(); practice.hurt(22, 'obstacle');
   assert.equal(practice.status, 'playing'); assert.equal(practice.health, 100);
@@ -100,7 +100,7 @@ test('connected merge aprons have matching driveable space and disconnect behind
 });
 
 function shieldEncounter(gap = 25) {
-  const sim = new Simulation({ traffic: false }); sim.start();
+  const sim = new Simulation({ traffic: false, neutralTraffic: false, shieldFire: false }); sim.start();
   sim.spawnRamp(rampsNear(420, 0, 0).find(r => r.kind === 'armored'));
   const group = sim.groups[0]; group.age = 10; group.s = 610;
   for (const e of sim.enemies) placeEnemy(e, group);

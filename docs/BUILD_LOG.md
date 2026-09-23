@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 005: firing rows and moving neutral vehicles
+
+User liked racing past enemies during their side entry and requested delayed left-to-right purple fire plus slow, heavily armored yellow vehicles. Preserved merge timing and bypass opportunity. Added a shared volley clock, per-carrier charge cue, one rearward shot every 0.18 seconds across the row, and 3.8 seconds between sweeps. Rows do not fire during entry or after the player passes; destroyed slots stay empty.
+
+Replaced static yellow obstacles with moving neutral cargo primitives at 8 m/s and 160 HP. Vehicles follow curves and narrowing lanes, receive player-shot damage, absorb shots, and can be destroyed. Fatal contact and practice exception remain. No drops or upgrades added. New nonvisual tests cover motion/bounds, damage/destruction/reset, volley timing, destroyed gaps, entry/pass suppression, and actual simulation projectiles. Collision-following tests explicitly isolate incoming fire.
+
+Validation: 34 unit tests, production build, and nonvisual keyboard/touch/runtime smoke pass. Preview rebuilt for the user; no visual playtesting performed.
+
 ## 2026-09-24 — shield-row fairness revision
 
 User reported that purple carriers were too tough and slower traffic caused unavoidable repeated crashes. Halved carrier health from 24 to 12, increased row speed from 16 to 22 m/s, reduced base collision damage from 32 to 18, and added 1.25 seconds of recovery slowdown after contact. Releasing overdrive now brakes and follows an intact deployed carrier in the player's lane at a safe gap; destroyed slots immediately release that speed limit. Holding overdrive retains collision risk. HUD explains when speed matching is active.

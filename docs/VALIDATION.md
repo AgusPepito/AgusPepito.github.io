@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 005 — 2026-09-24
+
+34 nonvisual unit tests pass. Coverage includes neutral vehicle forward travel and narrowing-road bounds, shot damage/destruction, no hostile fire or enemy score from neutral traffic, pause/reset, lethal moving contact, delayed left-to-right purple volleys, destroyed-slot gaps, entry/overtake suppression, and projectiles emitted by the running simulation. Existing following/collision recovery tests isolate purple fire to check vehicle-contact behavior independently.
+
+Production build passes (about 0.54 MB). The nonvisual keyboard/touch/runtime smoke passes against the rebuilt local preview, including neutral traffic presence and armored rendering paths, with no runtime errors. No screenshots or visual gameplay reviews were performed. Final jam/deployment verification remains outstanding.
+
 ## Shield-row fairness revision — 2026-09-24
 
 29 nonvisual unit tests pass. New scenarios verify safe braking/following after releasing overdrive 25 metres behind a deployed row, a gap opened within two seconds without shield loss, and a recoverable initial collision. No browser visual testing was performed.
