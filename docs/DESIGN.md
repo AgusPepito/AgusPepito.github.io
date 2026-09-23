@@ -1,6 +1,18 @@
 # Mechanics experiments
 
-## Current experiment: 003 — road-relative movement
+## Current experiment: 004 — merging traffic and shield rows
+
+Yellow barriers end the run instantly at any speed, bypassing hit immunity. Explicit no-damage practice remains an exception. Walls and ordinary enemies retain recoverable, speed-scaled impact damage.
+
+Six fixed side ramps per lap alternate left/right and scout/armored groups. Enemies travel the rendered ramp before deploying onto the highway. The rail opens where the ramp joins, and the connected apron uses shared collision bounds. Ramps repeat with distinct lap IDs and spawn once per encounter.
+
+Purple armored groups deploy seven carriers into a full-width shield row. Each carrier has 24 HP (about 1.9 seconds of concentrated twin-gun fire), moves at 16 m/s, and awards 400 points. Impact costs 32 shield before speed scaling and prevents phasing through the row during immunity. Releasing overdrive provides time to destroy a carrier. Shield wings and slot spacing contract with the road; a destroyed carrier leaves its slot vacant even after narrowing. The narrowest road still permits a 2.53-metre opening for the 1.3-metre ship. Ordinary pink scouts remain fragile, with 3 HP and 100-point kills.
+
+Wind lines approach the camera and fade in/out. Camera vibration and wind increase with speed, with separate Tune sliders defaulting to 18% and 30%. Zero disables either; reduced-motion preferences disable both. Strength calculation accepts a future turbo multiplier, but turbo itself is not implemented.
+
+Balance and visual feel remain for the user's playtest; automated checks cover lethal impacts, ramp placement, continuous deployment, gap geometry, sustained-fire kills, and nonvisual runtime behavior.
+
+## Previous experiment: 003 — road-relative movement
 
 Forward motion now follows the track centerline. Left/right input moves perpendicular to the road, preserving a selected lateral line through bends. Width changes can still force the player toward a gap. Hold-to-race, speed, and damage settings from experiment 002 are retained.
 

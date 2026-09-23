@@ -5,10 +5,9 @@ import { Simulation, sweptHitsEntity } from '../src/simulation.js';
 
 const close = (a, b, epsilon = 1e-6) => assert.ok(Math.abs(a - b) < epsilon, `${a} != ${b}`);
 function onBend(lateral = 0) {
-  const sim = new Simulation({ invincible: true }); sim.start();
+  const sim = new Simulation({ invincible: true, traffic: false }); sim.start();
   sim.distance = 610; sim.s = 610; sim.lateral = lateral;
   Object.assign(sim, roadPoint(sim.s, lateral));
-  sim.waveAt = Infinity;
   return sim;
 }
 

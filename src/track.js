@@ -77,6 +77,55 @@ export function advanceOnRoad(s, metres) {
   return s + metres / roadFrame(midpoint).scale;
 }
 
+// Fixed roadside entry points, repeated each lap. Enemies share this exact path
+// with the rendered ramp, rather than appearing in the main carriageway.
+export const MERGE_RAMPS = [
+  { id: 'a', s: 120, side: -1, kind: 'scouts' },
+  { id: 'b', s: 420, side: 1, kind: 'armored' },
+  { id: 'c', s: 760, side: -1, kind: 'scouts' },
+  { id: 'd', s: 1060, side: 1, kind: 'armored' },
+  { id: 'e', s: 1390, side: -1, kind: 'scouts' },
+  { id: 'f', s: 1710, side: 1, kind: 'armored' },
+];
+export const RAMP_LENGTH = 110;
+export const RAMP_WIDTH = 6;
+
+export function rampsNear(distance, behind = 160, ahead = 260) {
+  const result = [];
+  const first = Math.max(0, Math.floor((distance - behind - RAMP_LENGTH) / COURSE_LENGTH));
+  const last = Math.floor((distance + ahead) / COURSE_LENGTH);
+  for (let lap = first; lap <= last; lap++) for (const ramp of MERGE_RAMPS) {
+    const start = ramp.s + lap * COURSE_LENGTH, end = start + RAMP_LENGTH;
+    if (end < distance - behind || start > distance + ahead) continue;
+    result.push({ ...ramp, key: `${lap}:${ramp.id}`, start, end });
+  }
+  return result;
+}
+
+export function rampSample(ramp, s) {
+  const progress = smooth((s - ramp.start) / RAMP_LENGTH);
+  const lateral = ramp.side * (trackAt(s).width / 2 + lerp(12, -RAMP_WIDTH / 2, progress));
+  return { ...roadPoint(s, lateral), lateral, width: RAMP_WIDTH, progress };
+}
+
+export function rampOpensRail(ramp, s, side) {
+  if (ramp.side !== side || s < ramp.start || s > ramp.end) return false;
+  return Math.abs(rampSample(ramp, s).lateral) - RAMP_WIDTH / 2 <= trackAt(s).width / 2 + 0.65;
+}
+
+export function drivableBounds(s) {
+  const half = trackAt(s).width / 2;
+  let left = -half, right = half;
+  for (const ramp of rampsNear(s, 0, 0)) {
+    const lane = rampSample(ramp, s);
+    // Only the connected apron is reachable from the highway.
+    if (Math.abs(lane.lateral) - RAMP_WIDTH / 2 > half) continue;
+    left = Math.min(left, lane.lateral - RAMP_WIDTH / 2);
+    right = Math.max(right, lane.lateral + RAMP_WIDTH / 2);
+  }
+  return { left, right };
+}
+
 export const OBSTACLES = [
   { s: 190, offset: -10, w: 4.5, d: 5.5 },
   { s: 275, offset: 9, w: 4.5, d: 5.5 },

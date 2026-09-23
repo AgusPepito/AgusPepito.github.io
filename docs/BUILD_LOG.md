@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 004: merge ramps, armored rows, speed effects
+
+User requested instant-death yellow barriers, enemy entry via distributed highway ramps, subtle configurable shake/wind, and a stronger lane-blocking enemy that handles road narrowing. Added six shared simulation/render ramp paths with open merging rails and connected apron collision bounds. All enemy spawning uses these ramps. Purple armored carriers deploy into seven fixed slots, retract shield wings as width changes, and retain destroyed gaps. Yellow barrier contact bypasses damage immunity; explicit practice mode remains damage-free.
+
+Added camera-relative fading wind streaks and subtle vibration, independently adjustable in Tune with low defaults and reduced-motion support. All geometry remains temporary primitives. Added nonvisual checks for fatal collisions at both speeds, lap-specific ramps, continuous deployment, usable gaps across every road width, sustained-fire destruction, collision blocking during immunity, apron bounds, and effect disabling/scaling. No visual gameplay testing is performed.
+
+Validation: 26 unit tests, production build (about 0.54 MB), and extended nonvisual keyboard/touch/runtime smoke all pass. Preview rebuilt for the user's playtest; final jam gate is not claimed for this experiment.
+
 ## 2026-09-24 — experiment 003: road-relative movement
 
 User identified world-forward alignment of ships and road markings on bends and approved moving to the road's local direction. Added a shared tangent/right frame, perpendicular road cross sections, road-relative steering, curvature-adjusted forward travel, and a camera that turns with the track. Ships, markings, barriers, shadows, posts, and speed streaks now align with the road. Shots launch along the local tangent, then continue straight. Swept collisions use rotated target frames and relative target motion.

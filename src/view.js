@@ -1,7 +1,9 @@
 import * as THREE from 'three';
-import { trackAt, obstaclesNear, roadFrame, roadPoint, roadLineYaw } from './track.js';
+import { trackAt, obstaclesNear, roadFrame, roadPoint, roadLineYaw, rampsNear, rampSample, rampOpensRail, RAMP_WIDTH, RAMP_LENGTH } from './track.js';
 import makePlayer from './placeholders/player.js';
 import makeEnemy from './placeholders/enemy.js';
+import makeArmored from './placeholders/armored.js';
+import { SpeedEffects } from './speed-effects.js';
 import { cameraPose } from './camera.js';
 
 // Everything in this file is temporary graybox presentation, including track geometry.
@@ -20,6 +22,7 @@ export class GameView {
     this.scene.background = new THREE.Color('#10181e');
     this.scene.fog = new THREE.Fog('#10181e', 100, 245);
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 350);
+    this.scene.add(this.camera); this.speedEffects = new SpeedEffects(this.camera);
     this.scene.add(new THREE.HemisphereLight(0xc9e4fa, 0x384454, 2.5));
     const sun = new THREE.DirectionalLight(0xfff5de, 3.2);
     sun.position.set(-22, 50, 15); this.scene.add(sun);
@@ -39,7 +42,10 @@ export class GameView {
     this.ticks = this.batch(300, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 }));
     this.posts = this.batch(60, new THREE.MeshStandardMaterial({ color: 0x778792, roughness: 0.7 }));
     this.postLights = this.batch(60, new THREE.MeshBasicMaterial({ color: 0xffb25c }));
-    this.rushLines = this.batch(48, new THREE.MeshBasicMaterial({ color: 0xc8e8f5, transparent: true, opacity: 0, depthWrite: false }));
+    this.rampMeshes = new Map();
+    this.rampMaterial = new THREE.MeshStandardMaterial({ color: 0x40535d, roughness: 0.95, side: THREE.DoubleSide });
+    this.rampRails = this.batch(256, new THREE.MeshStandardMaterial({ color: 0x71818a, roughness: 0.7 }));
+    this.rampTicks = this.batch(128, new THREE.MeshBasicMaterial({ color: 0xa985ed }));
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.obstacles = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xfab35e, roughness: 0.6 }));
     this.obstacleMarks = this.batch(20, new THREE.MeshBasicMaterial({ color: 0x2b2825 }));
@@ -52,6 +58,7 @@ export class GameView {
     this.playerMarker = new THREE.Mesh(new THREE.RingGeometry(1.35, 1.43, 40), new THREE.MeshBasicMaterial({ color: 0xcaff64, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
     this.playerMarker.rotation.x = -Math.PI / 2; this.scene.add(this.playerMarker);
     this.enemyTemplate = makeEnemy(THREE);
+    this.armoredTemplate = makeArmored(THREE);
     this.enemyMeshes = new Map(); this.particles = [];
     this.lastRoadBase = null; this.cameraInitialized = false;
     this.resize();
@@ -85,6 +92,8 @@ export class GameView {
     const base = Math.floor((s - 55) / 2) * 2;
     if (base === this.lastRoadBase) return;
     this.lastRoadBase = base;
+    const ramps = rampsNear(s, 55, 245);
+    this.updateRamps(ramps);
     const positions = this.roadGeometry.attributes.position;
     let rails = 0, ticks = 0, posts = 0;
     for (let i = 0; i <= this.roadSegments; i++) {
@@ -96,6 +105,7 @@ export class GameView {
       const next = trackAt(at + 2);
       const color = this.color.copy(GREEN).lerp(ORANGE, t.tight);
       for (const sign of [-1, 1]) {
+        if (ramps.some(r => rampOpensRail(r, at + 1, sign))) continue;
         const a = roadPoint(at, sign * (t.width / 2 + 0.32));
         const b = roadPoint(at + 2, sign * (next.width / 2 + 0.32));
         const rotation = Math.atan2(a.x - b.x, a.z - b.z);
@@ -110,6 +120,7 @@ export class GameView {
       }
       if (Math.round(at) % 12 === 0) {
         for (const sign of [-1, 1]) {
+          if (ramps.some(r => rampOpensRail(r, at, sign))) continue;
           const lateral = sign * (t.width / 2 + 1.1), p = roadPoint(at, lateral), f = roadFrame(at);
           this.putRoad(this.posts, posts, at, lateral, 2, 0.5, 4, 0.6);
           this.put(this.postLights, posts++, p.x - f.fx * 0.32, 3.2, p.z - f.fz * 0.32, 0.4, 1.2, 0.06, f.yaw);
@@ -127,6 +138,41 @@ export class GameView {
       count++;
     }
     this.finish(this.obstacles, count); this.finish(this.obstacleMarks, count);
+  }
+  updateRamps(ramps) {
+    const active = new Set(); let rails = 0, ticks = 0;
+    for (const ramp of ramps) {
+      active.add(ramp.key);
+      if (!this.rampMeshes.has(ramp.key)) {
+        const geometry = new THREE.PlaneGeometry(1, 1, 1, 32);
+        const positions = geometry.attributes.position;
+        for (let i = 0; i <= 32; i++) {
+          const s = ramp.start + i * RAMP_LENGTH / 32, sample = rampSample(ramp, s);
+          for (const [j, side] of [-1, 1].entries()) {
+            const p = roadPoint(s, sample.lateral + side * RAMP_WIDTH / 2);
+            positions.setXYZ(i * 2 + j, p.x, 0.006, p.z);
+          }
+        }
+        geometry.computeVertexNormals();
+        const mesh = new THREE.Mesh(geometry, this.rampMaterial);
+        mesh.frustumCulled = false; this.scene.add(mesh); this.rampMeshes.set(ramp.key, mesh);
+      }
+      for (let i = 0; i < 32; i++) {
+        const s = ramp.start + i * RAMP_LENGTH / 32, next = s + RAMP_LENGTH / 32;
+        const a = rampSample(ramp, s), b = rampSample(ramp, next);
+        for (const side of [-1, 1]) {
+          if (side !== ramp.side && rampOpensRail(ramp, (s + next) / 2, ramp.side)) continue;
+          const p = roadPoint(s, a.lateral + side * (RAMP_WIDTH / 2 + 0.32));
+          const q = roadPoint(next, b.lateral + side * (RAMP_WIDTH / 2 + 0.32));
+          this.put(this.rampRails, rails++, (p.x + q.x) / 2, 0.6, (p.z + q.z) / 2, 0.62, 1.2, Math.hypot(p.x - q.x, p.z - q.z) + 0.05, Math.atan2(p.x - q.x, p.z - q.z));
+        }
+        if (i % 2 === 0) this.put(this.rampTicks, ticks++, a.x, 0.025, a.z, 0.18, 0.025, 2.2, Math.atan2(a.x - b.x, a.z - b.z));
+      }
+    }
+    for (const [key, mesh] of this.rampMeshes) if (!active.has(key)) {
+      this.scene.remove(mesh); mesh.geometry.dispose(); this.rampMeshes.delete(key);
+    }
+    this.finish(this.rampRails, rails); this.finish(this.rampTicks, ticks);
   }
   event(event) {
     if (event.kind === 'lap') return;
@@ -157,16 +203,7 @@ export class GameView {
     if (Math.abs(this.camera.fov - pose.fov) > 0.01) { this.camera.fov = pose.fov; this.camera.updateProjectionMatrix(); }
     if (!this.reducedMotion) this.camera.rotateZ(-sim.vx * sim.raceBlend * 0.0012);
     this.cameraInitialized = true;
-    const rush = this.reducedMotion ? 0 : Math.max(0, Math.min(1, (sim.speed - 26) / 56));
-    this.rushLines.material.opacity = rush * 0.38;
-    for (let i = 0; i < 48; i++) {
-      // World-distance based streaks travel past the ship; never cover its aiming line.
-      const ahead = ((i * 23.71 - sim.distance * 0.8) % 150 + 150) % 150 - 25;
-      const side = i % 2 ? 1 : -1;
-      const road = trackAt(sim.s + ahead);
-      this.putRoad(this.rushLines, i, sim.s + ahead, side * (road.width / 2 + 2 + (i % 5) * 1.7), 0.5 + (i % 7) * 0.9, 0.035, 0.035, 3 + rush * 9);
-    }
-    this.finish(this.rushLines, rush > 0.03 ? 48 : 0);
+    this.speedEffects.update(sim, settings, this.reducedMotion);
     this.player.position.set(sim.x, 0.6 + Math.sin(sim.time * 8) * 0.06, sim.z);
     this.player.rotation.set(0, Math.PI + sim.yaw, sim.vx * 0.008, 'YXZ');
     this.player.visible = sim.invulnerability <= 0 || Math.floor(sim.time * 18) % 2 === 0;
@@ -174,12 +211,18 @@ export class GameView {
     this.put(this.shadows, 0, sim.x + 0.35, 0.022, sim.z - 0.2, 1.45, 0.025, 2.5, sim.yaw);
     const active = new Set(); let shadow = 1;
     for (const e of sim.enemies) {
+      if (!e.active) continue;
       active.add(e.id);
       let mesh = this.enemyMeshes.get(e.id);
-      if (!mesh) { mesh = this.enemyTemplate.clone(); this.enemyMeshes.set(e.id, mesh); this.scene.add(mesh); }
+      if (!mesh) { mesh = (e.armored ? this.armoredTemplate : this.enemyTemplate).clone(); this.enemyMeshes.set(e.id, mesh); this.scene.add(mesh); }
       mesh.position.set(e.x, 0.6, e.z);
-      mesh.rotation.set(0, Math.PI + e.yaw, Math.cos(e.age * 1.6 + e.phase) * 0.08, 'YXZ');
-      this.put(this.shadows, shadow++, e.x + 0.4, 0.022, e.z - 0.1, 2.65, 0.025, 3.4, e.yaw);
+      mesh.rotation.set(0, Math.PI + e.yaw, e.armored ? 0 : Math.cos(e.age * 1.6 + e.slot) * 0.08, 'YXZ');
+      if (e.armored) {
+        mesh.getObjectByName('shield').scale.x = e.halfWidth * 2;
+        const bar = mesh.getObjectByName('health');
+        bar.scale.x = 1.4 * e.hp / e.maxHp; bar.position.x = (bar.scale.x - 1.4) / 2;
+      }
+      this.put(this.shadows, shadow++, e.x + 0.4, 0.022, e.z - 0.1, e.halfWidth * 2 + 0.2, 0.025, 3.4, e.yaw);
     }
     for (const [id, mesh] of this.enemyMeshes) if (!active.has(id)) { this.scene.remove(mesh); this.enemyMeshes.delete(id); }
     this.finish(this.shadows, shadow);

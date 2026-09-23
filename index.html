@@ -13,7 +13,7 @@
   <div id="hit-flash" aria-hidden="true"></div>
   <div id="rush-vignette" aria-hidden="true"></div>
   <header class="topbar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 003</span></div></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 004</span></div></div>
     <div class="header-actions">
       <span class="prototype-badge"><i></i> GRAYBOX BUILD</span>
       <button id="tune-toggle" class="quiet-button" aria-expanded="false" aria-controls="tuning">Tune <span aria-hidden="true">☷</span></button>
@@ -27,6 +27,7 @@
         <p class="eyebrow accent">SCROLLING SHOOTER × GROUND RACER</p>
         <h1>FIND YOUR<br /><span>LINE.</span></h1>
         <p class="intro-description">Hold to race. Release to fight.<br />You choose when it gets dangerous.</p>
+        <p class="hazard-note">Yellow barriers are fatal. Purple shield rows: slow down and shoot a gap.</p>
         <div class="mode-legend"><span><i class="wide-swatch"></i> RELEASE / COMBAT</span><span><i class="tight-swatch"></i> HOLD / OVERDRIVE</span></div>
         <button id="startb" class="primary-button" disabled>Loading track… <span aria-hidden="true">↗</span></button>
         <p class="controls-note desktop-hint"><kbd>W A S D</kbd> / arrows to move <span>·</span> Hold <kbd>SPACE</kbd> or <kbd>SHIFT</kbd> to race<br />Release to slow down <span>·</span> Auto-fire stays on</p>
@@ -53,7 +54,7 @@
     </section>
 
     <section id="results" class="center-overlay overlay" hidden>
-      <div class="panel"><p class="eyebrow accent">RUN COMPLETE</p><h2>ONE MORE<br />LINE?</h2><div class="result-score" id="result-score">000000</div><div class="result-stats"><div><strong id="result-distance">0</strong><span>METERS</span></div><div><strong id="result-kills">0</strong><span>DESTROYED</span></div><div><strong id="result-walls">0</strong><span>WALL HITS</span></div></div><p>Try a cleaner line, or tune the experiment.</p><button id="restart" class="primary-button">Run it again <span>↗</span></button></div>
+      <div class="panel"><p class="eyebrow accent" id="result-cause">RUN COMPLETE</p><h2>ONE MORE<br />LINE?</h2><div class="result-score" id="result-score">000000</div><div class="result-stats"><div><strong id="result-distance">0</strong><span>METERS</span></div><div><strong id="result-kills">0</strong><span>DESTROYED</span></div><div><strong id="result-walls">0</strong><span>WALL HITS</span></div></div><p>Try a cleaner line, or tune the experiment.</p><button id="restart" class="primary-button">Run it again <span>↗</span></button></div>
     </section>
 
     <aside id="tuning" class="tuning" hidden aria-label="Prototype settings">
@@ -63,7 +64,9 @@
       <label class="switch-row"><div><strong>Speed transition</strong><span>Accelerate while holding overdrive.</span></div><input id="speed-shift" type="checkbox" checked /></label>
       <label class="switch-row"><div><strong>Practice mode</strong><span>Keep driving without losing shield.</span></div><input id="invincible" type="checkbox" /></label>
       <label class="switch-row"><div><strong>Sound effects</strong><span>Simple impact and destruction tones.</span></div><input id="sound" type="checkbox" /></label>
-      <p class="tuning-note">Hold Space, Shift, or OVERDRIVE anywhere. Release to return to combat. High-speed collisions hit harder.</p>
+      <label class="effect-row" for="shake"><span>Camera shake <output id="shake-value" for="shake">18%</output></span><input id="shake" type="range" min="0" max="100" value="18" /></label>
+      <label class="effect-row" for="wind"><span>Wind streaks <output id="wind-value" for="wind">30%</output></span><input id="wind" type="range" min="0" max="100" value="30" /></label>
+      <p class="tuning-note">Set either effect to 0 to disable it. Reduced-motion preferences disable both. Yellow barriers cause instant death except in practice mode. Release overdrive to shoot through purple shield rows.</p>
       <button id="restart-settings" class="secondary-button">Restart run ↗</button>
       <div class="diagnostics"><span id="fps">— FPS</span><span id="draws">— DRAWS</span></div>
     </aside>

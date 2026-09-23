@@ -15,7 +15,7 @@ test('track has continuous width and center, including the lap seam', () => {
 
 test('unobstructed movement is frame-rate independent through a full lap', () => {
   const run = (hz) => {
-    const sim = new Simulation({ invincible: true }); sim.start();
+    const sim = new Simulation({ invincible: true, traffic: false }); sim.start();
     // Isolate integration from discrete collision cooldowns and slowdown events,
     // whose timing is covered separately by collision/recovery tests.
     sim.hurt = () => {};
@@ -94,6 +94,6 @@ test('zones never activate racing, and holding/releasing works in open space', (
 
 test('high-speed physical impacts are more dangerous without amplifying bullets', () => {
   const damage = (speed, kind) => { const sim = new Simulation(); sim.start(); sim.speed = speed; sim.hurt(20, kind); return 100 - sim.health; };
-  assert.ok(damage(SPEED.racing, 'obstacle') > damage(SPEED.combat, 'obstacle'));
+  assert.ok(damage(SPEED.racing, 'wall') > damage(SPEED.combat, 'wall'));
   assert.equal(damage(SPEED.racing, 'bullet'), damage(SPEED.combat, 'bullet'));
 });

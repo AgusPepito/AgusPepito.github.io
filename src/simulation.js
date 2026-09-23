@@ -1,4 +1,5 @@
-import { COURSE_LENGTH, clamp, lerp, trackAt, obstaclesNear, roadFrame, roadPoint, roadCoordinates, advanceOnRoad } from './track.js';
+import { COURSE_LENGTH, clamp, lerp, trackAt, obstaclesNear, roadFrame, roadPoint, roadCoordinates, advanceOnRoad, rampsNear, rampSample, drivableBounds } from './track.js';
+import { FORMATION, placeEnemy } from './enemies.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
 export const SPEED = { combat: 26, racing: 82 };
@@ -43,11 +44,20 @@ export class Simulation {
     this.health = 100; this.score = 0; this.kills = 0; this.passed = 0;
     this.wallHits = 0; this.hits = 0; this.lap = 1;
     this.invulnerability = 0; this.slowdown = 0;
-    this.shotTimer = 0; this.waveAt = 85; this.nextId = 1;
+    this.shotTimer = 0; this.nextId = 1; this.deathReason = '';
+    this.groups = []; this.spawnedRamps = new Map();
     this.enemies = []; this.bullets = []; this.events = [];
   }
   start() { if (this.status === 'ready') this.status = 'playing'; }
   hurt(amount, kind) {
+    if (this.status !== 'playing') return;
+    // Solid yellow barriers are lethal, even during the grace period after a hit.
+    // Explicit no-damage practice mode remains available for mechanics testing.
+    if (kind === 'obstacle' && !this.options.invincible) {
+      this.health = 0; this.hits++; this.status = 'over'; this.deathReason = 'Yellow barrier collision';
+      this.events.push({ kind: 'hit', x: this.x, z: this.z, s: this.s });
+      return;
+    }
     if (this.invulnerability > 0 || this.status !== 'playing') return;
     const impact = kind === 'bullet' ? amount : Math.round(amount * lerp(1, 1.8, clamp((this.speed - SPEED.combat) / (SPEED.racing - SPEED.combat), 0, 1)));
     this.health = Math.max(0, this.health - (this.options.invincible ? 0 : impact));
@@ -57,21 +67,17 @@ export class Simulation {
     this.events.push({ kind: 'hit', x: this.x, z: this.z, s: this.s });
     if (this.health === 0) this.status = 'over';
   }
-  wave() {
-    const spawnS = this.s + lerp(80, 140, this.raceBlend);
-    const track = trackAt(spawnS);
-    const racer = track.tight > 0.65;
-    const index = Math.floor(this.waveAt / 40);
-    const offsets = racer ? [(index % 2 ? -1 : 1) * 2.4] : [-10, 0, 10];
-    for (const [i, offset] of offsets.entries()) {
-      this.enemies.push({
-        id: this.nextId++, s: spawnS + i * 3.5, ...roadPoint(spawnS + i * 3.5, offset),
-        lateral: offset, yaw: roadFrame(spawnS + i * 3.5).yaw,
-        offset, racer, hp: racer ? 4 : 2, age: 0,
-        fire: 1.6 + i * 0.3, phase: index + i * 1.6,
-      });
+  spawnRamp(ramp) {
+    const group = { id: this.nextId++, ramp, age: 0, s: ramp.end };
+    this.groups.push(group); this.spawnedRamps.set(ramp.key, ramp.end);
+    const armored = ramp.kind === 'armored', count = armored ? FORMATION.count : 3;
+    for (let slot = 0; slot < count; slot++) {
+      this.enemies.push({ id: this.nextId++, groupId: group.id, slot, armored,
+        s: ramp.start, ...rampSample(ramp, ramp.start), oldX: undefined, oldZ: undefined,
+        hp: armored ? FORMATION.hp : 3, maxHp: armored ? FORMATION.hp : 3,
+        halfWidth: 1.2, halfDepth: armored ? 1.5 : 1.6,
+        active: false, deployed: 0, yaw: roadFrame(ramp.start).yaw, age: 0, fire: 1.5 + slot * 0.3 });
     }
-    this.waveAt += racer ? 105 : 80;
   }
   step(dt, input = { x: 0, y: 0 }) {
     if (this.status !== 'playing') return;
@@ -88,9 +94,8 @@ export class Simulation {
     this.s = this.distance + this.offset;
     this.vx = lerp(this.vx, clamp(input.x || 0, -1, 1) * 19, 1 - Math.exp(-15 * dt));
     this.lateral += this.vx * dt;
-    const here = trackAt(this.s);
-    const limit = here.width / 2 - PLAYER.halfWidth - 0.18;
-    const inside = clamp(this.lateral, -limit, limit);
+    const bounds = drivableBounds(this.s), margin = PLAYER.halfWidth + 0.18;
+    const inside = clamp(this.lateral, bounds.left + margin, bounds.right - margin);
     const wallContact = inside !== this.lateral;
     this.lateral = inside;
     Object.assign(this, roadPoint(this.s, this.lateral));
@@ -107,9 +112,18 @@ export class Simulation {
     for (const o of obstaclesNear(this.s, 8, 8)) {
       if (sweptHitsEntity(oldX, oldZ, this.x, this.z, o, o.w / 2 + PLAYER.halfWidth, o.d / 2 + PLAYER.halfDepth)) {
         this.hurt(22, 'obstacle');
+        if (this.status === 'over') return;
       }
     }
-    if (this.distance >= this.waveAt) this.wave();
+    if (this.options.traffic !== false) for (const ramp of rampsNear(this.s, 0, 190)) {
+      if (ramp.start < this.s - 15 || this.spawnedRamps.has(ramp.key)) continue;
+      this.spawnRamp(ramp);
+    }
+    for (const [key, end] of this.spawnedRamps) if (end < this.s - 100) this.spawnedRamps.delete(key);
+    for (const group of this.groups) {
+      group.age += dt;
+      if (group.age > FORMATION.entrySeconds) group.s = advanceOnRoad(group.s, FORMATION.speed * dt);
+    }
     this.shotTimer -= dt;
     if (this.shotTimer <= 0) {
       this.shotTimer += 0.16;
@@ -120,14 +134,13 @@ export class Simulation {
       });
     }
     for (const e of this.enemies) {
-      e.oldX = e.x; e.oldZ = e.z;
-      e.age += dt; e.s = advanceOnRoad(e.s, (e.racer ? 26 : 13) * dt);
+      const group = this.groups.find(g => g.id === e.groupId);
+      if (!group) continue;
+      placeEnemy(e, group);
+      if (!e.active) continue;
       const road = trackAt(e.s);
-      const offset = clamp(e.offset, -road.width / 2 + 2, road.width / 2 - 2);
-      e.lateral = offset + Math.sin(e.age * 1.6 + e.phase) * (e.racer ? 0.6 : 1.6);
-      Object.assign(e, roadPoint(e.s, e.lateral)); e.yaw = roadFrame(e.s).yaw;
       e.fire -= dt;
-      if (!e.racer && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
+      if (!e.armored && e.deployed === 1 && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
         e.fire = 2.25;
         const dx = this.x - e.x, dz = this.z - e.z;
         const length = Math.hypot(dx, dz), f = roadFrame(e.s);
@@ -136,7 +149,16 @@ export class Simulation {
           this.bullets.push({ id: this.nextId++, x: e.x - f.fx * 1.6, z: e.z - f.fz * 1.6, s: e.s - 1.6, vx: Math.sin(angle) * 17, vz: Math.cos(angle) * 17, friendly: false, life: Math.min(5, length / 12 + 1) });
         }
       }
-      if (sweptHitsEntity(oldX, oldZ, this.x, this.z, e, 1.2 + PLAYER.halfWidth, 1.6 + PLAYER.halfDepth)) this.hurt(18, 'enemy');
+      if (sweptHitsEntity(oldX, oldZ, this.x, this.z, e, e.halfWidth + PLAYER.halfWidth, e.halfDepth + PLAYER.halfDepth)) {
+        this.hurt(e.armored ? 32 : 18, 'enemy');
+        if (e.armored && this.status === 'playing') {
+          // A solid shield row cannot be skipped by exploiting damage immunity.
+          this.s = Math.min(this.s, e.s - e.halfDepth - PLAYER.halfDepth - 0.4);
+          this.distance = this.s - this.offset; this.speed = Math.min(this.speed, FORMATION.speed * 0.65);
+          Object.assign(this, roadPoint(this.s, this.lateral)); this.yaw = roadFrame(this.s).yaw;
+        }
+        if (this.status === 'over') return;
+      }
       if (e.s < this.s - 10 && !e.passed) { e.passed = true; this.passed++; this.score += 40; }
     }
     for (const b of this.bullets) {
@@ -144,10 +166,10 @@ export class Simulation {
       b.x += b.vx * dt; b.z += b.vz * dt; b.life -= dt;
       const projected = roadCoordinates(b.x, b.z); b.s = projected.s;
       if (b.friendly) {
-        for (const e of this.enemies) if (e.hp > 0 && sweptHitsEntity(bx, bz, b.x, b.z, e, 1.25, 1.8)) {
+        for (const e of this.enemies) if (e.active && e.hp > 0 && sweptHitsEntity(bx, bz, b.x, b.z, e, e.halfWidth + 0.05, e.halfDepth + 0.2)) {
           b.life = 0; e.hp--;
           if (e.hp === 0) {
-            this.kills++; this.score += e.racer ? 180 : 100;
+            this.kills++; this.score += e.armored ? 400 : 100;
             this.events.push({ kind: 'kill', x: e.x, z: e.z, s: e.s });
           } else this.events.push({ kind: 'spark', x: e.x, z: e.z, s: e.s });
           break;
@@ -155,10 +177,11 @@ export class Simulation {
       } else if (sweptHitsEntity(bx, bz, b.x, b.z, { x: this.x, z: this.z, oldX, oldZ, yaw: this.yaw }, PLAYER.halfWidth + 0.15, PLAYER.halfDepth + 0.15)) {
         b.life = 0; this.hurt(12, 'bullet');
       }
-      const lane = trackAt(b.s);
-      if (Math.abs(projected.lateral) > lane.width / 2) b.life = 0;
+      const lane = drivableBounds(b.s);
+      if (projected.lateral < lane.left || projected.lateral > lane.right) b.life = 0;
     }
-    this.enemies = this.enemies.filter(e => e.hp > 0 && e.s > this.s - 25);
+    this.enemies = this.enemies.filter(e => e.hp > 0 && (!e.active || e.s > this.s - 25));
+    this.groups = this.groups.filter(g => this.enemies.some(e => e.groupId === g.id));
     this.bullets = this.bullets.filter(b => b.life > 0 && b.s > this.s - 20 && b.s < this.s + 170);
   }
 }

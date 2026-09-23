@@ -1,0 +1,6 @@
+.effect-row { display: block; padding: 15px 0; border-bottom: 1px solid #ffffff14; }
+.effect-row > span { display: flex; justify-content: space-between; font-size: 12px; }
+.effect-row output { color: #caff64; font-family: monospace; }
+.effect-row input { width: 100%; margin: 12px 0 0; accent-color: #caff64; }
+.tuning { max-height: calc(100dvh - 95px); overflow-y: auto; }
+.hazard-note { font-size: 11px; color: #ffb25c; line-height: 1.6; }

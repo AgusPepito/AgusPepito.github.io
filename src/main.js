@@ -1,12 +1,14 @@
 import './style.css';
 import './overdrive.css';
+import './effects.css';
 import { Simulation, SPEED } from './simulation.js';
 import { HoldAction } from './hold-action.js';
 import { GameView } from './view.js';
 import { COURSE_LENGTH, clamp, trackAt } from './track.js';
+import { EFFECT_DEFAULTS } from './speed-effects.js';
 
 const $ = id => document.getElementById(id);
-const settings = { cameraShift: true, speedShift: true, invincible: false, sound: false };
+const settings = { cameraShift: true, speedShift: true, invincible: false, sound: false, ...EFFECT_DEFAULTS };
 const sim = new Simulation(settings);
 const canvas = $('world');
 const keys = new Set();
@@ -44,6 +46,7 @@ function syncScreens() {
   $('pause').textContent = sim.status === 'paused' ? '▷' : 'Ⅱ';
   $('pause').setAttribute('aria-label', sim.status === 'paused' ? 'Resume game' : 'Pause game');
   if (sim.status === 'over') {
+    $('result-cause').textContent = sim.deathReason || 'Shield depleted';
     $('result-score').textContent = String(sim.score).padStart(6, '0');
     $('result-distance').textContent = Math.floor(sim.distance - 30).toLocaleString();
     $('result-kills').textContent = sim.kills;
@@ -82,6 +85,14 @@ for (const [id, key] of [['camera-shift', 'cameraShift'], ['speed-shift', 'speed
     settings[key] = event.target.checked; sim.options[key] = event.target.checked;
     $('practice-badge').hidden = !settings.invincible;
     if (key === 'sound') tone('kill');
+  });
+}
+for (const key of ['shake', 'wind']) {
+  $(key).value = settings[key] * 100;
+  $(`${key}-value`).textContent = `${Math.round(settings[key] * 100)}%`;
+  $(key).addEventListener('input', event => {
+    settings[key] = Number(event.target.value) / 100;
+    $(`${key}-value`).textContent = `${event.target.value}%`;
   });
 }
 window.addEventListener('keydown', event => {
@@ -139,6 +150,9 @@ function input() {
 function updateUI() {
   const road = trackAt(sim.s);
   $('sector-name').textContent = road.label; $('sector-hint').textContent = road.hint;
+  if (sim.enemies.some(e => e.armored && e.active && e.s > sim.s && e.s < sim.s + 140)) {
+    $('sector-hint').textContent = 'SHIELD ROW — release overdrive. Shoot a gap.';
+  }
   $('lap').textContent = `LAP ${String(sim.lap).padStart(2, '0')}`;
   $('score').textContent = String(sim.score).padStart(6, '0');
   $('tally').textContent = `${sim.kills} destroyed / ${sim.passed} passed`;
@@ -181,6 +195,9 @@ function frame(now) {
     kills: sim.kills, passed: sim.passed, wallHits: sim.wallHits,
     racingHeld: sim.racingHeld, raceBlend: sim.raceBlend,
     lateral: sim.lateral, heading: sim.yaw,
+    enemies: sim.enemies.filter(e => e.active).length,
+    armored: sim.enemies.filter(e => e.active && e.armored).length,
+    deathReason: sim.deathReason,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },
   };

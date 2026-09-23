@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 004 — 2026-09-24
+
+26 nonvisual unit tests pass. Added coverage for instant-death barriers at combat/racing speed and during damage immunity, ramp entry and lap repetition, continuous shield-row deployment, full-width coverage and usable destroyed gaps at every road width, sustained-fire kills, immunity-resistant row blocking, merge-apron bounds, and configurable speed effects. Production build passes (about 0.54 MB).
+
+`scripts/input-smoke.mjs` passes keyboard/touch hold-and-release, pause/resume, two-finger independent release, ramp and armored rendering code paths, effect-slider updates, and runtime-error checks against the rebuilt preview. No screenshots or visual gameplay reviews were performed. Difficulty, visual feel, and effect intensity await the user's playtest. Final jam/deployment verification remains outstanding.
+
 ## Experiment 003 — 2026-09-24
 
 19 nonvisual unit tests pass, including road-coordinate transforms, lane direction, neutral line-following through bends, shot trajectories, rotated/moving collision targets, and camera projection bounds. Production build passes (about 0.53 MB). `scripts/input-smoke.mjs` passes keyboard hold/release, Shift, pause/resume, simultaneous two-finger steering/overdrive, independent release, and runtime-error checks. No gameplay screenshots or visual reviews were performed. Final jam/deployment verification remains outstanding.

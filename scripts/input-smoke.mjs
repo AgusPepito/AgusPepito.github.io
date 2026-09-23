@@ -40,6 +40,19 @@ try {
   assert.equal(await page.evaluate(() => window.__GAME__.racingHeld), true, 'lifting steering finger preserves overdrive');
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await page.waitForFunction(() => !window.__GAME__.racingHeld && window.__GAME__.speed < 30);
+  // Exercise ramp and armored render paths without observing gameplay images.
+  await page.setViewport({ width: 1280, height: 800, isMobile: false, hasTouch: false });
+  await page.reload(); await page.waitForFunction(() => window.__READY__);
+  await page.click('#tune-toggle'); await page.click('#invincible'); await page.click('#tune-close');
+  await page.click('#startb'); await page.keyboard.down('Space');
+  await page.waitForFunction(() => window.__GAME__.armored > 0 && window.__GAME__.distance > 550, { timeout: 30000 });
+  await page.keyboard.up('Space');
+  await page.click('#tune-toggle');
+  await page.$eval('#shake', e => { e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.$eval('#wind', e => { e.value = 0; e.dispatchEvent(new Event('input', { bubbles: true })); });
+  await page.waitForFunction(() => window.__GAME__.options.shake === 0 && window.__GAME__.options.wind === 0);
+  await page.click('#tune-close');
+  await page.waitForFunction(() => window.__GAME__.status === 'playing');
   assert.deepEqual(errors, []);
-  console.log('PASS: keyboard hold/release, Shift, pause/reset of held input, simultaneous touch steering + racing, independent finger release, and no runtime errors. No visual testing performed.');
+  console.log('PASS: keyboard hold/release, Shift, pause/reset of held input, simultaneous touch steering + racing, independent finger release, ramp and armored runtime paths, adjustable effects, and no runtime errors. No visual testing performed.');
 } finally { await browser.close(); }
