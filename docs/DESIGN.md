@@ -1,6 +1,10 @@
 # Mechanics experiments
 
-## Current experiment: 006 — shared drive controls and consumable boost
+## Current experiment: 007 — selectable encounters
+
+Four isolated tests focus on formation clearing (Darts), bait/dodge/rear-engine punishment (Interceptors), persistent hazards and chains (Mine layer), and optional multi-target reward extraction (Convoy). The start menu selects the next test; retry, completion and return-to-selection controls support quick comparisons. The previous highway run remains a fifth choice. See `ENCOUNTERS.md` for current rules and balance values. Convoy salvage awards score only; upgrades remain deferred.
+
+## Previous experiment: 006 — shared drive controls and consumable boost
 
 PC: WASD/arrows only reposition, Shift selects fast mode, Ctrl brakes, Space boosts. Mobile: a circular analog stick steers horizontally; moderate vertical motion repositions, its upper edge selects fast mode, and lower edge brakes. The independent thumb button now controls BOOST. Stick deadzone is 12%, mode entry 70%, exit 55%; this allows diagonal fast steering and prevents mode flicker. Outer speed zones do not also change longitudinal offset. Neutral/released controls return to cruise. Pause, tuning, focus loss, pointer cancellation, and restart clear held actions.
 

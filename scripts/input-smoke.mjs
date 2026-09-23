@@ -13,6 +13,7 @@ try {
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await page.goto(process.argv[2] || 'http://127.0.0.1:4173/');
   await page.waitForFunction(() => window.__READY__);
+  await page.click('input[name="encounter"][value="highway"]');
   await page.click('#tune-toggle'); await page.click('#invincible'); await page.click('#tune-close');
   await page.click('#startb');
   await page.keyboard.down('ShiftLeft');
@@ -43,6 +44,7 @@ try {
 
   await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
   await page.reload(); await page.waitForFunction(() => window.__READY__);
+  await page.click('input[name="encounter"][value="highway"]');
   await page.click('#tune-toggle'); await page.click('#invincible'); await page.click('#tune-close');
   const center = selector => page.$eval(selector, e => { const r = e.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
   const start = await center('#startb'); await page.touchscreen.tap(start.x, start.y);
@@ -76,6 +78,7 @@ try {
   // Exercise ramp and armored render paths without observing gameplay images.
   await page.setViewport({ width: 1280, height: 800, isMobile: false, hasTouch: false });
   await page.reload(); await page.waitForFunction(() => window.__READY__);
+  await page.click('input[name="encounter"][value="highway"]');
   await page.click('#tune-toggle'); await page.click('#invincible'); await page.click('#tune-close');
   await page.click('#startb'); await page.keyboard.down('ShiftLeft');
   await page.waitForFunction(() => window.__GAME__.armored > 0 && window.__GAME__.distance > 550, { timeout: 30000 });

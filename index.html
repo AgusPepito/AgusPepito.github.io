@@ -13,9 +13,10 @@
   <div id="hit-flash" aria-hidden="true"></div>
   <div id="rush-vignette" aria-hidden="true"></div>
   <header class="topbar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 006</span></div></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 007</span></div></div>
     <div class="header-actions">
       <span class="prototype-badge"><i></i> GRAYBOX BUILD</span>
+      <button id="encounter-menu" class="quiet-button" hidden>Encounters</button>
       <button id="tune-toggle" class="quiet-button" aria-expanded="false" aria-controls="tuning">Tune <span aria-hidden="true">☷</span></button>
       <button id="pause" class="icon-button" aria-label="Pause game" hidden>Ⅱ</button>
     </div>
@@ -25,10 +26,15 @@
     <section id="intro" class="intro overlay">
       <div class="intro-content">
         <p class="eyebrow accent">SCROLLING SHOOTER × GROUND RACER</p>
-        <h1>FIND YOUR<br /><span>LINE.</span></h1>
-        <p class="intro-description">Cruise. Race. Save a burst of boost.<br />Choose your moment to break through.</p>
-        <p class="hazard-note">Yellow trucks: slow, heavily armored, fatal on contact. Purple rows fire left to right—shoot a gap or race past their merge.</p>
-        <div class="mode-legend"><span><i class="wide-swatch"></i> CRUISE / COMBAT</span><span><i class="tight-swatch"></i> FAST MODE + BOOST</span></div>
+        <h1>CHOOSE YOUR<br /><span>ENCOUNTER.</span></h1>
+        <p class="intro-description">Four encounters. Four ways to find your line.</p>
+        <fieldset id="encounter-options"><legend>Select a test</legend>
+          <label><input type="radio" name="encounter" value="darts" checked /><span><b>01 · Dart squadron</b><small>Clear a V formation before it shifts into columns.</small></span></label>
+          <label><input type="radio" name="encounter" value="interceptors" /><span><b>02 · Interceptors</b><small>Bait the charge. Dodge, then punish the exposed engine.</small></span></label>
+          <label><input type="radio" name="encounter" value="mines" /><span><b>03 · Mine layer</b><small>Shoot the trail and trigger a chain reaction.</small></span></label>
+          <label><input type="radio" name="encounter" value="convoy" /><span><b>04 · Convoy hauler</b><small>Break three cargo locks and collect the salvage.</small></span></label>
+          <label class="highway-choice"><input type="radio" name="encounter" value="highway" /><span><b>Original highway</b><small>Merge ramps, shield rows and yellow traffic.</small></span></label>
+        </fieldset>
         <button id="startb" class="primary-button" disabled>Loading track… <span aria-hidden="true">↗</span></button>
         <p class="controls-note desktop-hint"><kbd>W A S D</kbd> / arrows to reposition <span>·</span> <kbd>SHIFT</kbd> fast mode<br /><kbd>CTRL</kbd> brake <span>·</span> <kbd>SPACE</kbd> rechargeable boost <span>·</span> Auto-fire</p>
         <p class="controls-note touch-hint">Stick: steer and reposition <span>·</span> Fully up: fast <span>·</span> Fully down: brake<br />Other thumb: hold BOOST <span>·</span> Braking cancels boost</p>
@@ -50,11 +56,11 @@
     </section>
 
     <section id="pause-screen" class="center-overlay overlay" hidden>
-      <div class="panel"><p class="eyebrow accent">TAKE A BREATH</p><h2>HOLDING<br />THE LINE.</h2><p>The track will wait.</p><button id="resume" class="primary-button">Resume run <span>↗</span></button><button id="restart-paused" class="text-button">Restart from the beginning</button></div>
+      <div class="panel"><p class="eyebrow accent">TAKE A BREATH</p><h2>HOLDING<br />THE LINE.</h2><p>The track will wait.</p><button id="resume" class="primary-button">Resume run <span>↗</span></button><button id="restart-paused" class="text-button">Retry this test</button><button id="choose-paused" class="secondary-button">Choose another encounter</button></div>
     </section>
 
     <section id="results" class="center-overlay overlay" hidden>
-      <div class="panel"><p class="eyebrow accent" id="result-cause">RUN COMPLETE</p><h2>ONE MORE<br />LINE?</h2><div class="result-score" id="result-score">000000</div><div class="result-stats"><div><strong id="result-distance">0</strong><span>METERS</span></div><div><strong id="result-kills">0</strong><span>DESTROYED</span></div><div><strong id="result-walls">0</strong><span>WALL HITS</span></div></div><p>Try a cleaner line, or tune the experiment.</p><button id="restart" class="primary-button">Run it again <span>↗</span></button></div>
+      <div class="panel"><p class="eyebrow accent" id="result-cause">RUN COMPLETE</p><h2>ONE MORE<br />LINE?</h2><div class="result-score" id="result-score">000000</div><div class="result-stats"><div><strong id="result-distance">0</strong><span>METERS</span></div><div><strong id="result-kills">0</strong><span>DESTROYED</span></div><div><strong id="result-walls">0</strong><span>WALL HITS</span></div></div><p>Try a cleaner line, or choose the next encounter.</p><button id="restart" class="primary-button">Retry this test <span>↗</span></button><button id="choose-result" class="secondary-button">Choose another encounter</button></div>
     </section>
 
     <aside id="tuning" class="tuning" hidden aria-label="Prototype settings">

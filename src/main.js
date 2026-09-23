@@ -1,6 +1,7 @@
 import './style.css';
 import './overdrive.css';
 import './effects.css';
+import './encounters.css';
 import { Simulation, SPEED } from './simulation.js';
 import { HoldAction } from './hold-action.js';
 import { DriveStick } from './drive-stick.js';
@@ -8,9 +9,10 @@ import { BOOST } from './boost.js';
 import { GameView } from './view.js';
 import { COURSE_LENGTH, clamp, trackAt } from './track.js';
 import { EFFECT_DEFAULTS } from './speed-effects.js';
+import { ENCOUNTERS } from './encounters.js';
 
 const $ = id => document.getElementById(id);
-const settings = { cameraShift: true, speedShift: true, invincible: false, sound: false, ...EFFECT_DEFAULTS };
+const settings = { encounter: 'darts', cameraShift: true, speedShift: true, invincible: false, sound: false, ...EFFECT_DEFAULTS };
 const sim = new Simulation(settings);
 const canvas = $('world');
 const keys = new Set();
@@ -47,12 +49,13 @@ function syncScreens() {
   $('intro').hidden = sim.status !== 'ready';
   $('hud').hidden = sim.status === 'ready';
   $('pause-screen').hidden = sim.status !== 'paused' || !$('tuning').hidden;
-  $('results').hidden = sim.status !== 'over';
+  $('results').hidden = sim.status !== 'over' && sim.status !== 'complete';
+  $('encounter-menu').hidden = sim.status === 'ready';
   $('pause').hidden = sim.status !== 'playing' && sim.status !== 'paused';
   $('pause').textContent = sim.status === 'paused' ? '▷' : 'Ⅱ';
   $('pause').setAttribute('aria-label', sim.status === 'paused' ? 'Resume game' : 'Pause game');
-  if (sim.status === 'over') {
-    $('result-cause').textContent = sim.deathReason || 'Shield depleted';
+  if (sim.status === 'over' || sim.status === 'complete') {
+    $('result-cause').textContent = sim.status === 'complete' ? sim.encounter.result : sim.deathReason || 'Shield depleted';
     $('result-score').textContent = String(sim.score).padStart(6, '0');
     $('result-distance').textContent = Math.floor(sim.distance - 30).toLocaleString();
     $('result-kills').textContent = sim.kills;
@@ -77,6 +80,16 @@ function closeTuning(resume = true) {
   tuningPaused = false; syncScreens();
 }
 $('startb').addEventListener('click', start);
+function showEncounterMenu() {
+  closeTuning(false); clearInput(); sim.reset(); view?.reset(); accumulator = 0; flash = 0; syncScreens();
+}
+for (const id of ['encounter-menu', 'choose-result', 'choose-paused']) $(id).addEventListener('click', showEncounterMenu);
+$('encounter-options').addEventListener('change', event => {
+  if (event.target.name !== 'encounter') return;
+  settings.encounter = event.target.value; sim.options.encounter = settings.encounter;
+  showEncounterMenu();
+  $('startb').innerHTML = settings.encounter === 'highway' ? 'Start highway run <span>↗</span>' : 'Start encounter <span>↗</span>';
+});
 for (const id of ['restart', 'restart-paused', 'restart-settings']) $(id).addEventListener('click', start);
 $('pause').addEventListener('click', () => { closeTuning(false); pause(); });
 $('resume').addEventListener('click', pause);
@@ -109,7 +122,7 @@ window.addEventListener('keydown', event => {
   if (key === 'escape' && !$('tuning').hidden) { closeTuning(); return; }
   if (key === 'p' || key === 'escape') pause();
   if (key === 'r' && sim.status !== 'ready') start();
-  if (key === 'enter' && (sim.status === 'ready' || sim.status === 'over') && $('tuning').hidden) start();
+  if (key === 'enter' && ['ready', 'over', 'complete'].includes(sim.status) && $('tuning').hidden) start();
   if (sim.status === 'playing' && !event.repeat) { racing.keyDown(event.code); braking.keyDown(event.code); boosting.keyDown(event.code); }
   keys.add(key);
 });
@@ -163,6 +176,11 @@ function updateUI() {
     $('sector-hint').textContent = sim.followingShield ? 'MATCHING SPEED — shoot a gap, then race through.' : 'SHIELD ROW — return to cruise to follow and fire.';
   }
   $('lap').textContent = `LAP ${String(sim.lap).padStart(2, '0')}`;
+  if (sim.encounter) {
+    $('sector-name').textContent = ENCOUNTERS[sim.encounter.type].name.toUpperCase();
+    $('sector-hint').textContent = sim.encounter.hint;
+    $('lap').textContent = 'ENCOUNTER TEST';
+  }
   $('score').textContent = String(sim.score).padStart(6, '0');
   $('tally').textContent = `${sim.kills} destroyed / ${sim.passed} passed`;
   $('speed').textContent = String(Math.round(sim.speed * 3.6)).padStart(3, '0');
@@ -215,6 +233,12 @@ function frame(now) {
     followingShield: sim.followingShield,
     vehicles: sim.vehicles.length, vehiclesDestroyed: sim.vehiclesDestroyed,
     shieldShots: sim.bullets.filter(b => b.pattern === 'shield').length,
+    encounter: sim.encounter ? {
+      type: sim.encounter.type, age: sim.encounter.age, result: sim.encounter.result,
+      mines: sim.encounter.mines.length, pickups: sim.encounter.pickups.length,
+      locksOpened: sim.encounter.locksOpened, collected: sim.encounter.collected,
+      members: sim.encounter.members.map(e => ({ id: e.id, kind: e.kind, slot: e.slot, hp: Number.isFinite(e.hp) ? e.hp : null, s: e.s, lateral: e.lateral, phase: e.phase, targetLane: e.targetLane, warning: e.formationWarning })),
+    } : null,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },
   };
@@ -223,7 +247,7 @@ function frame(now) {
 try {
   view = new GameView(canvas);
   view.render(sim, 1 / 60, settings);
-  $('startb').disabled = false; $('startb').innerHTML = 'Start your run <span aria-hidden="true">↗</span>';
+  $('startb').disabled = false; $('startb').innerHTML = 'Start encounter <span aria-hidden="true">↗</span>';
   window.__READY__ = true; window.__START__ = start;
   window.addEventListener('resize', () => view.resize());
   canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); if (sim.status === 'playing') pause(); $('error').hidden = false; $('error-message').textContent = 'The graphics connection was interrupted. Reload to start a fresh run.'; });

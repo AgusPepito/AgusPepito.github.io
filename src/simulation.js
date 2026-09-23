@@ -2,6 +2,7 @@ import { COURSE_LENGTH, clamp, lerp, trackAt, roadFrame, roadPoint, roadCoordina
 import { FORMATION, placeEnemy, SHIELD_VOLLEY, shieldVolley } from './enemies.js';
 import { vehicleSeed, createVehicle, moveVehicle } from './neutral-traffic.js';
 import { BoostMeter } from './boost.js';
+import { Encounter, ENCOUNTERS } from './encounters.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
 export const SPEED = { brake: 12, combat: 26, racing: 82, boost: 122 };
@@ -51,6 +52,7 @@ export class Simulation {
     this.groups = []; this.spawnedRamps = new Map();
     this.enemies = []; this.bullets = []; this.events = [];
     this.vehicles = []; this.nextVehicleSeed = 0; this.vehiclesDestroyed = 0;
+    this.encounter = ENCOUNTERS[this.options.encounter] ? new Encounter(this, this.options.encounter) : null;
     this.streamVehicles();
   }
   start() { if (this.status === 'ready') this.status = 'playing'; }
@@ -85,11 +87,24 @@ export class Simulation {
     }
   }
   streamVehicles() {
-    if (this.options.neutralTraffic === false) return;
+    if (this.encounter || this.options.neutralTraffic === false) return;
     while (vehicleSeed(this.nextVehicleSeed).s <= this.s + 320) {
       const seed = vehicleSeed(this.nextVehicleSeed++);
       if (seed.s >= this.s - 40) this.vehicles.push(createVehicle(seed, this.nextId++));
     }
+  }
+  hitTarget(e, amount = 1, source = null) {
+    if (e.hp <= 0) return;
+    if (e.kind === 'mine') { this.encounter.detonate(e); return; }
+    const scale = this.encounter?.damageScale(e, source) ?? 1;
+    if (scale > 0) e.hp = Math.max(0, e.hp - amount * scale);
+    if (e.hp < 1e-7) e.hp = 0;
+    if (e.hp === 0) {
+      if (e.neutral) this.vehiclesDestroyed++;
+      else if (e.kind !== 'lock' && e.kind !== 'hauler') { this.kills++; this.score += e.armored ? 400 : 100; }
+      this.encounter?.destroyed(e);
+      this.events.push({ kind: 'kill', x: e.x, z: e.z, s: e.s });
+    } else this.events.push({ kind: 'spark', x: e.x, z: e.z, s: e.s });
   }
   step(dt, input = { x: 0, y: 0 }) {
     if (this.status !== 'playing') return;
@@ -107,12 +122,12 @@ export class Simulation {
     if (this.braking) desiredSpeed = SPEED.brake;
     this.followingShield = false;
     if (!this.racingHeld && !this.boostActive) for (const e of this.enemies) {
-      if (!e.armored || !e.active || e.hp <= 0 || e.deployed < 1 || e.s <= this.s) continue;
+      if ((!e.armored && !e.followSpeed) || !e.active || e.hp <= 0 || e.deployed < 1 || e.s <= this.s) continue;
       // Combat mode follows only the intact carrier in our path. A shot-out slot
       // immediately releases the speed limit, allowing the player through the gap.
       if (Math.abs(e.lateral - this.lateral) > e.halfWidth + PLAYER.halfWidth + 0.35) continue;
       const gap = e.s - this.s - e.halfDepth - PLAYER.halfDepth;
-      const followSpeed = FORMATION.speed + Math.max(0, gap - FORMATION.followGap) * 2.5;
+      const followSpeed = (e.followSpeed || FORMATION.speed) + Math.max(0, gap - FORMATION.followGap) * 2.5;
       if (followSpeed < desiredSpeed) { desiredSpeed = followSpeed; this.followingShield = true; }
     }
     if (this.shieldRecovery > 0) desiredSpeed = Math.min(desiredSpeed, FORMATION.speed * 0.75);
@@ -146,7 +161,7 @@ export class Simulation {
         if (this.status === 'over') return;
       }
     }
-    if (this.options.traffic !== false) for (const ramp of rampsNear(this.s, 0, 190)) {
+    if (!this.encounter && this.options.traffic !== false) for (const ramp of rampsNear(this.s, 0, 190)) {
       if (ramp.start < this.s - 15 || this.spawnedRamps.has(ramp.key)) continue;
       this.spawnRamp(ramp);
     }
@@ -155,6 +170,7 @@ export class Simulation {
       group.age += dt;
       if (group.age > FORMATION.entrySeconds) group.s = advanceOnRoad(group.s, FORMATION.speed * dt);
     }
+    this.encounter?.update(dt);
     this.shotTimer -= dt;
     if (this.shotTimer <= 0) {
       this.shotTimer += 0.16;
@@ -166,12 +182,11 @@ export class Simulation {
     }
     for (const e of this.enemies) {
       const group = this.groups.find(g => g.id === e.groupId);
-      if (!group) continue;
-      placeEnemy(e, group);
+      if (!e.encounter) { if (!group) continue; placeEnemy(e, group); }
       if (!e.active) continue;
       const road = trackAt(e.s);
       e.fire -= dt;
-      if (!e.armored && e.deployed === 1 && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
+      if (!e.encounter && !e.armored && e.deployed === 1 && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
         e.fire = 2.25;
         const dx = this.x - e.x, dz = this.z - e.z;
         const length = Math.hypot(dx, dz), f = roadFrame(e.s);
@@ -180,9 +195,10 @@ export class Simulation {
           this.bullets.push({ id: this.nextId++, x: e.x - f.fx * 1.6, z: e.z - f.fz * 1.6, s: e.s - 1.6, vx: Math.sin(angle) * 17, vz: Math.cos(angle) * 17, friendly: false, life: Math.min(5, length / 12 + 1) });
         }
       }
-      if (sweptHitsEntity(oldX, oldZ, this.x, this.z, e, e.halfWidth + PLAYER.halfWidth, e.halfDepth + PLAYER.halfDepth)) {
+      if (e.hp > 0 && e.kind !== 'lock' && sweptHitsEntity(oldX, oldZ, this.x, this.z, e, e.halfWidth + PLAYER.halfWidth, e.halfDepth + PLAYER.halfDepth)) {
+        e.contact = true;
         this.hurt(e.armored ? FORMATION.impact : 18, 'enemy');
-        if (e.armored && this.status === 'playing') {
+        if ((e.armored || e.kind === 'hauler') && this.status === 'playing') {
           // A solid shield row cannot be skipped by exploiting damage immunity.
           this.s = Math.min(this.s, e.s - e.halfDepth - PLAYER.halfDepth - 0.4);
           this.distance = this.s - this.offset; this.speed = Math.min(this.speed, FORMATION.speed * 0.65);
@@ -191,7 +207,11 @@ export class Simulation {
         }
         if (this.status === 'over') return;
       }
-      if (e.s < this.s - 10 && !e.passed) { e.passed = true; this.passed++; this.score += 40; }
+      if (e.s < this.s - 10 && !e.passed) {
+        e.passed = true;
+        if (e.kind !== 'lock' && e.kind !== 'hauler') this.passed++;
+        this.score += e.encounter ? this.encounter.passed(e) : 40;
+      }
     }
     for (const group of this.groups) {
       if (group.ramp.kind !== 'armored' || this.options.shieldFire === false) continue;
@@ -210,15 +230,10 @@ export class Simulation {
       if (b.friendly) {
         // Process targets from the shot's origin so a truck absorbs shots before
         // enemies behind it. Swept tests still account for target motion.
-        const targets = [...this.enemies, ...this.vehicles].filter(e => e.active && e.hp > 0)
+        const targets = [...this.enemies, ...this.vehicles, ...(this.encounter?.mines || [])].filter(e => e.active && e.hp > 0)
           .sort((a, c) => Math.hypot(a.x - bx, a.z - bz) - Math.hypot(c.x - bx, c.z - bz));
         for (const e of targets) if (sweptHitsEntity(bx, bz, b.x, b.z, e, e.halfWidth + 0.05, e.halfDepth + 0.2)) {
-          b.life = 0; e.hp--;
-          if (e.hp === 0) {
-            if (e.neutral) this.vehiclesDestroyed++;
-            else { this.kills++; this.score += e.armored ? 400 : 100; }
-            this.events.push({ kind: 'kill', x: e.x, z: e.z, s: e.s });
-          } else this.events.push({ kind: 'spark', x: e.x, z: e.z, s: e.s });
+          b.life = 0; this.hitTarget(e, 1, { x: bx, z: bz });
           break;
         }
       } else if (sweptHitsEntity(bx, bz, b.x, b.z, { x: this.x, z: this.z, oldX, oldZ, yaw: this.yaw }, PLAYER.halfWidth + 0.15, PLAYER.halfDepth + 0.15)) {
@@ -227,9 +242,11 @@ export class Simulation {
       const lane = drivableBounds(b.s);
       if (projected.lateral < lane.left || projected.lateral > lane.right) b.life = 0;
     }
+    this.encounter?.hazards(dt, oldX, oldZ, sweptHitsEntity);
     this.enemies = this.enemies.filter(e => e.hp > 0 && (!e.active || e.s > this.s - 25));
     this.vehicles = this.vehicles.filter(v => v.hp > 0 && v.s > this.s - 60);
     this.groups = this.groups.filter(g => this.enemies.some(e => e.groupId === g.id));
     this.bullets = this.bullets.filter(b => b.life > 0 && b.s > this.s - 20 && b.s < this.s + 170);
+    this.encounter?.finish(dt);
   }
 }

@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 007: four selectable enemy encounters
+
+Implemented the user's supplied encounter descriptions with temporary primitive models: five Darts changing from V to staggered columns with sequential rearward fire; two alternating armored Interceptors with tracking/locked charge warnings and exposed rear engines after misses; a zigzagging Mine layer with arming rings, persistent mines and delayed chain reactions; and a Convoy with three independently destructible rear locks, alternating escort bursts and forward-ejected cyan score pickups. Interceptor warning duration is independent of player speed. Convoy cruise following gives time to target locks; no extra hull-health grind follows the third lock.
+
+Added start-menu encounter selection, isolated test sessions, completion results, retry and return-to-selection controls. The original highway remains a separate menu choice. Retained player controls and red/green health bars. No final assets or upgrade mechanics added. Convoy salvage currently awards 250 points per collected pickup.
+
+Validation: 52 unit tests, production build, existing nonvisual PC/touch regression smoke and the new encounter/menu/runtime smoke pass. Preview rebuilt for the user. No visual gameplay testing or screenshot inspection performed.
+
 ## 2026-09-24 — health-bar readability
 
 Replaced small roof-mounted bars with camera-facing bars for scouts, shield carriers and neutral vehicles. Bars have a dark outline, red background and green left-anchored remaining-health fill, including a red rim at full health. Minimum screen height is seven CSS pixels plus outline; world lighting/fog and vehicle geometry cannot hide the bars. Yellow vehicles now display health before taking damage. Player HUD shield meter uses the same red/green convention. Visual testing remains with the user.

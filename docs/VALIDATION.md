@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 007 — 2026-09-24
+
+52 nonvisual tests pass. New checks cover encounter isolation/reset, Dart formation warning and sequential straight fire, interceptor warning duration at boost speed and rear-engine damage, mine arming/proximity/chain persistence, independent convoy locks and forward collectible rewards, escort burst ordering, actual autofire hitting locks, and bounded simulations across cruise/fast/boost. Production build passes (about 0.57 MB).
+
+`scripts/encounter-smoke.mjs` passes encounter selection, runtime/render paths, retry, completion/passing, return-to-selection, and mobile touch selection/start/return, with no browser errors. Its initial mine check assumed every encounter lasted five seconds; autofire cleared the mine test sooner, so the check now also accepts completion. `scripts/input-smoke.mjs` passes the existing PC/mobile drive controls and original highway regression checks. Neither script captures screenshots or performs visual gameplay review. Difficulty, warning readability and presentation await the user's playtest; final jam verification remains outstanding.
+
 ## Experiment 006 — 2026-09-24
 
 41 nonvisual tests pass, including analog deadzone/hysteresis, circular diagonal steering, independent bindings, normal-speed repositioning, unlimited fast mode, brake priority, boost depletion/rearm, delayed recharge, pause freezing, reset, and expiration to the underlying mode. Production build passes (about 0.54 MB).

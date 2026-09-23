@@ -5,6 +5,8 @@ import makeEnemy from './placeholders/enemy.js';
 import makeArmored from './placeholders/armored.js';
 import { SpeedEffects } from './speed-effects.js';
 import { cameraPose } from './camera.js';
+import { encounterModels } from './placeholders/encounter-models.js';
+import { EncounterView } from './encounter-view.js';
 
 // Everything in this file is temporary graybox presentation, including track geometry.
 // The simulation owns dimensions and collisions; render assets never determine hitboxes.
@@ -69,6 +71,7 @@ export class GameView {
     this.playerMarker.rotation.x = -Math.PI / 2; this.scene.add(this.playerMarker);
     this.enemyTemplate = makeEnemy(THREE);
     this.armoredTemplate = makeArmored(THREE);
+    this.encounterTemplates = encounterModels(THREE); this.encounterView = new EncounterView(this);
     this.enemyMeshes = new Map(); this.particles = [];
     this.lastRoadBase = null; this.cameraInitialized = false;
     this.resize();
@@ -167,7 +170,7 @@ export class GameView {
     this.healthRight.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
     const pixelScale = 2 * Math.tan(this.camera.fov * Math.PI / 360) / window.innerHeight;
     for (const e of [...sim.enemies, ...sim.vehicles]) {
-      if (!e.active || e.hp <= 0 || e.s < sim.s - 35 || e.s > sim.s + 140 || count >= 80) continue;
+      if (!e.active || e.hideHealth || e.hp <= 0 || e.s < sim.s - 35 || e.s > sim.s + 140 || count >= 80) continue;
       this.healthPoint.set(e.x, e.neutral ? 3.2 : 2.7, e.z);
       this.healthLocal.copy(this.healthPoint).sub(this.camera.position).applyQuaternion(this.healthRotation);
       const depth = -this.healthLocal.z;
@@ -268,20 +271,25 @@ export class GameView {
       if (!e.active) continue;
       active.add(e.id);
       let mesh = this.enemyMeshes.get(e.id);
-      if (!mesh) { mesh = (e.armored ? this.armoredTemplate : this.enemyTemplate).clone(); this.enemyMeshes.set(e.id, mesh); this.scene.add(mesh); }
+      if (!mesh) { mesh = (this.encounterTemplates[e.kind] || (e.armored ? this.armoredTemplate : this.enemyTemplate)).clone(); this.enemyMeshes.set(e.id, mesh); this.scene.add(mesh); }
       mesh.position.set(e.x, 0.6, e.z);
-      mesh.rotation.set(0, Math.PI + e.yaw, e.armored ? 0 : Math.cos(e.age * 1.6 + e.slot) * 0.08, 'YXZ');
+      mesh.rotation.set(0, Math.PI + e.yaw, e.armored || e.encounter ? 0 : Math.cos(e.age * 1.6 + e.slot) * 0.08, 'YXZ');
+      const signal = mesh.getObjectByName('signal');
+      if (signal) signal.visible = e.formationWarning || (e.charge || 0) > 0;
+      if (e.kind === 'interceptor') mesh.getObjectByName('engine').visible = e.phase === 'recovery' && !e.contact;
+      if (e.kind === 'hauler') for (let i = 0; i < 3; i++) mesh.getObjectByName(`open-${i}`).visible = sim.encounter.locks[i].hp <= 0;
       if (e.armored) {
         mesh.getObjectByName('shield').scale.x = e.halfWidth * 2;
         const charge = mesh.getObjectByName('charge');
         charge.visible = (e.charge || 0) > 0;
         charge.scale.setScalar(0.4 + (e.charge || 0) * 0.9);
       }
-      this.put(this.shadows, shadow++, e.x + 0.4, 0.022, e.z - 0.1, e.halfWidth * 2 + 0.2, 0.025, 3.4, e.yaw);
+      this.put(this.shadows, shadow++, e.x + 0.4, 0.022, e.z - 0.1, e.halfWidth * 2 + 0.2, 0.025, e.halfDepth * 2 + 0.2, e.yaw);
     }
     for (const [id, mesh] of this.enemyMeshes) if (!active.has(id)) { this.scene.remove(mesh); this.enemyMeshes.delete(id); }
     this.finish(this.shadows, shadow);
     this.updateHealthBars(sim);
+    this.encounterView.update(sim);
     let friendly = 0, hostile = 0;
     for (const b of sim.bullets) {
       const yaw = Math.atan2(b.vx, b.vz);
