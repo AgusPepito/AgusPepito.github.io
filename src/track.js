@@ -35,9 +35,17 @@ export function trackAt(distance) {
 }
 
 export const OBSTACLES = [
+  { s: 190, offset: -10, w: 4.5, d: 5.5 },
+  { s: 275, offset: 9, w: 4.5, d: 5.5 },
+  { s: 365, offset: 0, w: 5, d: 5.5 },
   { s: 640, offset: -4.9, w: 3.1, d: 4.8 },
+  { s: 725, offset: 4.9, w: 3.1, d: 4.8 },
   { s: 805, offset: 4.9, w: 3.1, d: 4.8 },
   { s: 980, offset: -4.9, w: 3.1, d: 4.8 },
+  { s: 1060, offset: 4.9, w: 3.1, d: 4.8 },
+  { s: 1350, offset: 9, w: 4.5, d: 5.5 },
+  { s: 1440, offset: -9, w: 4.5, d: 5.5 },
+  { s: 1530, offset: 0, w: 5, d: 5.5 },
   { s: 1790, offset: 5.2, w: 3.3, d: 4.8 },
   { s: 1870, offset: -5.2, w: 3.3, d: 4.8 },
 ];

@@ -37,6 +37,10 @@ export class GameView {
     this.rails = this.batch(310, new THREE.MeshStandardMaterial({ color: 0x71818a, roughness: 0.7 }));
     this.edgeLights = this.batch(310, new THREE.MeshBasicMaterial({ color: 0xffffff }));
     this.ticks = this.batch(300, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 }));
+    this.posts = this.batch(60, new THREE.MeshStandardMaterial({ color: 0x778792, roughness: 0.7 }));
+    this.postLights = this.batch(60, new THREE.MeshBasicMaterial({ color: 0xffb25c }));
+    this.rushLines = this.batch(48, new THREE.MeshBasicMaterial({ color: 0xc8e8f5, transparent: true, opacity: 0, depthWrite: false }));
+    this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.obstacles = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xfab35e, roughness: 0.6 }));
     this.obstacleMarks = this.batch(20, new THREE.MeshBasicMaterial({ color: 0x2b2825 }));
     this.shots = this.batch(220, new THREE.MeshBasicMaterial({ color: 0xcaff64 }));
@@ -78,7 +82,7 @@ export class GameView {
     if (base === this.lastRoadBase) return;
     this.lastRoadBase = base;
     const positions = this.roadGeometry.attributes.position;
-    let rails = 0, ticks = 0;
+    let rails = 0, ticks = 0, posts = 0;
     for (let i = 0; i <= this.roadSegments; i++) {
       const at = base + i * 2, t = trackAt(at);
       positions.setXYZ(i * 2, t.center - t.width / 2, 0, -at);
@@ -95,14 +99,22 @@ export class GameView {
         this.put(this.edgeLights, rails, (x0 + x1) / 2, 1.22, -at - 1, 0.17, 0.06, depth, rotation, color);
         rails++;
       }
+      if (Math.round(at) % 6 === 0) {
+        for (const sign of [-1, 1]) this.put(this.ticks, ticks++, t.center + sign * (t.width / 2 - 1.5), 0.015, -at, 0.24, 0.02, 3.2, 0, color);
+        for (const fraction of [-0.25, 0, 0.25]) this.put(this.ticks, ticks++, t.center + fraction * t.width, 0.012, -at, 0.12, 0.02, 2.4, 0, new THREE.Color(0xa6bbc5));
+      }
       if (Math.round(at) % 12 === 0) {
-        for (const sign of [-1, 1]) this.put(this.ticks, ticks++, t.center + sign * (t.width / 2 - 1.5), 0.015, -at, 0.13, 0.02, 2.5, 0, color);
-        for (const fraction of [-0.25, 0, 0.25]) this.put(this.ticks, ticks++, t.center + fraction * t.width, 0.012, -at, 0.07, 0.02, 1.8, 0, new THREE.Color(0x81949d));
+        for (const sign of [-1, 1]) {
+          const x = t.center + sign * (t.width / 2 + 1.1);
+          this.put(this.posts, posts, x, 2, -at, 0.5, 4, 0.6);
+          this.put(this.postLights, posts++, x, 3.2, -at + 0.32, 0.4, 1.2, 0.06);
+        }
       }
       if (Math.round(at) % 48 === 0) this.put(this.ticks, ticks++, t.center, 0.012, -at, t.width - 1, 0.02, 0.05, 0, new THREE.Color(0x687c86));
     }
     positions.needsUpdate = true; this.roadGeometry.computeVertexNormals();
     this.finish(this.rails, rails); this.finish(this.edgeLights, rails); this.finish(this.ticks, ticks);
+    this.finish(this.posts, posts); this.finish(this.postLights, posts);
     let count = 0;
     for (const o of obstaclesNear(s, 45, 220)) {
       this.put(this.obstacles, count, o.x, 0.95, -o.s, o.w, 1.9, o.d);
@@ -133,8 +145,23 @@ export class GameView {
     this.tempPosition.fromArray(pose.position); this.tempAim.fromArray(pose.target);
     const follow = this.cameraInitialized ? 1 - Math.exp(-5 * dt) : 1;
     this.cameraPosition.lerp(this.tempPosition, follow); this.cameraAim.lerp(this.tempAim, follow);
+    // Forward camera lag grows with speed and would push the ship off its intended framing.
+    this.cameraPosition.z = this.tempPosition.z; this.cameraAim.z = this.tempAim.z;
     this.camera.position.copy(this.cameraPosition); this.camera.lookAt(this.cameraAim);
+    if (Math.abs(this.camera.fov - pose.fov) > 0.01) { this.camera.fov = pose.fov; this.camera.updateProjectionMatrix(); }
+    if (!this.reducedMotion) this.camera.rotateZ(-sim.vx * sim.raceBlend * 0.0012);
     this.cameraInitialized = true;
+    const rush = this.reducedMotion ? 0 : Math.max(0, Math.min(1, (sim.speed - 26) / 56));
+    this.rushLines.material.opacity = rush * 0.38;
+    for (let i = 0; i < 48; i++) {
+      // World-distance based streaks travel past the ship; never cover its aiming line.
+      const ahead = ((i * 23.71 - sim.distance * 0.8) % 150 + 150) % 150 - 25;
+      const side = i % 2 ? 1 : -1;
+      const road = trackAt(sim.s + ahead);
+      const x = road.center + side * (road.width / 2 + 2 + (i % 5) * 1.7);
+      this.put(this.rushLines, i, x, 0.5 + (i % 7) * 0.9, -sim.s - ahead, 0.035, 0.035, 3 + rush * 9);
+    }
+    this.finish(this.rushLines, rush > 0.03 ? 48 : 0);
     this.player.position.set(sim.x, 0.6 + Math.sin(sim.time * 8) * 0.06, -sim.s);
     this.player.rotation.z = sim.vx * 0.008;
     this.player.visible = sim.invulnerability <= 0 || Math.floor(sim.time * 18) % 2 === 0;

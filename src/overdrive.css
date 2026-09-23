@@ -1,0 +1,14 @@
+#race-hold {
+  position: absolute; right: var(--pad); bottom: 160px; width: 124px; height: 70px;
+  border: 1px solid #ffb25c80; border-radius: 4px; background: #17232bd9; color: #ffb25c;
+  pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 8px;
+}
+#race-hold strong { font-size: 12px; letter-spacing: 1px; }
+#race-hold span { font: 8px monospace; letter-spacing: 1.5px; }
+#race-hold.active { background: #ffb25c; color: #10181e; box-shadow: 0 0 35px #ff9b3838; }
+#rush-vignette { position: fixed; inset: 0; pointer-events: none; z-index: 2; opacity: var(--rush, 0); box-shadow: inset 0 0 90px #ff993126; border-left: 2px solid #ffb25c50; border-right: 2px solid #ffb25c50; }
+.course-caption { gap: 12px; }
+@media(max-width:600px) { #race-hold { bottom: 200px; width: 112px; height: 76px; } .course-caption { letter-spacing: .5px; } }
+@media(max-height:540px) { #race-hold { bottom: 110px; width: 112px; height: 56px; } }
+@media(prefers-reduced-motion:reduce) { #rush-vignette { box-shadow: none; } }

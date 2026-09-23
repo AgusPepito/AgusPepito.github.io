@@ -7,11 +7,12 @@ import { trackAt } from '../src/track.js';
 test('ship remains visible above bottom HUD through both camera modes and fore/aft travel', () => {
   for (const aspect of [390 / 844, 907 / 958, 16 / 9, 844 / 390]) {
     const camera = new PerspectiveCamera(55, aspect, 0.1, 350);
-    for (const cameraShift of [true, false]) for (let distance = 30; distance < 2100; distance += 10) {
+    for (const cameraShift of [true, false]) for (const raceBlend of [0, 0.25, 0.5, 0.75, 1]) for (let distance = 30; distance < 2100; distance += 10) {
       for (const offset of [-7, 0, 10]) for (const side of [-1, 0, 1]) {
         const road = trackAt(distance + offset);
-        const sim = { distance, offset, s: distance + offset, x: road.center + side * (road.width / 2 - 1) };
+        const sim = { distance, offset, raceBlend, s: distance + offset, x: road.center + side * (road.width / 2 - 1) };
         const pose = cameraPose(sim, aspect, cameraShift);
+        camera.fov = pose.fov; camera.updateProjectionMatrix();
         camera.position.fromArray(pose.position); camera.lookAt(new Vector3(...pose.target)); camera.updateMatrixWorld();
         const projected = new Vector3(sim.x, 0.975, -sim.s).project(camera);
         assert.ok(projected.y > -0.65 && projected.y < 0.8, `ship at ${distance}, offset ${offset}, aspect ${aspect}: ${projected.y}`);

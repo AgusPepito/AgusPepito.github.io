@@ -1,5 +1,11 @@
 # Prototype validation — 2026-09-23
 
+## Experiment 002
+
+13 unit tests and the production build pass. `scripts/input-smoke.mjs` verifies keyboard/touch hold-and-release behavior, pause/resume, two-finger steering plus racing, independent finger release, and absence of runtime errors. It uses the sibling recipe's Puppeteer dependency and the same `PUPPETEER_CACHE_DIR` as the recipe checks. No screenshots or visual gameplay review were performed. The prior jam result below is historical and has not been claimed for experiment 002.
+
+## Experiment 001 (archived baseline)
+
 Game code tested: `cdb4c061efec1711dc8ed2255f7344163f298fb0`.
 Recipe tooling: `4effad311c5e137bca316257259fe5bffd6737de`.
 

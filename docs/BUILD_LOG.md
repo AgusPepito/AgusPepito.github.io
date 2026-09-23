@@ -1,5 +1,15 @@
 # Build receipts
 
+## 2026-09-23 — experiment 002: hold-to-race
+
+User-approved baseline was already committed at `23ed7a1`; preserved with annotated tag `prototype-01-zone-transitions` before changing gameplay.
+
+Racing is now activated only while Space, either Shift key, or the touch OVERDRIVE button is held. Camera and acceleration are independent of track zones. Raised overdrive target from the previous 43 m/s racing speed to 82 m/s, added frequent contrasting ground marks, roadside posts and peripheral streaks, widened the racing field of view, and lowered the chase camera. Added staggered barriers and increased physical impact damage with speed. Shooting remains automatic in both modes.
+
+Independent held-input tracking prevents one finger/key releasing another. Pause, focus loss, and restart clear holds. Nonvisual unit checks cover hold/release, mode independence from zones, impact scaling, and camera projection bounds across transition values. No visual gameplay testing or screenshot inspection is performed, per the user's project instruction.
+
+Validation: 13 unit tests pass; production build succeeds (about 0.52 MB). `scripts/input-smoke.mjs` passes actual keyboard hold/release, Shift, pause/resume, simultaneous touch steering and overdrive, independent finger release, and runtime-error checks. It captures no screenshots. The old jam verdict applies to experiment 001; this experiment has not been submitted or visually approved.
+
 ## 2026-09-23 — prototype brief
 
 User direction: prototype the mechanics with primitive objects before generating art. A ship skims a wide track with scrolling-shooter movement; the track narrows and the camera approaches, turning the same controls toward racing and collision avoidance.

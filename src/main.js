@@ -1,5 +1,7 @@
 import './style.css';
-import { Simulation } from './simulation.js';
+import './overdrive.css';
+import { Simulation, SPEED } from './simulation.js';
+import { HoldAction } from './hold-action.js';
 import { GameView } from './view.js';
 import { COURSE_LENGTH, clamp, trackAt } from './track.js';
 
@@ -8,6 +10,7 @@ const settings = { cameraShift: true, speedShift: true, invincible: false, sound
 const sim = new Simulation(settings);
 const canvas = $('world');
 const keys = new Set();
+const racing = new HoldAction();
 const touch = { id: null, x: 0, y: 0, ox: 0, oy: 0, pad: false };
 let view, lastTime = performance.now(), accumulator = 0, fps = 60, uiTimer = 0, flash = 0, lastStatus = 'ready';
 let tuningPaused = false, audioContext;
@@ -27,10 +30,11 @@ function tone(kind) {
     oscillator.start(); oscillator.stop(audioContext.currentTime + 0.17);
   } catch { /* Optional sound never blocks gameplay. */ }
 }
-function clearInput() {
-  keys.clear(); touch.id = null; touch.x = 0; touch.y = 0;
+function clearSteering() {
+  touch.id = null; touch.x = 0; touch.y = 0;
   $('stick-knob').style.transform = ''; $('drag-ring').style.display = 'none';
 }
+function clearInput() { keys.clear(); racing.clear(); clearSteering(); }
 function syncScreens() {
   $('intro').hidden = sim.status !== 'ready';
   $('hud').hidden = sim.status === 'ready';
@@ -89,9 +93,10 @@ window.addEventListener('keydown', event => {
   if (key === 'p' || key === 'escape') pause();
   if (key === 'r' && sim.status !== 'ready') start();
   if (key === 'enter' && (sim.status === 'ready' || sim.status === 'over') && $('tuning').hidden) start();
+  if (sim.status === 'playing') racing.keyDown(event.code);
   keys.add(key);
 });
-window.addEventListener('keyup', event => keys.delete(event.key.toLowerCase()));
+window.addEventListener('keyup', event => { keys.delete(event.key.toLowerCase()); racing.keyUp(event.code); });
 window.addEventListener('blur', () => { if (sim.status === 'playing') pause(); else clearInput(); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && sim.status === 'playing') pause(); });
 
@@ -105,7 +110,15 @@ for (const target of [canvas, $('stick')]) {
     movePointer(event);
   });
   target.addEventListener('pointermove', movePointer);
-  for (const eventName of ['pointerup','pointercancel','lostpointercapture']) target.addEventListener(eventName, event => { if (event.pointerId === touch.id) clearInput(); });
+  for (const eventName of ['pointerup','pointercancel','lostpointercapture']) target.addEventListener(eventName, event => { if (event.pointerId === touch.id) clearSteering(); });
+}
+$('race-hold').addEventListener('pointerdown', event => {
+  if (sim.status !== 'playing') return;
+  event.preventDefault(); $('race-hold').setPointerCapture(event.pointerId);
+  racing.pointerDown(event.pointerId);
+});
+for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  $('race-hold').addEventListener(name, event => racing.pointerUp(event.pointerId));
 }
 function movePointer(event) {
   if (event.pointerId !== touch.id) return;
@@ -120,6 +133,7 @@ function input() {
   return {
     x: touch.id !== null ? touch.x : Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft')),
     y: touch.id !== null ? touch.y : Number(keys.has('w') || keys.has('arrowup')) - Number(keys.has('s') || keys.has('arrowdown')),
+    racing: racing.active,
   };
 }
 function updateUI() {
@@ -129,13 +143,16 @@ function updateUI() {
   $('score').textContent = String(sim.score).padStart(6, '0');
   $('tally').textContent = `${sim.kills} destroyed / ${sim.passed} passed`;
   $('speed').textContent = String(Math.round(sim.speed * 3.6)).padStart(3, '0');
-  $('speed-fill').style.width = `${sim.speed / 47 * 100}%`;
+  $('speed-fill').style.width = `${clamp(sim.speed / SPEED.racing * 100, 0, 100)}%`;
   $('health').textContent = sim.health; $('health-fill').style.width = `${sim.health}%`;
   $('health-fill').style.background = sim.health < 35 ? '#ff7182' : '#caff64';
   const progress = (sim.distance % COURSE_LENGTH) / COURSE_LENGTH * 100;
   $('course-marker').style.left = `${progress}%`; $('progress-label').textContent = `${Math.floor(progress)}%`;
-  $('mode').textContent = road.tight > 0.6 ? 'RACING LINE' : 'COMBAT LINE';
-  $('mode').style.color = road.tight > 0.6 ? '#ffb25c' : '#caff64';
+  $('mode').textContent = sim.racingHeld ? 'OVERDRIVE / RELEASE TO BRAKE' : sim.raceBlend > 0.1 ? 'RETURNING TO COMBAT' : 'COMBAT / HOLD TO RACE';
+  $('mode').style.color = sim.raceBlend > 0.3 ? '#ffb25c' : '#caff64';
+  $('race-hold').classList.toggle('active', sim.racingHeld);
+  $('race-hold').setAttribute('aria-pressed', String(sim.racingHeld));
+  document.body.style.setProperty('--rush', String(sim.status === 'playing' ? sim.raceBlend : 0));
   $('fps').textContent = `${Math.round(fps)} FPS`; $('draws').textContent = `${view.renderer.info.render.calls} DRAWS`;
 }
 
@@ -162,6 +179,7 @@ function frame(now) {
     draws: view.renderer.info.render.calls, tris: view.renderer.info.render.triangles,
     status: sim.status, health: sim.health, lap: sim.lap, distance: sim.distance,
     kills: sim.kills, passed: sim.passed, wallHits: sim.wallHits,
+    racingHeld: sim.racingHeld, raceBlend: sim.raceBlend,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },
   };

@@ -1,6 +1,6 @@
 # VECTOR SHIFT — mechanics prototype
 
-A ground-skimming scrolling shooter. Wide track sections emphasize aiming and bullet dodging; narrowing bends, a lower camera, and increased speed emphasize choosing a safe racing line. The same controls work throughout.
+A ground-skimming scrolling shooter. Hold Space, either Shift key, or the on-screen OVERDRIVE button to lower the camera and accelerate anywhere on the track. Release to return to combat. Narrow bends and barriers make holding overdrive more dangerous; zones never activate it automatically.
 
 **Agent workflow:** Read `AGENTS.md`. The user is the sole visual gameplay tester; agents perform nonvisual checks and hand over playable changes for user feedback.
 
@@ -15,7 +15,9 @@ npm install
 npm run dev
 ```
 
-Use WASD / arrows or drag on the play area. Weapons fire automatically. P / Escape pauses; R restarts. The settings panel allows camera transition and automatic speed changes to be compared independently.
+Use WASD / arrows or drag on the play area. Hold Space / Shift / OVERDRIVE to race. On touchscreens, steer with one finger and hold OVERDRIVE with another. Weapons fire automatically. P / Escape pauses; R restarts. The settings panel allows camera and speed changes to be compared independently.
+
+The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 002.
 
 ```sh
 npm test

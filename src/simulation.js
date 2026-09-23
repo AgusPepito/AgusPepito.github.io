@@ -1,6 +1,7 @@
 import { COURSE_LENGTH, clamp, lerp, trackAt, obstaclesNear } from './track.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
+export const SPEED = { combat: 26, racing: 82 };
 
 // Swept collision prevents fast bullets tunneling through ships between updates.
 export function segmentHitsBox(ax, az, bx, bz, x, z, hw, hd) {
@@ -27,7 +28,8 @@ export class Simulation {
   }
   reset() {
     this.status = 'ready';
-    this.time = 0; this.distance = 30; this.speed = 26;
+    this.time = 0; this.distance = 30; this.speed = SPEED.combat;
+    this.racingHeld = false; this.raceBlend = 0;
     this.x = 0; this.s = 30; this.offset = 0; this.vx = 0;
     this.health = 100; this.score = 0; this.kills = 0; this.passed = 0;
     this.wallHits = 0; this.hits = 0; this.lap = 1;
@@ -38,7 +40,8 @@ export class Simulation {
   start() { if (this.status === 'ready') this.status = 'playing'; }
   hurt(amount, kind) {
     if (this.invulnerability > 0 || this.status !== 'playing') return;
-    this.health = Math.max(0, this.health - (this.options.invincible ? 0 : amount));
+    const impact = kind === 'bullet' ? amount : Math.round(amount * lerp(1, 1.8, clamp((this.speed - SPEED.combat) / (SPEED.racing - SPEED.combat), 0, 1)));
+    this.health = Math.max(0, this.health - (this.options.invincible ? 0 : impact));
     this.invulnerability = 0.8;
     this.hits++; if (kind === 'wall') this.wallHits++;
     this.slowdown = kind === 'bullet' ? 0.05 : 0.55;
@@ -46,7 +49,7 @@ export class Simulation {
     if (this.health === 0) this.status = 'over';
   }
   wave() {
-    const spawnS = this.s + 80;
+    const spawnS = this.s + lerp(80, 140, this.raceBlend);
     const track = trackAt(spawnS);
     const racer = track.tight > 0.65;
     const index = Math.floor(this.waveAt / 40);
@@ -58,16 +61,17 @@ export class Simulation {
         fire: 1.6 + i * 0.3, phase: index + i * 1.6,
       });
     }
-    this.waveAt += racer ? 135 : 95;
+    this.waveAt += racer ? 105 : 80;
   }
   step(dt, input = { x: 0, y: 0 }) {
     if (this.status !== 'playing') return;
     this.time += dt;
     this.invulnerability = Math.max(0, this.invulnerability - dt);
     this.slowdown = Math.max(0, this.slowdown - dt);
-    const track = trackAt(this.s);
-    const desiredSpeed = lerp(26, this.options.speedShift ? 43 : 26, track.tight) * (this.slowdown > 0 ? 0.77 : 1);
-    this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-2.2 * dt));
+    this.racingHeld = Boolean(input.racing);
+    this.raceBlend = lerp(this.raceBlend, this.racingHeld ? 1 : 0, 1 - Math.exp(-7 * dt));
+    const desiredSpeed = lerp(SPEED.combat, this.options.speedShift ? SPEED.racing : SPEED.combat, this.raceBlend) * (this.slowdown > 0 ? 0.65 : 1);
+    this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-4.5 * dt));
     this.distance += this.speed * dt;
     this.offset = clamp(this.offset + clamp(input.y || 0, -1, 1) * 11 * dt, -7, 10);
     const oldS = this.s, oldX = this.x;

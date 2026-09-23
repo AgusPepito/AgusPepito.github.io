@@ -1,4 +1,20 @@
-# First playable: what we are testing
+# Mechanics experiments
+
+## Current experiment: 002 — player-held overdrive
+
+The user activates racing by holding Space, either Shift key, or the OVERDRIVE button. Releasing returns smoothly to combat. The track still changes width and bends, but neither the camera mode nor speed mode depends on the zone.
+
+- Combat speed: 26 m/s (94 km/h). Overdrive target: 82 m/s (295 km/h).
+- Lower chase view, 55-to-73-degree field-of-view transition, brighter frequent ground marks, roadside posts, and peripheral speed streaks. Reduced-motion preference suppresses streaks and camera banking.
+- Additional staggered barriers in both wide and narrow sections; more frequent enemy waves.
+- Physical collision damage scales up to 1.8 times at maximum speed. Bullet damage is unchanged. Releasing overdrive before a bend is a deliberate risk-management choice.
+- Keyboard and two-finger touch input remain independently held/released; pause, focus loss, and restart clear all held controls.
+- Camera-only and speed-only tuning remain available, both activated by the same hold action.
+- The user alone judges the visual result and gameplay feel. Agents run nonvisual correctness checks.
+
+## Archived baseline: 001
+
+The original zone-driven prototype below is preserved at tag `prototype-01-zone-transitions`.
 
 ## Hypothesis
 

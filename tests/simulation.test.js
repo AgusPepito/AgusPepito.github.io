@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Simulation, segmentHitsBox, PLAYER } from '../src/simulation.js';
+import { Simulation, segmentHitsBox, PLAYER, SPEED } from '../src/simulation.js';
 import { trackAt, COURSE_LENGTH, obstaclesNear } from '../src/track.js';
 
 test('track has continuous width and center, including the lap seam', () => {
@@ -13,10 +13,13 @@ test('track has continuous width and center, including the lap seam', () => {
   assert.deepEqual(trackAt(0), trackAt(COURSE_LENGTH));
 });
 
-test('movement is frame-rate independent through a full lap', () => {
+test('unobstructed movement is frame-rate independent through a full lap', () => {
   const run = (hz) => {
     const sim = new Simulation({ invincible: true }); sim.start();
-    for (let i = 0; i < hz * 85; i++) sim.step(1 / hz, { x: Math.sin(i / hz), y: 0 });
+    // Isolate integration from discrete collision cooldowns and slowdown events,
+    // whose timing is covered separately by collision/recovery tests.
+    sim.hurt = () => {};
+    for (let i = 0; i < hz * 85; i++) sim.step(1 / hz, { x: Math.sin(i / hz), y: 0, racing: (i / hz) % 12 < 4 });
     return sim;
   };
   const a = run(120), b = run(240);
@@ -68,8 +71,29 @@ test('autofire destroys enemies and produces score through normal simulation', (
 test('speed transition can be disabled independently of track width', () => {
   const fast = new Simulation({ invincible: true }), constant = new Simulation({ invincible: true, speedShift: false });
   for (const sim of [fast, constant]) {
-    sim.start(); sim.distance = 600; sim.s = 600; sim.x = trackAt(600).center;
-    for (let i = 0; i < 120; i++) sim.step(1 / 120);
+    sim.start();
+    for (let i = 0; i < 120; i++) sim.step(1 / 120, { racing: true });
   }
-  assert.ok(fast.speed > 38); assert.equal(constant.speed, 26);
+  assert.ok(fast.speed > 65); assert.equal(constant.speed, SPEED.combat);
+});
+
+test('zones never activate racing, and holding/releasing works in open space', () => {
+  const sim = new Simulation({ invincible: true }); sim.start();
+  sim.distance = 600; sim.s = 600; sim.x = trackAt(600).center;
+  for (let i = 0; i < 60; i++) sim.step(1 / 120);
+  assert.equal(sim.raceBlend, 0); assert.equal(sim.speed, SPEED.combat);
+  sim.reset(); sim.start();
+  for (let i = 0; i < 180; i++) sim.step(1 / 120, { racing: true });
+  assert.ok(sim.raceBlend > 0.99 && sim.speed > 79);
+  assert.ok(sim.distance < 400, 'overdrive works in the wide first section');
+  for (let i = 0; i < 180; i++) sim.step(1 / 120, { racing: false });
+  assert.ok(sim.raceBlend < 0.001 && sim.speed < 27);
+  assert.equal(sim.racingHeld, false);
+  sim.reset(); assert.equal(sim.raceBlend, 0);
+});
+
+test('high-speed physical impacts are more dangerous without amplifying bullets', () => {
+  const damage = (speed, kind) => { const sim = new Simulation(); sim.start(); sim.speed = speed; sim.hurt(20, kind); return 100 - sim.health; };
+  assert.ok(damage(SPEED.racing, 'obstacle') > damage(SPEED.combat, 'obstacle'));
+  assert.equal(damage(SPEED.racing, 'bullet'), damage(SPEED.combat, 'bullet'));
 });
