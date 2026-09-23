@@ -5,10 +5,10 @@ import { ENCOUNTER_RULES } from './encounters.js';
 export class EncounterView {
   constructor(view) {
     this.view = view;
-    this.mineBodies = view.batch(48, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
+    this.mineBodies = view.batch(ENCOUNTER_RULES.mineLimit, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
     this.mineBodies.geometry = new THREE.IcosahedronGeometry(0.65, 0);
-    this.rings = view.batch(48 * 32, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
-    this.rings.geometry = new THREE.RingGeometry(1.15, 1.3, 3, 1, 0, Math.PI * 2 / 32 * 0.85);
+    this.rings = view.batch(ENCOUNTER_RULES.mineLimit * 32, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
+    this.rings.geometry = new THREE.RingGeometry(2.05, 2.2, 3, 1, 0, Math.PI * 2 / 32 * 0.85);
     this.rings.geometry.rotateX(-Math.PI / 2);
     this.blasts = view.batch(64, new THREE.MeshBasicMaterial({ color: 0xffae42, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
     this.blasts.geometry = new THREE.RingGeometry(0.85, 1, 32); this.blasts.geometry.rotateX(-Math.PI / 2);
@@ -21,7 +21,7 @@ export class EncounterView {
     const v = this.view, encounter = sim.encounter;
     let mines = 0, rings = 0, blasts = 0, paths = 0, pickups = 0;
     if (encounter) {
-      for (const mine of encounter.mines.slice(0, 48)) {
+      for (const mine of encounter.mines.slice(0, ENCOUNTER_RULES.mineLimit)) {
         const progress = clamp(mine.age / ENCOUNTER_RULES.mineArm, 0, 1);
         const color = progress < 1 ? this.cyan : this.orange;
         v.put(this.mineBodies, mines++, mine.x, 0.6, mine.z, 1, 1, 1, sim.time, color);

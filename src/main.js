@@ -234,7 +234,8 @@ function frame(now) {
     vehicles: sim.vehicles.length, vehiclesDestroyed: sim.vehiclesDestroyed,
     shieldShots: sim.bullets.filter(b => b.pattern === 'shield').length,
     encounter: sim.encounter ? {
-      type: sim.encounter.type, age: sim.encounter.age, result: sim.encounter.result,
+      type: sim.encounter.type, age: sim.encounter.age, result: sim.encounter.result, outcome: sim.encounter.outcome,
+      waves: sim.encounter.waves?.length,
       mines: sim.encounter.mines.length, pickups: sim.encounter.pickups.length,
       locksOpened: sim.encounter.locksOpened, collected: sim.encounter.collected,
       members: sim.encounter.members.map(e => ({ id: e.id, kind: e.kind, slot: e.slot, hp: Number.isFinite(e.hp) ? e.hp : null, s: e.s, lateral: e.lateral, phase: e.phase, targetLane: e.targetLane, warning: e.formationWarning })),

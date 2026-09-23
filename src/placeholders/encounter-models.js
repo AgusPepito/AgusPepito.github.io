@@ -34,5 +34,7 @@ export function encounterModels(THREE) {
   const lock = new THREE.Group();
   box(lock, 1.55, 1.35, 0.7, 0, 0.85, 0, orange);
   box(lock, 0.5, 0.65, 0.1, 0, 0.9, -0.4, dark);
-  return { dart, interceptor, minelayer, hauler, lock, escort: vehicle(2.1, 3.6, purple) };
+  const escort = vehicle(2.1, 3.6, purple);
+  box(escort, 0.7, 0.2, 0.7, 0, 1.9, 0, orange, 'signal');
+  return { dart, interceptor, minelayer, hauler, lock, escort };
 }

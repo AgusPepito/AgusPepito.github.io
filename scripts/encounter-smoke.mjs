@@ -37,9 +37,10 @@ try {
       }
       await page.keyboard.down('Space');
       await page.keyboard.down('ShiftLeft');
-      await page.waitForFunction(() => window.__GAME__.status === 'complete', { timeout: 20000 });
+      await page.waitForFunction(() => window.__GAME__.status === 'complete', { timeout: 45000 });
       await page.keyboard.up('Space'); await page.keyboard.up('ShiftLeft');
       assert.equal(await page.$eval('#results', e => e.hidden), false);
+      assert.notEqual(await page.evaluate(() => window.__GAME__.encounter.outcome), 'cleared', 'bypassing targets is not a clear');
       await page.click('#choose-result');
     } else {
       await page.keyboard.press('p'); await page.click('#choose-paused');

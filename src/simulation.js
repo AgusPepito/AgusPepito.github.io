@@ -207,7 +207,8 @@ export class Simulation {
         }
         if (this.status === 'over') return;
       }
-      if (e.s < this.s - 10 && !e.passed) {
+      const canPass = e.kind !== 'interceptor' || (e.phase === 'recovery' && !e.contact);
+      if (e.hp > 0 && canPass && e.s < this.s - 10 && !e.passed) {
         e.passed = true;
         if (e.kind !== 'lock' && e.kind !== 'hauler') this.passed++;
         this.score += e.encounter ? this.encounter.passed(e) : 40;

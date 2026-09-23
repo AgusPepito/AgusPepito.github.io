@@ -1,6 +1,12 @@
 # Mechanics experiments
 
-## Current experiment: 007 — selectable encounters
+## Current experiment: 008 — encounter pressure
+
+After the user found all four encounters trivial, added overlapping Dart waves and converging volleys; faster alternating Interceptor attacks with a longer collision corridor and shorter rear-engine opening; two Mine layers with overlapping fields and limited chain propagation; and rear convoy guards with alternating aimed/straight bursts, side swaps, and hauler speed changes. Collision damage stays unchanged. Cargo locks now need roughly 1.28 seconds of sustained twin-gun fire. Results distinguish clears, escapes and partial raids. See `ENCOUNTERS.md` for exact rules.
+
+Nonvisual simulations specifically check that idle autofire incurs substantial damage, straight boosting cannot count as a clear, and a timed Interceptor dodge still permits an unharmed rewarded escape. These checks establish mechanical pressure and an available response, not human difficulty or visual approval.
+
+## Previous experiment: 007 — selectable encounters
 
 Four isolated tests focus on formation clearing (Darts), bait/dodge/rear-engine punishment (Interceptors), persistent hazards and chains (Mine layer), and optional multi-target reward extraction (Convoy). The start menu selects the next test; retry, completion and return-to-selection controls support quick comparisons. The previous highway run remains a fifth choice. See `ENCOUNTERS.md` for current rules and balance values. Convoy salvage awards score only; upgrades remain deferred.
 

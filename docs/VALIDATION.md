@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 008 — 2026-09-24
+
+58 nonvisual tests pass. Difficulty checks exercise idle autofire and straight boost through all four encounters: every case encounters damage, straight boost never awards a clear, and Darts require all three waves. A separate timed-dodge simulation passes both Interceptors unharmed and earns both clean-pass rewards. Other new checks cover two-link mine chain limits, convoy brake/swap warnings, and clear/partial/escaped outcomes. Existing timing, arming, swept collisions, controls, reset and highway unit checks remain passing.
+
+Production build passes (about 0.57 MB). The encounter browser smoke passes all four start/runtime/retry/result/menu paths, escape classification, and mobile touch selection with no runtime errors. It captures no screenshots and performs no visual gameplay review. Human difficulty and readability remain for the user's playtest; the new tests establish mechanical pressure rather than a claim that the balance is final.
+
 ## Experiment 007 — 2026-09-24
 
 52 nonvisual tests pass. New checks cover encounter isolation/reset, Dart formation warning and sequential straight fire, interceptor warning duration at boost speed and rear-engine damage, mine arming/proximity/chain persistence, independent convoy locks and forward collectible rewards, escort burst ordering, actual autofire hitting locks, and bounded simulations across cruise/fast/boost. Production build passes (about 0.57 MB).

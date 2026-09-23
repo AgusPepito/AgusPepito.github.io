@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 008: encounter difficulty
+
+User found all four encounters trivial and approved a substantial pressure increase. Darts now have three eight-ship waves, seven seconds apart, with faster sequential shots alternating convergence and straight sweeps. Spawn distance and first-shot timing let them threaten maximum-speed approaches. Interceptors retain a readable speed-independent lock warning, occupy the charged lane longer, prepare the next attack during recovery and expose engines for less time. Colliding does not grant an automatic clean pass; a successful dodge still does.
+
+Two Mine layers replace the single layer, deploying paired trails beyond a six-row field with lane gaps. Chains travel only 5.5 m and stop after two links; dropping farther behind prevents the first shot from automatically killing the layers through their fresh mines. Larger proximity rings communicate the trigger area. Convoy escorts now guard rear firing lines, alternate aimed/straight bursts, and warn before swapping sides. The hauler warns before slowing; locks require 16 hits, escorts 8, and base collision damage is unchanged.
+
+Results distinguish clear, escape with incomplete objective, and partial convoy raid. Updated encounter guide and menu descriptions. Validation: 58 unit tests, production build and nonvisual encounter/menu/touch/runtime smoke pass. No visual playtesting performed. Preview rebuilt for the user.
+
 ## 2026-09-24 — experiment 007: four selectable enemy encounters
 
 Implemented the user's supplied encounter descriptions with temporary primitive models: five Darts changing from V to staggered columns with sequential rearward fire; two alternating armored Interceptors with tracking/locked charge warnings and exposed rear engines after misses; a zigzagging Mine layer with arming rings, persistent mines and delayed chain reactions; and a Convoy with three independently destructible rear locks, alternating escort bursts and forward-ejected cyan score pickups. Interceptor warning duration is independent of player speed. Convoy cruise following gives time to target locks; no extra hull-health grind follows the third lock.
