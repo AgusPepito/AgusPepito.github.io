@@ -28,4 +28,4 @@ npm run preview
 - All current visible geometry is marked as prototype geometry. Final 3D assets must go through the 404 recipe before submission.
 - No reference-game code or assets are used.
 - See `docs/JAM.md` for rules and the outstanding submission work; `docs/BUILD_LOG.md` records development.
-
+- See `docs/DESIGN.md` for the mechanics experiment and `docs/VALIDATION.md` for the local gate result. A local PASS is not a submitted entry.
