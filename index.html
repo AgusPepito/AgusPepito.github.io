@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#10181e" />
+  <meta name="description" content="A playable experiment between scrolling shooter and ground-skimming racer. One ship. Two rhythms." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%2310181e'/%3E%3Cpath d='M9 10l11 22 11-22h-7l-4 9-4-9z' fill='%23caff64'/%3E%3C/svg%3E" />
+  <title>Vector Shift — Mechanics Lab</title>
+</head>
+<body>
+  <canvas id="world" aria-label="Game track. Use WASD, arrow keys, or drag to steer."></canvas>
+  <div id="hit-flash" aria-hidden="true"></div>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 001</span></div></div>
+    <div class="header-actions">
+      <span class="prototype-badge"><i></i> GRAYBOX BUILD</span>
+      <button id="tune-toggle" class="quiet-button" aria-expanded="false" aria-controls="tuning">Tune <span aria-hidden="true">☷</span></button>
+      <button id="pause" class="icon-button" aria-label="Pause game" hidden>Ⅱ</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="intro" class="intro overlay">
+      <div class="intro-content">
+        <p class="eyebrow accent">SCROLLING SHOOTER × GROUND RACER</p>
+        <h1>FIND YOUR<br /><span>LINE.</span></h1>
+        <p class="intro-description">Room to fight. A gap to thread.<br />One ship. Two rhythms.</p>
+        <div class="mode-legend"><span><i class="wide-swatch"></i> WIDE / ENGAGE</span><span><i class="tight-swatch"></i> NARROW / EVADE</span></div>
+        <button id="startb" class="primary-button" disabled>Loading track… <span aria-hidden="true">↗</span></button>
+        <p class="controls-note desktop-hint"><kbd>W A S D</kbd> or <kbd>↑ ← ↓ →</kbd> to move <span>·</span> Auto-fire</p>
+        <p class="controls-note touch-hint">Drag to steer <span>·</span> Weapons fire automatically</p>
+      </div>
+      <div class="intro-footer"><span>PRIMITIVES FIRST. FEEL FIRST.</span><span>404 GAME JAM / PROTOTYPE</span></div>
+    </section>
+
+    <section id="hud" aria-label="Game information" hidden>
+      <div class="sector"><span class="eyebrow" id="lap">LAP 01</span><h2 id="sector-name">OPEN CIRCUIT</h2><p id="sector-hint">Find your target. Make room.</p></div>
+      <div class="score-block"><span class="eyebrow">SCORE</span><strong id="score">000000</strong><span id="tally">0 destroyed / 0 passed</span></div>
+      <div class="bottom-hud">
+        <div class="speed-block"><span class="eyebrow">SPEED</span><div><strong id="speed">094</strong><span>KM/H</span></div><div class="speed-lines"><i id="speed-fill"></i></div></div>
+        <div class="course-block"><div class="course-caption"><span id="mode">COMBAT LINE</span><span id="progress-label">0%</span></div><div class="course-strip"><span class="course-sector s1"></span><span class="course-sector s2"></span><span class="course-sector s3"></span><span class="course-sector s4"></span><i id="course-marker"></i></div><p class="desktop-hint">WASD / ARROWS <b>·</b> AUTO-FIRE <b>·</b> P PAUSE <b>·</b> R RESTART</p><p class="touch-hint">DRAG TO STEER <b>·</b> AUTO-FIRE</p></div>
+        <div class="shield-block"><span class="eyebrow">SHIELD <strong id="health">100</strong></span><div class="shield-meter"><i id="health-fill"></i></div><span id="practice-badge" hidden>PRACTICE / NO DAMAGE</span></div>
+      </div>
+      <div id="stick" class="stick" aria-label="Touch steering pad"><div class="stick-cross"></div><i id="stick-knob"></i></div>
+      <div id="drag-ring" aria-hidden="true"><i></i></div>
+    </section>
+
+    <section id="pause-screen" class="center-overlay overlay" hidden>
+      <div class="panel"><p class="eyebrow accent">TAKE A BREATH</p><h2>HOLDING<br />THE LINE.</h2><p>The track will wait.</p><button id="resume" class="primary-button">Resume run <span>↗</span></button><button id="restart-paused" class="text-button">Restart from the beginning</button></div>
+    </section>
+
+    <section id="results" class="center-overlay overlay" hidden>
+      <div class="panel"><p class="eyebrow accent">RUN COMPLETE</p><h2>ONE MORE<br />LINE?</h2><div class="result-score" id="result-score">000000</div><div class="result-stats"><div><strong id="result-distance">0</strong><span>METERS</span></div><div><strong id="result-kills">0</strong><span>DESTROYED</span></div><div><strong id="result-walls">0</strong><span>WALL HITS</span></div></div><p>Try a cleaner line, or tune the experiment.</p><button id="restart" class="primary-button">Run it again <span>↗</span></button></div>
+    </section>
+
+    <aside id="tuning" class="tuning" hidden aria-label="Prototype settings">
+      <div class="tuning-heading"><span class="eyebrow">THE EXPERIMENT</span><button id="tune-close" class="icon-button" aria-label="Close settings">×</button></div>
+      <h2>Change the feel.</h2>
+      <label class="switch-row"><div><strong>Camera transition</strong><span>Lower the view in narrow sections.</span></div><input id="camera-shift" type="checkbox" checked /></label>
+      <label class="switch-row"><div><strong>Speed transition</strong><span>Accelerate as the track narrows.</span></div><input id="speed-shift" type="checkbox" checked /></label>
+      <label class="switch-row"><div><strong>Practice mode</strong><span>Keep driving without losing shield.</span></div><input id="invincible" type="checkbox" /></label>
+      <label class="switch-row"><div><strong>Sound effects</strong><span>Simple impact and destruction tones.</span></div><input id="sound" type="checkbox" /></label>
+      <p class="tuning-note">Compare camera-only and speed-only runs. Same course. Same steering.</p>
+      <button id="restart-settings" class="secondary-button">Restart run ↗</button>
+      <div class="diagnostics"><span id="fps">— FPS</span><span id="draws">— DRAWS</span></div>
+    </aside>
+    <section id="error" class="center-overlay" hidden><div class="panel"><h2>Couldn't start<br />the track.</h2><p id="error-message">This prototype needs a browser with WebGL 2 enabled.</p><button class="primary-button" onclick="location.reload()">Try again ↗</button></div></section>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
