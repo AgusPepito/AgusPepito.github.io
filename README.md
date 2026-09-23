@@ -17,7 +17,7 @@ npm run dev
 
 Use WASD / arrows or drag on the play area. Hold Space / Shift / OVERDRIVE to race. On touchscreens, steer with one finger and hold OVERDRIVE with another. Weapons fire automatically. P / Escape pauses; R restarts. The settings panel allows camera and speed changes to be compared independently.
 
-The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 002.
+The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 003: road-relative movement and alignment. The ship follows bends automatically; steering moves across the road. Ships, camera, lane marks, barriers, and shots share the road's local orientation. Shots leave along that direction and then fly straight.
 
 ```sh
 npm test

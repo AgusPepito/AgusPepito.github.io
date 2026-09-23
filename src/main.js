@@ -175,11 +175,12 @@ function frame(now) {
   if (lastStatus !== sim.status) { syncScreens(); lastStatus = sim.status; }
   uiTimer += elapsed; if (uiTimer > 0.1) { updateUI(); uiTimer = 0; }
   window.__GAME__ = {
-    pos: [sim.x, -sim.s], fps, speed: sim.speed, score: sim.score, over: sim.status === 'over',
+    pos: [sim.x, sim.z], fps, speed: sim.speed, score: sim.score, over: sim.status === 'over',
     draws: view.renderer.info.render.calls, tris: view.renderer.info.render.triangles,
     status: sim.status, health: sim.health, lap: sim.lap, distance: sim.distance,
     kills: sim.kills, passed: sim.passed, wallHits: sim.wallHits,
     racingHeld: sim.racingHeld, raceBlend: sim.raceBlend,
+    lateral: sim.lateral, heading: sim.yaw,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },
   };

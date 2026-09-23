@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Simulation, segmentHitsBox, PLAYER, SPEED } from '../src/simulation.js';
-import { trackAt, COURSE_LENGTH, obstaclesNear } from '../src/track.js';
+import { trackAt, COURSE_LENGTH, obstaclesNear, roadPoint } from '../src/track.js';
 
 test('track has continuous width and center, including the lap seam', () => {
   for (let s = -1; s <= COURSE_LENGTH + 1; s += 0.5) {
@@ -39,7 +39,7 @@ test('wall contact bounds the ship, deals damage, and permits recovery', () => {
   for (let i = 0; i < 180; i++) sim.step(1 / 120, { x: 1, y: 0 });
   assert.ok(sim.health < 100 && sim.health > 0);
   const road = trackAt(sim.s);
-  assert.ok(sim.x + PLAYER.halfWidth < road.center + road.width / 2);
+  assert.ok(sim.lateral + PLAYER.halfWidth < road.width / 2);
   const x = sim.x;
   for (let i = 0; i < 30; i++) sim.step(1 / 120, { x: -1, y: 0 });
   assert.ok(sim.x < x - 1);
@@ -79,7 +79,7 @@ test('speed transition can be disabled independently of track width', () => {
 
 test('zones never activate racing, and holding/releasing works in open space', () => {
   const sim = new Simulation({ invincible: true }); sim.start();
-  sim.distance = 600; sim.s = 600; sim.x = trackAt(600).center;
+  sim.distance = 600; sim.s = 600; Object.assign(sim, roadPoint(600));
   for (let i = 0; i < 60; i++) sim.step(1 / 120);
   assert.equal(sim.raceBlend, 0); assert.equal(sim.speed, SPEED.combat);
   sim.reset(); sim.start();

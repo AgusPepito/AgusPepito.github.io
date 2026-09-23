@@ -1,6 +1,14 @@
 # Mechanics experiments
 
-## Current experiment: 002 — player-held overdrive
+## Current experiment: 003 — road-relative movement
+
+Forward motion now follows the track centerline. Left/right input moves perpendicular to the road, preserving a selected lateral line through bends. Width changes can still force the player toward a gap. Hold-to-race, speed, and damage settings from experiment 002 are retained.
+
+The road surface is built from perpendicular cross sections. Lane markings follow the local direction of their lanes, including widening/narrowing sections. Player/enemy ships, barriers, shadows, roadside posts, speed streaks, and the camera use the same road frame. Longitudinal speed accounts for centerline curvature.
+
+Player shots launch along the local road tangent and keep straight world-space trajectories afterward. Hits use road-aligned collision boxes and swept relative movement so rotating the graphics does not leave world-aligned hitboxes behind.
+
+## Previous experiment: 002 — player-held overdrive
 
 The user activates racing by holding Space, either Shift key, or the OVERDRIVE button. Releasing returns smoothly to combat. The track still changes width and bends, but neither the camera mode nor speed mode depends on the zone.
 

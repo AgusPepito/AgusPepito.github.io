@@ -16,8 +16,11 @@ export function trackAt(distance) {
   let i = 0;
   while (i < knots.length - 2 && s > knots[i + 1][0]) i++;
   const a = knots[i], b = knots[i + 1];
-  const t = smooth((s - a[0]) / (b[0] - a[0]));
+  const span = b[0] - a[0], u = (s - a[0]) / span;
+  const t = smooth(u);
   const center = lerp(a[1], b[1], t);
+  const slope = (b[1] - a[1]) * 6 * u * (1 - u) / span;
+  const second = (b[1] - a[1]) * (6 - 12 * u) / (span * span);
   const width = lerp(a[2], b[2], t);
   const tight = clamp((44 - width) / 29, 0, 1);
   let label = 'OPEN CIRCUIT';
@@ -31,7 +34,47 @@ export function trackAt(distance) {
   } else if ((s >= 1100 && s < 1290) || s >= 1890) {
     label = 'OPENING UP'; hint = 'Space to move. Weapons free.';
   }
-  return { s, center, width, tight, label, hint };
+  return { s, center, width, tight, label, hint, slope, second };
+}
+
+// Shared road frame: forward runs along the curve; right runs across it.
+// s parameterizes the centerline, lateral is measured in metres perpendicular to it.
+export function roadFrame(s) {
+  const road = trackAt(s), scale = Math.hypot(road.slope, 1);
+  return { ...road, scale, fx: road.slope / scale, fz: -1 / scale,
+    rx: 1 / scale, rz: road.slope / scale, yaw: -Math.atan(road.slope) };
+}
+
+export function roadPoint(s, lateral = 0) {
+  const f = roadFrame(s);
+  return { x: f.center + f.rx * lateral, z: -s + f.rz * lateral };
+}
+
+export function roadLineYaw(s, widthFraction = 0, inset = 0) {
+  const a = roadPoint(s - 0.1, trackAt(s - 0.1).width * widthFraction + inset);
+  const b = roadPoint(s + 0.1, trackAt(s + 0.1).width * widthFraction + inset);
+  return Math.atan2(a.x - b.x, a.z - b.z);
+}
+
+// Project straight-flying shots back into road coordinates for bounds/culling.
+export function roadCoordinates(x, z) {
+  let s = -z;
+  for (let i = 0; i < 5; i++) {
+    const f = trackAt(s);
+    const denominator = 1 + f.slope * f.slope - (x - f.center) * f.second;
+    if (Math.abs(denominator) < 0.1) break;
+    const correction = ((x - f.center) * f.slope - (z + s)) / denominator;
+    s += clamp(correction, -20, 20);
+    if (Math.abs(correction) < 1e-7) break;
+  }
+  const f = roadFrame(s);
+  return { s, lateral: (x - f.center) * f.rx + (z + s) * f.rz };
+}
+
+// Correct longitudinal travel for bend length, so indicated speed stays in m/s.
+export function advanceOnRoad(s, metres) {
+  const midpoint = s + metres / roadFrame(s).scale / 2;
+  return s + metres / roadFrame(midpoint).scale;
 }
 
 export const OBSTACLES = [
@@ -57,7 +100,7 @@ export function obstaclesNear(distance, behind = 25, ahead = 180) {
   for (let lap = first; lap <= last; lap++) for (const obstacle of OBSTACLES) {
     const s = lap * COURSE_LENGTH + obstacle.s;
     if (s < distance - behind || s > distance + ahead) continue;
-    result.push({ ...obstacle, s, x: trackAt(s).center + obstacle.offset });
+    result.push({ ...obstacle, s, ...roadPoint(s, obstacle.offset), yaw: roadFrame(s).yaw });
   }
   return result;
 }

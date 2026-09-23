@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 003: road-relative movement
+
+User identified world-forward alignment of ships and road markings on bends and approved moving to the road's local direction. Added a shared tangent/right frame, perpendicular road cross sections, road-relative steering, curvature-adjusted forward travel, and a camera that turns with the track. Ships, markings, barriers, shadows, posts, and speed streaks now align with the road. Shots launch along the local tangent, then continue straight. Swept collisions use rotated target frames and relative target motion.
+
+19 nonvisual unit tests pass, including road/world coordinate round trips, lane-marking direction, holding a lateral line through the S-bend, straight shot trajectories, rotated/moving target collisions, and camera projection bounds. Visual gameplay testing remains solely with the user.
+
+Production build and nonvisual keyboard/touch smoke check pass with no runtime errors. The local preview is rebuilt for the user's playtest.
+
 ## 2026-09-23 — experiment 002: hold-to-race
 
 User-approved baseline was already committed at `23ed7a1`; preserved with annotated tag `prototype-01-zone-transitions` before changing gameplay.

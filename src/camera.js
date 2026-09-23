@@ -1,15 +1,15 @@
-import { clamp, lerp, trackAt } from './track.js';
+import { clamp, lerp, roadFrame, roadPoint } from './track.js';
 
 export function cameraPose(sim, aspect, cameraShift) {
-  const road = trackAt(sim.distance);
   const blend = cameraShift ? clamp(sim.raceBlend || 0, 0, 1) : 0;
   const portrait = clamp((1.3 - aspect) / 0.8, 0, 1);
   // Track some fore/aft motion when close, retaining steering room below the ship.
   const anchor = sim.distance + sim.offset * blend * 0.85;
-  const lookAhead = trackAt(anchor + 24);
+  const f = roadFrame(anchor), origin = roadPoint(anchor, sim.lateral * blend * 0.95);
+  const behind = lerp(24 + portrait * 10, 18, blend), ahead = lerp(12, 8, blend);
   return {
-    position: [lerp(road.center, sim.x, blend * 0.95), lerp(55 + portrait * 42, 10 + portrait * 4, blend), -anchor + lerp(24 + portrait * 10, 18, blend)],
-    target: [lerp(road.center, sim.x + (lookAhead.center - road.center) * 0.08, blend * 0.95), 0, -anchor - lerp(12, 8, blend)],
+    position: [origin.x - f.fx * behind, lerp(55 + portrait * 42, 10 + portrait * 4, blend), origin.z - f.fz * behind],
+    target: [origin.x + f.fx * ahead, 0, origin.z + f.fz * ahead],
     fov: lerp(55, 73, blend),
   };
 }

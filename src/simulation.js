@@ -1,4 +1,4 @@
-import { COURSE_LENGTH, clamp, lerp, trackAt, obstaclesNear } from './track.js';
+import { COURSE_LENGTH, clamp, lerp, trackAt, obstaclesNear, roadFrame, roadPoint, roadCoordinates, advanceOnRoad } from './track.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
 export const SPEED = { combat: 26, racing: 82 };
@@ -21,6 +21,15 @@ export function segmentHitsBox(ax, az, bx, bz, x, z, hw, hd) {
   return true;
 }
 
+// Test in the target's road-aligned frame, including its movement during the step.
+export function sweptHitsEntity(ax, az, bx, bz, target, hw, hd) {
+  const c = Math.cos(target.yaw || 0), s = Math.sin(target.yaw || 0);
+  const aX = ax - (target.oldX ?? target.x), aZ = az - (target.oldZ ?? target.z);
+  const bX = bx - target.x, bZ = bz - target.z;
+  return segmentHitsBox(c * aX - s * aZ, s * aX + c * aZ,
+    c * bX - s * bZ, s * bX + c * bZ, 0, 0, hw, hd);
+}
+
 export class Simulation {
   constructor(options = {}) {
     this.options = { speedShift: true, invincible: false, ...options };
@@ -30,7 +39,7 @@ export class Simulation {
     this.status = 'ready';
     this.time = 0; this.distance = 30; this.speed = SPEED.combat;
     this.racingHeld = false; this.raceBlend = 0;
-    this.x = 0; this.s = 30; this.offset = 0; this.vx = 0;
+    this.x = 0; this.z = -30; this.s = 30; this.lateral = 0; this.offset = 0; this.vx = 0; this.yaw = 0;
     this.health = 100; this.score = 0; this.kills = 0; this.passed = 0;
     this.wallHits = 0; this.hits = 0; this.lap = 1;
     this.invulnerability = 0; this.slowdown = 0;
@@ -45,7 +54,7 @@ export class Simulation {
     this.invulnerability = 0.8;
     this.hits++; if (kind === 'wall') this.wallHits++;
     this.slowdown = kind === 'bullet' ? 0.05 : 0.55;
-    this.events.push({ kind: 'hit', x: this.x, s: this.s });
+    this.events.push({ kind: 'hit', x: this.x, z: this.z, s: this.s });
     if (this.health === 0) this.status = 'over';
   }
   wave() {
@@ -56,7 +65,8 @@ export class Simulation {
     const offsets = racer ? [(index % 2 ? -1 : 1) * 2.4] : [-10, 0, 10];
     for (const [i, offset] of offsets.entries()) {
       this.enemies.push({
-        id: this.nextId++, s: spawnS + i * 3.5, x: track.center + offset,
+        id: this.nextId++, s: spawnS + i * 3.5, ...roadPoint(spawnS + i * 3.5, offset),
+        lateral: offset, yaw: roadFrame(spawnS + i * 3.5).yaw,
         offset, racer, hp: racer ? 4 : 2, age: 0,
         fire: 1.6 + i * 0.3, phase: index + i * 1.6,
       });
@@ -72,26 +82,30 @@ export class Simulation {
     this.raceBlend = lerp(this.raceBlend, this.racingHeld ? 1 : 0, 1 - Math.exp(-7 * dt));
     const desiredSpeed = lerp(SPEED.combat, this.options.speedShift ? SPEED.racing : SPEED.combat, this.raceBlend) * (this.slowdown > 0 ? 0.65 : 1);
     this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-4.5 * dt));
-    this.distance += this.speed * dt;
+    this.distance = advanceOnRoad(this.distance, this.speed * dt);
     this.offset = clamp(this.offset + clamp(input.y || 0, -1, 1) * 11 * dt, -7, 10);
-    const oldS = this.s, oldX = this.x;
+    const oldX = this.x, oldZ = this.z;
     this.s = this.distance + this.offset;
     this.vx = lerp(this.vx, clamp(input.x || 0, -1, 1) * 19, 1 - Math.exp(-15 * dt));
-    this.x += this.vx * dt;
+    this.lateral += this.vx * dt;
     const here = trackAt(this.s);
     const limit = here.width / 2 - PLAYER.halfWidth - 0.18;
-    const inside = clamp(this.x, here.center - limit, here.center + limit);
-    if (inside !== this.x) { this.x = inside; this.vx *= 0.2; this.hurt(8, 'wall'); }
+    const inside = clamp(this.lateral, -limit, limit);
+    const wallContact = inside !== this.lateral;
+    this.lateral = inside;
+    Object.assign(this, roadPoint(this.s, this.lateral));
+    this.yaw = roadFrame(this.s).yaw;
+    if (wallContact) { this.vx *= 0.2; this.hurt(8, 'wall'); }
 
     const newLap = Math.floor(this.distance / COURSE_LENGTH) + 1;
     if (newLap > this.lap) {
       this.lap = newLap; this.score += 1000;
       this.health = Math.min(100, this.health + 25);
-      this.events.push({ kind: 'lap', x: this.x, s: this.s });
+      this.events.push({ kind: 'lap', x: this.x, z: this.z, s: this.s });
     }
 
     for (const o of obstaclesNear(this.s, 8, 8)) {
-      if (segmentHitsBox(oldX, oldS, this.x, this.s, o.x, o.s, o.w / 2 + PLAYER.halfWidth, o.d / 2 + PLAYER.halfDepth)) {
+      if (sweptHitsEntity(oldX, oldZ, this.x, this.z, o, o.w / 2 + PLAYER.halfWidth, o.d / 2 + PLAYER.halfDepth)) {
         this.hurt(22, 'obstacle');
       }
     }
@@ -99,46 +113,50 @@ export class Simulation {
     this.shotTimer -= dt;
     if (this.shotTimer <= 0) {
       this.shotTimer += 0.16;
+      const f = roadFrame(this.s);
       for (const side of [-0.38, 0.38]) this.bullets.push({
-        id: this.nextId++, x: this.x + side, s: this.s + 1.4,
-        vx: 0, vs: this.speed + 105, friendly: true, life: 1.4,
+        id: this.nextId++, x: this.x + f.rx * side + f.fx * 1.4, z: this.z + f.rz * side + f.fz * 1.4, s: this.s + 1.4,
+        vx: f.fx * (this.speed + 105), vz: f.fz * (this.speed + 105), friendly: true, life: 1.4,
       });
     }
     for (const e of this.enemies) {
-      e.age += dt; e.s += (e.racer ? 26 : 13) * dt;
+      e.oldX = e.x; e.oldZ = e.z;
+      e.age += dt; e.s = advanceOnRoad(e.s, (e.racer ? 26 : 13) * dt);
       const road = trackAt(e.s);
       const offset = clamp(e.offset, -road.width / 2 + 2, road.width / 2 - 2);
-      e.x = road.center + offset + Math.sin(e.age * 1.6 + e.phase) * (e.racer ? 0.6 : 1.6);
+      e.lateral = offset + Math.sin(e.age * 1.6 + e.phase) * (e.racer ? 0.6 : 1.6);
+      Object.assign(e, roadPoint(e.s, e.lateral)); e.yaw = roadFrame(e.s).yaw;
       e.fire -= dt;
       if (!e.racer && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
         e.fire = 2.25;
-        const dx = this.x - e.x, ds = this.s - e.s;
-        const length = Math.hypot(dx, ds);
+        const dx = this.x - e.x, dz = this.z - e.z;
+        const length = Math.hypot(dx, dz), f = roadFrame(e.s);
         for (const spread of [-0.15, 0, 0.15]) {
-          const angle = Math.atan2(dx, -ds) + spread;
-          this.bullets.push({ id: this.nextId++, x: e.x, s: e.s - 1.6, vx: Math.sin(angle) * 17, vs: -Math.cos(angle) * 17, friendly: false, life: Math.min(5, length / 12 + 1) });
+          const angle = Math.atan2(dx, dz) + spread;
+          this.bullets.push({ id: this.nextId++, x: e.x - f.fx * 1.6, z: e.z - f.fz * 1.6, s: e.s - 1.6, vx: Math.sin(angle) * 17, vz: Math.cos(angle) * 17, friendly: false, life: Math.min(5, length / 12 + 1) });
         }
       }
-      if (segmentHitsBox(oldX, oldS, this.x, this.s, e.x, e.s, 1.2 + PLAYER.halfWidth, 1.6 + PLAYER.halfDepth)) this.hurt(18, 'enemy');
+      if (sweptHitsEntity(oldX, oldZ, this.x, this.z, e, 1.2 + PLAYER.halfWidth, 1.6 + PLAYER.halfDepth)) this.hurt(18, 'enemy');
       if (e.s < this.s - 10 && !e.passed) { e.passed = true; this.passed++; this.score += 40; }
     }
     for (const b of this.bullets) {
-      const bx = b.x, bs = b.s;
-      b.x += b.vx * dt; b.s += b.vs * dt; b.life -= dt;
+      const bx = b.x, bz = b.z;
+      b.x += b.vx * dt; b.z += b.vz * dt; b.life -= dt;
+      const projected = roadCoordinates(b.x, b.z); b.s = projected.s;
       if (b.friendly) {
-        for (const e of this.enemies) if (e.hp > 0 && segmentHitsBox(bx, bs, b.x, b.s, e.x, e.s, 1.25, 1.8)) {
+        for (const e of this.enemies) if (e.hp > 0 && sweptHitsEntity(bx, bz, b.x, b.z, e, 1.25, 1.8)) {
           b.life = 0; e.hp--;
           if (e.hp === 0) {
             this.kills++; this.score += e.racer ? 180 : 100;
-            this.events.push({ kind: 'kill', x: e.x, s: e.s });
-          } else this.events.push({ kind: 'spark', x: e.x, s: e.s });
+            this.events.push({ kind: 'kill', x: e.x, z: e.z, s: e.s });
+          } else this.events.push({ kind: 'spark', x: e.x, z: e.z, s: e.s });
           break;
         }
-      } else if (segmentHitsBox(bx, bs, b.x, b.s, this.x, this.s, PLAYER.halfWidth + 0.15, PLAYER.halfDepth + 0.15)) {
+      } else if (sweptHitsEntity(bx, bz, b.x, b.z, { x: this.x, z: this.z, oldX, oldZ, yaw: this.yaw }, PLAYER.halfWidth + 0.15, PLAYER.halfDepth + 0.15)) {
         b.life = 0; this.hurt(12, 'bullet');
       }
       const lane = trackAt(b.s);
-      if (Math.abs(b.x - lane.center) > lane.width / 2) b.life = 0;
+      if (Math.abs(projected.lateral) > lane.width / 2) b.life = 0;
     }
     this.enemies = this.enemies.filter(e => e.hp > 0 && e.s > this.s - 25);
     this.bullets = this.bullets.filter(b => b.life > 0 && b.s > this.s - 20 && b.s < this.s + 170);

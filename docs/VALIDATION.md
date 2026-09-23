@@ -1,4 +1,8 @@
-# Prototype validation — 2026-09-23
+# Prototype validation
+
+## Experiment 003 — 2026-09-24
+
+19 nonvisual unit tests pass, including road-coordinate transforms, lane direction, neutral line-following through bends, shot trajectories, rotated/moving collision targets, and camera projection bounds. Production build passes (about 0.53 MB). `scripts/input-smoke.mjs` passes keyboard hold/release, Shift, pause/resume, simultaneous two-finger steering/overdrive, independent release, and runtime-error checks. No gameplay screenshots or visual reviews were performed. Final jam/deployment verification remains outstanding.
 
 ## Experiment 002
 
