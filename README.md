@@ -2,6 +2,8 @@
 
 A ground-skimming scrolling shooter. Wide track sections emphasize aiming and bullet dodging; narrowing bends, a lower camera, and increased speed emphasize choosing a safe racing line. The same controls work throughout.
 
+**Agent workflow:** Read `AGENTS.md`. The user is the sole visual gameplay tester; agents perform nonvisual checks and hand over playable changes for user feedback.
+
 This is a **temporary primitive-only mechanics study**, not a submission-ready art build. The name is a working title.
 
 ## Development
