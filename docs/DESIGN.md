@@ -1,6 +1,14 @@
 # Mechanics experiments
 
-## Current experiment: 005 — firing rows and neutral traffic
+## Current experiment: 006 — shared drive controls and consumable boost
+
+PC: WASD/arrows only reposition, Shift selects fast mode, Ctrl brakes, Space boosts. Mobile: a circular analog stick steers horizontally; moderate vertical motion repositions, its upper edge selects fast mode, and lower edge brakes. The independent thumb button now controls BOOST. Stick deadzone is 12%, mode entry 70%, exit 55%; this allows diagonal fast steering and prevents mode flicker. Outer speed zones do not also change longitudinal offset. Neutral/released controls return to cruise. Pause, tuning, focus loss, pointer cancellation, and restart clear held actions.
+
+Cruise/fast speeds stay 26/82 m/s. Braking targets 12 m/s with stronger deceleration and overrides fast and boost. Boost targets 122 m/s from either cruise or fast, consumes 25% per second, and starts regeneration at 5% per second after a 2.5-second delay. Fresh activations require 15% charge; exhaustion or brake cancellation requires a release before rearming. Holding an empty meter cannot produce repeating micro-boosts. Meter timers freeze while paused. On release/exhaustion the underlying held drive mode resumes. Fast mode consumes no energy. Boost raises wind and shake within the existing settings; zero and reduced-motion suppression still apply.
+
+HUD includes boost charge/status and current drive mode. Existing fast-mode camera/speed comparison remains available; the speed toggle controls fast mode alone. Drops, upgrade scaling and special recharge actions/lanes remain unimplemented.
+
+## Previous experiment: 005 — firing rows and neutral traffic
 
 Keep the established merge timing: the player can race past an arriving formation before it closes the road. Purple rows only arm after deploying and only when the player is behind them within 12–105 metres. They fire single rearward shots from left to right, with 0.18 seconds between slots and 3.8 seconds between sweep starts. A 0.7-second charge cue precedes the first shot. Destroyed carriers leave empty beats in the pattern. Passing the row cancels further fire; it does not chase or turn its guns around. Existing 12 HP, 22 m/s speed, combat following and contact recovery remain.
 

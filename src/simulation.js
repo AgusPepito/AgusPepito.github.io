@@ -1,9 +1,10 @@
 import { COURSE_LENGTH, clamp, lerp, trackAt, roadFrame, roadPoint, roadCoordinates, advanceOnRoad, rampsNear, rampSample, drivableBounds } from './track.js';
 import { FORMATION, placeEnemy, SHIELD_VOLLEY, shieldVolley } from './enemies.js';
 import { vehicleSeed, createVehicle, moveVehicle } from './neutral-traffic.js';
+import { BoostMeter } from './boost.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
-export const SPEED = { combat: 26, racing: 82 };
+export const SPEED = { brake: 12, combat: 26, racing: 82, boost: 122 };
 
 // Swept collision prevents fast bullets tunneling through ships between updates.
 export function segmentHitsBox(ax, az, bx, bz, x, z, hw, hd) {
@@ -41,6 +42,7 @@ export class Simulation {
     this.status = 'ready';
     this.time = 0; this.distance = 30; this.speed = SPEED.combat;
     this.racingHeld = false; this.raceBlend = 0;
+    this.braking = false; this.boostActive = false; this.boostBlend = 0; this.boost = new BoostMeter();
     this.x = 0; this.z = -30; this.s = 30; this.lateral = 0; this.offset = 0; this.vx = 0; this.yaw = 0;
     this.health = 100; this.score = 0; this.kills = 0; this.passed = 0;
     this.wallHits = 0; this.hits = 0; this.lap = 1;
@@ -95,11 +97,16 @@ export class Simulation {
     this.invulnerability = Math.max(0, this.invulnerability - dt);
     this.slowdown = Math.max(0, this.slowdown - dt);
     this.shieldRecovery = Math.max(0, this.shieldRecovery - dt);
-    this.racingHeld = Boolean(input.racing);
-    this.raceBlend = lerp(this.raceBlend, this.racingHeld ? 1 : 0, 1 - Math.exp(-7 * dt));
+    this.braking = Boolean(input.braking);
+    this.racingHeld = Boolean(input.racing && !this.braking);
+    this.boostActive = this.boost.step(dt, Boolean(input.boost), this.braking);
+    this.boostBlend = lerp(this.boostBlend, this.boostActive ? 1 : 0, 1 - Math.exp(-9 * dt));
+    this.raceBlend = lerp(this.raceBlend, this.racingHeld || this.boostActive ? 1 : 0, 1 - Math.exp(-7 * dt));
     let desiredSpeed = lerp(SPEED.combat, this.options.speedShift ? SPEED.racing : SPEED.combat, this.raceBlend) * (this.slowdown > 0 ? 0.65 : 1);
+    if (this.boostActive) desiredSpeed = SPEED.boost * (this.slowdown > 0 ? 0.65 : 1);
+    if (this.braking) desiredSpeed = SPEED.brake;
     this.followingShield = false;
-    if (!this.racingHeld) for (const e of this.enemies) {
+    if (!this.racingHeld && !this.boostActive) for (const e of this.enemies) {
       if (!e.armored || !e.active || e.hp <= 0 || e.deployed < 1 || e.s <= this.s) continue;
       // Combat mode follows only the intact carrier in our path. A shot-out slot
       // immediately releases the speed limit, allowing the player through the gap.
@@ -109,7 +116,7 @@ export class Simulation {
       if (followSpeed < desiredSpeed) { desiredSpeed = followSpeed; this.followingShield = true; }
     }
     if (this.shieldRecovery > 0) desiredSpeed = Math.min(desiredSpeed, FORMATION.speed * 0.75);
-    this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-(this.followingShield ? 12 : 4.5) * dt));
+    this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-(this.followingShield || this.braking ? 12 : 4.5) * dt));
     this.distance = advanceOnRoad(this.distance, this.speed * dt);
     this.offset = clamp(this.offset + clamp(input.y || 0, -1, 1) * 11 * dt, -7, 10);
     const oldX = this.x, oldZ = this.z;

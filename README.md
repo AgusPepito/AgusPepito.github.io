@@ -1,6 +1,6 @@
 # VECTOR SHIFT — mechanics prototype
 
-A ground-skimming scrolling shooter. Hold Space, either Shift key, or the on-screen OVERDRIVE button to lower the camera and accelerate anywhere on the track. Release to return to combat. Narrow bends and barriers make holding overdrive more dangerous; zones never activate it automatically.
+A ground-skimming scrolling shooter with cruise, unlimited fast mode, deliberate braking, and a separate rechargeable boost. Speed modes are player-controlled anywhere on the track.
 
 **Agent workflow:** Read `AGENTS.md`. The user is the sole visual gameplay tester; agents perform nonvisual checks and hand over playable changes for user feedback.
 
@@ -15,13 +15,15 @@ npm install
 npm run dev
 ```
 
-Use WASD / arrows or drag on the play area. Hold Space / Shift / OVERDRIVE to race. On touchscreens, steer with one finger and hold OVERDRIVE with another. Weapons fire automatically. P / Escape pauses; R restarts. The settings panel allows camera and speed changes to be compared independently.
+PC: WASD / arrows reposition, Shift holds fast mode, Ctrl brakes, and Space holds boost. Mobile: steer with the circular stick (or drag on the play area); moderate up/down repositions, the forward edge activates fast mode, and the backward edge brakes. The other thumb holds BOOST. Braking cancels boost and requires releasing/repressing its button to reactivate. Weapons fire automatically. P / Escape pauses; R restarts.
 
-The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 005: slow neutral yellow vehicles with 160 HP, six enemy merge ramps per lap, and purple shield rows firing from left to right. Race past a formation before it deploys, or release overdrive and shoot a gap. Destroyed slots stay open as the road narrows and leave holes in the firing sequence. Yellow vehicle contact remains fatal except in practice mode. Drops and upgrades are not implemented yet. Tune includes independent camera-shake and wind-streak sliders (18% and 30% defaults; zero disables each).
+The first approved build is preserved at Git tag `prototype-01-zone-transitions` (commit `23ed7a1`). The current experiment is mechanics lab 006: analog mobile speed zones and separate boost. Speeds are 12 m/s braking, 26 cruising, 82 fast, and 122 boosting. A full boost tank lasts four seconds, recharges after a 2.5-second delay at 5% per second, and requires at least 15% to start a fresh activation. Empty tanks cannot pulse automatically while held. The HUD displays energy and recharge state. Boost strengthens the adjustable wind/shake effects.
+
+Slow neutral yellow vehicles have 160 HP and remain fatal on contact except in practice. Six ramps introduce scouts and purple shield rows, which fire left to right. Race past a merging formation or return to cruise and shoot a gap. Destroyed slots remain open through narrowing and leave holes in the firing sequence. Drops, upgrades and special recharge lanes/actions remain deferred.
 
 The ship follows bends automatically; steering moves across the road. Ships, camera, lane marks, barriers, and shots share the road's local orientation. Shots leave along that direction and then fly straight.
 
-Shield-row balance revision: carriers now have half their original health and travel closer to combat speed. Release overdrive to brake and match the intact carrier ahead while shooting. Destroying it restores normal speed; contact gives a brief recovery slowdown instead of immediately trapping you against the row.
+Shield rows travel close to combat speed. Return to cruise to match an intact carrier ahead while shooting. Destroying it restores normal speed; contact gives a brief recovery slowdown. Fast mode and boost bypass following; brake always takes priority.
 
 ```sh
 npm test

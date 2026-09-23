@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 006 — 2026-09-24
+
+41 nonvisual tests pass, including analog deadzone/hysteresis, circular diagonal steering, independent bindings, normal-speed repositioning, unlimited fast mode, brake priority, boost depletion/rearm, delayed recharge, pause freezing, reset, and expiration to the underlying mode. Production build passes (about 0.54 MB).
+
+The updated nonvisual browser smoke passes actual WASD, Shift, Ctrl and Space input; pause/reset of holds; moderate mobile stick repositioning; diagonal fast mode; two-finger boost; brake cancellation; independent finger releases; pointer cancellation; traffic paths and effect controls. No runtime errors or visual gameplay inspection. Gameplay feel and boost balance remain for the user's playtest; final jam/deployment verification remains outstanding.
+
 ## Experiment 005 — 2026-09-24
 
 34 nonvisual unit tests pass. Coverage includes neutral vehicle forward travel and narrowing-road bounds, shot damage/destruction, no hostile fire or enemy score from neutral traffic, pause/reset, lethal moving contact, delayed left-to-right purple volleys, destroyed-slot gaps, entry/overtake suppression, and projectiles emitted by the running simulation. Existing following/collision recovery tests isolate purple fire to check vehicle-contact behavior independently.

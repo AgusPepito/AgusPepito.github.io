@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp } from './track.js';
 
 export const EFFECT_DEFAULTS = { shake: 0.18, wind: 0.3 };
-// Multiplier is reserved for later turbo; ordinary racing uses 1.
+// Fast mode uses 1; consumable boost intensifies effects without overriding settings.
 export function effectStrength(speed, amount, reducedMotion = false, multiplier = 1) {
   return reducedMotion ? 0 : clamp((speed - 20) / 62, 0, 1) * clamp(amount, 0, 1) * Math.max(0, multiplier);
 }
@@ -20,13 +20,13 @@ export class SpeedEffects {
     camera.add(this.lines);
   }
   update(sim, settings, reducedMotion) {
-    const shake = effectStrength(sim.speed, settings.shake, reducedMotion);
+    const shake = effectStrength(sim.speed, settings.shake, reducedMotion, 1 + sim.boostBlend * 0.5);
     const t = sim.time;
     // The base camera pose is restored every frame, so vibration never accumulates.
     this.camera.rotateX(Math.sin(t * 39) * shake * 0.006);
     this.camera.rotateY(Math.sin(t * 47 + 1) * shake * 0.004);
     this.camera.rotateZ(Math.sin(t * 31) * shake * 0.006);
-    const wind = effectStrength(sim.speed, settings.wind, reducedMotion);
+    const wind = effectStrength(sim.speed, settings.wind, reducedMotion, 1 + sim.boostBlend * 0.85);
     this.lines.visible = wind > 0 && sim.status !== 'ready';
     this.lines.material.opacity = wind * 0.55;
     const tan = Math.tan(this.camera.fov * Math.PI / 360);

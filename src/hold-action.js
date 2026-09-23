@@ -1,8 +1,7 @@
-// Keep independent physical inputs alive until each is released. A second finger
-// lifting from steering must not release racing, nor may one Shift release the other.
+// Each action tracks independent keys/fingers so releasing one cannot cancel another.
 export class HoldAction {
-  constructor() { this.keys = new Set(); this.pointers = new Set(); }
-  keyDown(code) { if (['Space', 'ShiftLeft', 'ShiftRight'].includes(code)) this.keys.add(code); }
+  constructor(codes = ['ShiftLeft', 'ShiftRight']) { this.codes = new Set(codes); this.keys = new Set(); this.pointers = new Set(); }
+  keyDown(code) { if (this.codes.has(code)) this.keys.add(code); }
   keyUp(code) { this.keys.delete(code); }
   pointerDown(id) { this.pointers.add(id); }
   pointerUp(id) { this.pointers.delete(id); }

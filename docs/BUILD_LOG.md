@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 006: analog speed zones and rechargeable boost
+
+Implemented the user-approved shared control scheme: mobile circular stick uses moderate vertical motion for repositioning and outer forward/backward zones for fast/brake; PC uses WASD/arrows, Shift fast, Ctrl brake, Space boost. The independent mobile button is BOOST. Added deadzone/hysteresis, action-specific independent key/finger tracking, and held-action repeat suppression across pause/focus changes.
+
+Added 12 m/s braking, separate 122 m/s consumable boost, four-second tank, 2.5-second recharge delay, 20-second refill, minimum activation charge, and brake/exhaustion rearm rules. Fast mode stays unlimited. HUD/hints document controls, meter state and stronger boost effects. No upgrades, drops or recharge lanes/actions added. Visual gameplay testing remains user-owned.
+
+Validation: 41 unit tests, production build, and expanded nonvisual keyboard/touch/runtime smoke pass. Local preview rebuilt for user testing.
+
 ## 2026-09-24 — experiment 005: firing rows and moving neutral vehicles
 
 User liked racing past enemies during their side entry and requested delayed left-to-right purple fire plus slow, heavily armored yellow vehicles. Preserved merge timing and bypass opportunity. Added a shared volley clock, per-carrier charge cue, one rearward shot every 0.18 seconds across the row, and 3.8 seconds between sweeps. Rows do not fire during entry or after the player passes; destroyed slots stay empty.
