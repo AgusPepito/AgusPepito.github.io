@@ -4,3 +4,4 @@
 .effect-row input { width: 100%; margin: 12px 0 0; accent-color: #caff64; }
 .tuning { max-height: calc(100dvh - 95px); overflow-y: auto; }
 .hazard-note { font-size: 11px; color: #ffb25c; line-height: 1.6; }
+.shield-meter { background: #e52e36; outline: 1px solid #101010; }

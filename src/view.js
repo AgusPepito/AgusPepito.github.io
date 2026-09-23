@@ -52,7 +52,13 @@ export class GameView {
     this.obstacleMarks = this.batch(20, new THREE.MeshBasicMaterial({ color: 0x2b2825 }));
     this.vehicleCabs = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xffd986, roughness: 0.6 }));
     this.vehicleWheels = this.batch(80, new THREE.MeshStandardMaterial({ color: 0x192129 }));
-    this.vehicleHealth = this.batch(20, new THREE.MeshBasicMaterial({ color: 0xfff0c2 }));
+    this.healthLayers = [0x101010, 0xe52e36, 0x39f267].map((color, i) => {
+      const mesh = this.batch(80, new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, fog: false, toneMapped: false }));
+      mesh.geometry = new THREE.PlaneGeometry(1, 1); mesh.renderOrder = 100 + i;
+      return mesh;
+    });
+    this.healthPoint = new THREE.Vector3(); this.healthRight = new THREE.Vector3();
+    this.healthLocal = new THREE.Vector3(); this.healthRotation = new THREE.Quaternion();
     this.shots = this.batch(220, new THREE.MeshBasicMaterial({ color: 0xcaff64 }));
     this.hostileShots = this.batch(220, new THREE.MeshBasicMaterial({ color: 0xffffff }));
     this.particlesBatch = this.batch(250, new THREE.MeshBasicMaterial({ color: 0xffffff }));
@@ -137,7 +143,7 @@ export class GameView {
     this.finish(this.posts, posts); this.finish(this.postLights, posts);
   }
   updateVehicles(sim) {
-    let count = 0, wheels = 0, health = 0;
+    let count = 0, wheels = 0;
     for (const o of sim.vehicles) {
       if (o.s < sim.s - 45 || o.s > sim.s + 220) continue;
       const f = { fx: -Math.sin(o.yaw), fz: -Math.cos(o.yaw), rx: Math.cos(o.yaw), rz: -Math.sin(o.yaw) };
@@ -149,12 +155,42 @@ export class GameView {
         this.put(this.vehicleWheels, wheels++, o.x + f.rx * side * (o.halfWidth - 0.05) + f.fx * end * o.d * 0.3,
           0.45, o.z + f.rz * side * (o.halfWidth - 0.05) + f.fz * end * o.d * 0.3, 0.3, 0.85, 0.9, o.yaw);
       }
-      if (o.hp < o.maxHp) this.put(this.vehicleHealth, health++, o.x - f.fx * o.d * 0.25, 1.92,
-        o.z - f.fz * o.d * 0.25, (o.w - 0.5) * o.hp / o.maxHp, 0.03, 0.22, o.yaw);
       count++;
     }
     this.finish(this.obstacles, count); this.finish(this.obstacleMarks, count);
-    this.finish(this.vehicleCabs, count); this.finish(this.vehicleWheels, wheels); this.finish(this.vehicleHealth, health);
+    this.finish(this.vehicleCabs, count); this.finish(this.vehicleWheels, wheels);
+  }
+  updateHealthBars(sim) {
+    let count = 0;
+    const [outline, background, fill] = this.healthLayers;
+    this.healthRotation.copy(this.camera.quaternion).invert();
+    this.healthRight.set(1, 0, 0).applyQuaternion(this.camera.quaternion);
+    const pixelScale = 2 * Math.tan(this.camera.fov * Math.PI / 360) / window.innerHeight;
+    for (const e of [...sim.enemies, ...sim.vehicles]) {
+      if (!e.active || e.hp <= 0 || e.s < sim.s - 35 || e.s > sim.s + 140 || count >= 80) continue;
+      this.healthPoint.set(e.x, e.neutral ? 3.2 : 2.7, e.z);
+      this.healthLocal.copy(this.healthPoint).sub(this.camera.position).applyQuaternion(this.healthRotation);
+      const depth = -this.healthLocal.z;
+      if (depth <= 0) continue;
+      // Camera-facing bars stay readable in both top-down and chase views.
+      // Sizes are in CSS pixels so the minimum height survives distance and DPR.
+      const pixel = depth * pixelScale;
+      const width = Math.max(20 * pixel, Math.min(52 * pixel, e.neutral ? 3.4 : 1.9));
+      const height = 7 * pixel;
+      const ratio = THREE.MathUtils.clamp(e.hp / e.maxHp, 0, 1);
+      const putBar = (mesh, w, h, offset = 0) => {
+        this.dummy.position.copy(this.healthPoint).addScaledVector(this.healthRight, offset);
+        this.dummy.quaternion.copy(this.camera.quaternion); this.dummy.scale.set(w, h, 1);
+        this.dummy.updateMatrix(); mesh.setMatrixAt(count, this.dummy.matrix);
+      };
+      putBar(outline, width + 2 * pixel, height + 2 * pixel);
+      putBar(background, width, height);
+      // Leave a red rim at full health; depleted health exposes the red track.
+      const inner = width - 2 * pixel;
+      putBar(fill, inner * ratio, height - 2 * pixel, -inner * (1 - ratio) / 2);
+      count++;
+    }
+    for (const mesh of this.healthLayers) this.finish(mesh, count);
   }
   updateRamps(ramps) {
     const active = new Set(); let rails = 0, ticks = 0;
@@ -237,8 +273,6 @@ export class GameView {
       mesh.rotation.set(0, Math.PI + e.yaw, e.armored ? 0 : Math.cos(e.age * 1.6 + e.slot) * 0.08, 'YXZ');
       if (e.armored) {
         mesh.getObjectByName('shield').scale.x = e.halfWidth * 2;
-        const bar = mesh.getObjectByName('health');
-        bar.scale.x = 1.4 * e.hp / e.maxHp; bar.position.x = (bar.scale.x - 1.4) / 2;
         const charge = mesh.getObjectByName('charge');
         charge.visible = (e.charge || 0) > 0;
         charge.scale.setScalar(0.4 + (e.charge || 0) * 0.9);
@@ -247,6 +281,7 @@ export class GameView {
     }
     for (const [id, mesh] of this.enemyMeshes) if (!active.has(id)) { this.scene.remove(mesh); this.enemyMeshes.delete(id); }
     this.finish(this.shadows, shadow);
+    this.updateHealthBars(sim);
     let friendly = 0, hostile = 0;
     for (const b of sim.bullets) {
       const yaw = Math.atan2(b.vx, b.vz);

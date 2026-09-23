@@ -1,5 +1,11 @@
 # Build receipts
 
+## 2026-09-24 — health-bar readability
+
+Replaced small roof-mounted bars with camera-facing bars for scouts, shield carriers and neutral vehicles. Bars have a dark outline, red background and green left-anchored remaining-health fill, including a red rim at full health. Minimum screen height is seven CSS pixels plus outline; world lighting/fog and vehicle geometry cannot hide the bars. Yellow vehicles now display health before taking damage. Player HUD shield meter uses the same red/green convention. Visual testing remains with the user.
+
+Production build and nonvisual browser runtime/input smoke pass; preview rebuilt without screenshot inspection.
+
 ## 2026-09-24 — experiment 006: analog speed zones and rechargeable boost
 
 Implemented the user-approved shared control scheme: mobile circular stick uses moderate vertical motion for repositioning and outer forward/backward zones for fast/brake; PC uses WASD/arrows, Shift fast, Ctrl brake, Space boost. The independent mobile button is BOOST. Added deadzone/hysteresis, action-specific independent key/finger tracking, and held-action repeat suppression across pause/focus changes.

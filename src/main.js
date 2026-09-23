@@ -168,7 +168,7 @@ function updateUI() {
   $('speed').textContent = String(Math.round(sim.speed * 3.6)).padStart(3, '0');
   $('speed-fill').style.width = `${clamp(sim.speed / SPEED.boost * 100, 0, 100)}%`;
   $('health').textContent = sim.health; $('health-fill').style.width = `${sim.health}%`;
-  $('health-fill').style.background = sim.health < 35 ? '#ff7182' : '#caff64';
+  $('health-fill').style.background = '#39f267';
   const progress = (sim.distance % COURSE_LENGTH) / COURSE_LENGTH * 100;
   $('course-marker').style.left = `${progress}%`; $('progress-label').textContent = `${Math.floor(progress)}%`;
   $('mode').textContent = sim.braking ? 'BRAKING' : sim.boostActive ? 'BOOST' : sim.racingHeld ? 'FAST MODE' : sim.raceBlend > 0.1 ? 'RETURNING TO CRUISE' : 'CRUISE / COMBAT';
