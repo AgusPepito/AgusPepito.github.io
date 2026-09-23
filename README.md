@@ -21,6 +21,8 @@ The first approved build is preserved at Git tag `prototype-01-zone-transitions`
 
 The ship follows bends automatically; steering moves across the road. Ships, camera, lane marks, barriers, and shots share the road's local orientation. Shots leave along that direction and then fly straight.
 
+Shield-row balance revision: carriers now have half their original health and travel closer to combat speed. Release overdrive to brake and match the intact carrier ahead while shooting. Destroying it restores normal speed; contact gives a brief recovery slowdown instead of immediately trapping you against the row.
+
 ```sh
 npm test
 npm run build

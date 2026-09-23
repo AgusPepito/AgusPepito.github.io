@@ -151,7 +151,7 @@ function updateUI() {
   const road = trackAt(sim.s);
   $('sector-name').textContent = road.label; $('sector-hint').textContent = road.hint;
   if (sim.enemies.some(e => e.armored && e.active && e.s > sim.s && e.s < sim.s + 140)) {
-    $('sector-hint').textContent = 'SHIELD ROW — release overdrive. Shoot a gap.';
+    $('sector-hint').textContent = sim.followingShield ? 'MATCHING SPEED — shoot a gap, then race through.' : 'SHIELD ROW — release overdrive to follow and fire.';
   }
   $('lap').textContent = `LAP ${String(sim.lap).padStart(2, '0')}`;
   $('score').textContent = String(sim.score).padStart(6, '0');
@@ -198,6 +198,7 @@ function frame(now) {
     enemies: sim.enemies.filter(e => e.active).length,
     armored: sim.enemies.filter(e => e.active && e.armored).length,
     deathReason: sim.deathReason,
+    followingShield: sim.followingShield,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },
   };

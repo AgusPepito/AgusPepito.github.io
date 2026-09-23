@@ -1,5 +1,11 @@
 # Build receipts
 
+## 2026-09-24 — shield-row fairness revision
+
+User reported that purple carriers were too tough and slower traffic caused unavoidable repeated crashes. Halved carrier health from 24 to 12, increased row speed from 16 to 22 m/s, reduced base collision damage from 32 to 18, and added 1.25 seconds of recovery slowdown after contact. Releasing overdrive now brakes and follows an intact deployed carrier in the player's lane at a safe gap; destroyed slots immediately release that speed limit. Holding overdrive retains collision risk. HUD explains when speed matching is active.
+
+29 nonvisual tests pass, including a full-speed release 25 metres behind a row, sustained following without firing, opening a gap within two seconds without damage, and recovery from a collision without repeated impacts after release. Visual feel remains for the user's playtest.
+
 ## 2026-09-24 — experiment 004: merge ramps, armored rows, speed effects
 
 User requested instant-death yellow barriers, enemy entry via distributed highway ramps, subtle configurable shake/wind, and a stronger lane-blocking enemy that handles road narrowing. Added six shared simulation/render ramp paths with open merging rails and connected apron collision bounds. All enemy spawning uses these ramps. Purple armored carriers deploy into seven fixed slots, retract shield wings as width changes, and retain destroyed gaps. Yellow barrier contact bypasses damage immunity; explicit practice mode remains damage-free.

@@ -43,7 +43,7 @@ export class Simulation {
     this.x = 0; this.z = -30; this.s = 30; this.lateral = 0; this.offset = 0; this.vx = 0; this.yaw = 0;
     this.health = 100; this.score = 0; this.kills = 0; this.passed = 0;
     this.wallHits = 0; this.hits = 0; this.lap = 1;
-    this.invulnerability = 0; this.slowdown = 0;
+    this.invulnerability = 0; this.slowdown = 0; this.shieldRecovery = 0; this.followingShield = false;
     this.shotTimer = 0; this.nextId = 1; this.deathReason = '';
     this.groups = []; this.spawnedRamps = new Map();
     this.enemies = []; this.bullets = []; this.events = [];
@@ -84,10 +84,22 @@ export class Simulation {
     this.time += dt;
     this.invulnerability = Math.max(0, this.invulnerability - dt);
     this.slowdown = Math.max(0, this.slowdown - dt);
+    this.shieldRecovery = Math.max(0, this.shieldRecovery - dt);
     this.racingHeld = Boolean(input.racing);
     this.raceBlend = lerp(this.raceBlend, this.racingHeld ? 1 : 0, 1 - Math.exp(-7 * dt));
-    const desiredSpeed = lerp(SPEED.combat, this.options.speedShift ? SPEED.racing : SPEED.combat, this.raceBlend) * (this.slowdown > 0 ? 0.65 : 1);
-    this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-4.5 * dt));
+    let desiredSpeed = lerp(SPEED.combat, this.options.speedShift ? SPEED.racing : SPEED.combat, this.raceBlend) * (this.slowdown > 0 ? 0.65 : 1);
+    this.followingShield = false;
+    if (!this.racingHeld) for (const e of this.enemies) {
+      if (!e.armored || !e.active || e.hp <= 0 || e.deployed < 1 || e.s <= this.s) continue;
+      // Combat mode follows only the intact carrier in our path. A shot-out slot
+      // immediately releases the speed limit, allowing the player through the gap.
+      if (Math.abs(e.lateral - this.lateral) > e.halfWidth + PLAYER.halfWidth + 0.35) continue;
+      const gap = e.s - this.s - e.halfDepth - PLAYER.halfDepth;
+      const followSpeed = FORMATION.speed + Math.max(0, gap - FORMATION.followGap) * 2.5;
+      if (followSpeed < desiredSpeed) { desiredSpeed = followSpeed; this.followingShield = true; }
+    }
+    if (this.shieldRecovery > 0) desiredSpeed = Math.min(desiredSpeed, FORMATION.speed * 0.75);
+    this.speed = lerp(this.speed, desiredSpeed, 1 - Math.exp(-(this.followingShield ? 12 : 4.5) * dt));
     this.distance = advanceOnRoad(this.distance, this.speed * dt);
     this.offset = clamp(this.offset + clamp(input.y || 0, -1, 1) * 11 * dt, -7, 10);
     const oldX = this.x, oldZ = this.z;
@@ -150,11 +162,12 @@ export class Simulation {
         }
       }
       if (sweptHitsEntity(oldX, oldZ, this.x, this.z, e, e.halfWidth + PLAYER.halfWidth, e.halfDepth + PLAYER.halfDepth)) {
-        this.hurt(e.armored ? 32 : 18, 'enemy');
+        this.hurt(e.armored ? FORMATION.impact : 18, 'enemy');
         if (e.armored && this.status === 'playing') {
           // A solid shield row cannot be skipped by exploiting damage immunity.
           this.s = Math.min(this.s, e.s - e.halfDepth - PLAYER.halfDepth - 0.4);
           this.distance = this.s - this.offset; this.speed = Math.min(this.speed, FORMATION.speed * 0.65);
+          this.shieldRecovery = FORMATION.recoverySeconds;
           Object.assign(this, roadPoint(this.s, this.lateral)); this.yaw = roadFrame(this.s).yaw;
         }
         if (this.status === 'over') return;

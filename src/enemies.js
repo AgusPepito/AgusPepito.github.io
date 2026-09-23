@@ -1,6 +1,9 @@
 import { lerp, smooth, trackAt, rampSample, roadPoint, roadFrame, advanceOnRoad } from './track.js';
 
-export const FORMATION = { count: 7, hp: 24, speed: 16, entrySeconds: 3, deploySeconds: 1.3 };
+export const FORMATION = {
+  count: 7, hp: 12, speed: 22, entrySeconds: 3, deploySeconds: 1.3,
+  followGap: 12, impact: 18, recoverySeconds: 1.25,
+};
 
 // Slots remain stable after a kill. Narrowing retracts each shield's wings and
 // compresses the same slots, preserving the opening the player has earned.

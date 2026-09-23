@@ -99,6 +99,48 @@ test('connected merge aprons have matching driveable space and disconnect behind
   assert.equal(drivableBounds(ramp.end + 1).left, -trackAt(ramp.end + 1).width / 2);
 });
 
+function shieldEncounter(gap = 25) {
+  const sim = new Simulation({ traffic: false }); sim.start();
+  sim.spawnRamp(rampsNear(420, 0, 0).find(r => r.kind === 'armored'));
+  const group = sim.groups[0]; group.age = 10; group.s = 610;
+  for (const e of sim.enemies) placeEnemy(e, group);
+  sim.s = sim.distance = group.s - gap;
+  sim.speed = SPEED.racing; sim.raceBlend = 1;
+  Object.assign(sim, roadPoint(sim.s));
+  return sim;
+}
+
+test('releasing overdrive close to an intact row brakes safely and sustains following', () => {
+  const sim = shieldEncounter(); sim.shotTimer = Infinity;
+  let followed = false;
+  for (let i = 0; i < 120 * 10; i++) {
+    sim.step(1 / 120);
+    followed ||= sim.followingShield;
+    const e = sim.enemies.find(e => e.slot === 3);
+    assert.ok(e.s - sim.s > e.halfDepth + PLAYER.halfDepth + 5);
+  }
+  assert.ok(followed); assert.equal(sim.health, 100); assert.equal(sim.hits, 0);
+  assert.ok(Math.abs(sim.speed - FORMATION.speed) < 0.1);
+});
+
+test('a close released-overdrive encounter opens a gap promptly without damage', () => {
+  const sim = shieldEncounter();
+  for (let i = 0; i < 120 * 2; i++) sim.step(1 / 120);
+  assert.ok(sim.kills >= 1); assert.equal(sim.enemies.some(e => e.slot === 3), false);
+  assert.equal(sim.health, 100); assert.equal(sim.followingShield, false);
+});
+
+test('a shield collision gives recovery time instead of repeated immediate impacts', () => {
+  const sim = shieldEncounter(3); sim.shotTimer = Infinity;
+  sim.step(1 / 120, { racing: true });
+  assert.equal(sim.hits, 1); assert.ok(sim.health >= 65); assert.ok(sim.shieldRecovery > 1);
+  for (let i = 0; i < 120; i++) sim.step(1 / 120, { racing: true });
+  assert.equal(sim.hits, 1); assert.equal(sim.status, 'playing');
+  for (let i = 0; i < 120 * 3; i++) sim.step(1 / 120);
+  assert.equal(sim.hits, 1, 'releasing after a mistake prevents another impact');
+  sim.reset(); assert.equal(sim.shieldRecovery, 0); assert.equal(sim.followingShield, false);
+});
+
 test('effects scale with speed, allow full disable, respect reduced motion, and reserve turbo headroom', () => {
   for (const value of Object.values(EFFECT_DEFAULTS)) {
     assert.ok(effectStrength(82, value) > effectStrength(26, value));

@@ -1,5 +1,9 @@
 # Prototype validation
 
+## Shield-row fairness revision — 2026-09-24
+
+29 nonvisual unit tests pass. New scenarios verify safe braking/following after releasing overdrive 25 metres behind a deployed row, a gap opened within two seconds without shield loss, and a recoverable initial collision. No browser visual testing was performed.
+
 ## Experiment 004 — 2026-09-24
 
 26 nonvisual unit tests pass. Added coverage for instant-death barriers at combat/racing speed and during damage immunity, ramp entry and lap repetition, continuous shield-row deployment, full-width coverage and usable destroyed gaps at every road width, sustained-fire kills, immunity-resistant row blocking, merge-apron bounds, and configurable speed effects. Production build passes (about 0.54 MB).
