@@ -29,9 +29,10 @@ test('six Darts have two of each role and signal formation changes', () => {
 
 test('Darts fire direct triple bursts, single predictions and three-way fans', () => {
   const s = run('darts', { invincible: true }); s.shotTimer = Infinity;
+  const initial = [...s.enemies];
   const seen = new Map();
-  for (let i = 0; i < 300; i++) { s.step(1 / 120); for (const b of s.bullets) seen.set(b.id, { ...b }); }
-  for (const e of s.enemies) {
+  for (let i = 0; i < 120 * 7; i++) { s.step(1 / 120); for (const b of s.bullets) seen.set(b.id, { ...b }); }
+  for (const e of initial) {
     const shots = [...seen.values()].filter(b => b.sourceId === e.id);
     assert.equal(shots.length, e.role === 'predict' ? 1 : 3);
     assert.ok(shots.every(b => b.color != null && !b.friendly));
@@ -40,10 +41,14 @@ test('Darts fire direct triple bursts, single predictions and three-way fans', (
 });
 
 test('prediction lead is capped and targets stay fixed after a player reversal', () => {
-  const s = run('darts'); s.vx = 19; s.encounter.updateDarts(0.21);
-  assert.equal(s.enemies[0].aimLane, 0); assert.equal(s.enemies[1].aimLane, R.dartLead);
+  const s = run('darts'); s.vx = 19;
+  for (const e of s.enemies) e.visibleFor = R.visibleWarning;
+  s.encounter.updateDartFire(0.21);
+  assert.equal(s.enemies[0].aimLane, 0);
+  for (let i = 0; i < 200 && s.encounter.dartLastId !== s.enemies[1].id; i++) s.encounter.updateDartFire(1 / 120);
+  assert.equal(s.enemies[1].aimLane, R.dartLead);
   const target = { ...s.enemies[1].aimTarget };
-  s.vx = -19; s.lateral = -8; s.encounter.updateDarts(0.3);
+  s.vx = -19; s.lateral = -8; s.encounter.updateDartFire(0.3);
   assert.deepEqual(s.enemies[1].aimTarget, target);
 });
 

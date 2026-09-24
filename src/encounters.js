@@ -1,4 +1,5 @@
 import { clamp, lerp, smooth, trackAt, roadPoint, roadFrame, advanceOnRoad, roadCoordinates } from './track.js';
+import { SCOUT_FIRE } from './scout-fire.js';
 
 export const ENCOUNTERS = {
   darts: { name: 'Dart squadron', hint: 'RED: direct burst · CYAN: prediction · GOLD: spread. Move, stop, reverse.' },
@@ -7,7 +8,7 @@ export const ENCOUNTERS = {
   convoy: { name: 'Armed convoy', hint: 'Destroy rear turrets for safety, or raid the three locks for salvage.' },
 };
 export const ENCOUNTER_RULES = {
-  dartHold: 2.2, dartWarning: 0.7, dartChange: 1, dartCycle: 2.8, dartLead: 6,
+  dartHold: 2.2, dartWarning: 0.7, dartChange: 1, dartAttackGap: 0.25, dartLead: 6,
   interceptorAim: 0.55, interceptorLock: 0.65, interceptorCharge: 0.75, interceptorRecovery: 1.6,
   dashWarning: 0.65, dashDuration: 1.05, dashDistance: 14,
   dartWaves: 3, dartWaveInterval: 7, visibleWarning: 0.7, supportInterval: 4.8,
@@ -33,7 +34,10 @@ export class Encounter {
     this.result = ''; this.outcome = ''; this.finishTimer = 0; this.hint = ENCOUNTERS[type].hint;
     this.anchor = sim.distance + 30;
     this.supportTimer = 0.9; this.supportWave = 0;
-    if (type === 'darts') { this.waves = []; this.spawnDartWave(); }
+    if (type === 'darts') {
+      this.waves = []; this.dartAttack = null; this.dartLastId = 0; this.dartDelay = 0.2;
+      this.spawnDartWave();
+    }
     if (type === 'interceptors') {
       for (let slot = 0; slot < 3; slot++) {
         const e = this.add('interceptor', slot, sim.distance + 32 + slot * 3, [-8, 8, 0][slot], 12, 1.25, 2);
@@ -90,7 +94,7 @@ export class Encounter {
         const side = (slot + this.supportWave) % 2 ? 1 : -1;
         const s = this.sim.distance + 25 + slot * 5;
         const e = this.add('scout', slot, s, side * Math.min(14, trackAt(s).width / 2 - 2), 3, 1.2, 1.6);
-        e.support = true; e.side = side; e.fire = 1; e.entryLane = e.lateral;
+        e.support = true; e.side = side; e.fire = 1 + slot * SCOUT_FIRE.volleyGap; e.entryLane = e.lateral;
       }
       this.supportWave++; this.supportTimer = ENCOUNTER_RULES.supportInterval;
     }
@@ -99,9 +103,12 @@ export class Encounter {
       const lane = e.side * edge * 0.65 + Math.sin(e.age * 1.6 + e.slot) * 2;
       locate(e, s, lerp(e.entryLane, lane, smooth(e.age / 1.2)));
       e.fire -= dt; e.charge = e.fire < 0.7 ? 1 : 0;
-      if (e.fire <= 0) {
-        for (const spread of [-0.15, 0, 0.15]) this.shoot(e, 'scout', 17, { x: this.sim.x, z: this.sim.z }, spread);
-        e.fire = 2.25;
+      if (e.fire <= 0 && this.sim.time >= this.sim.scoutNextFire && e.s >= this.sim.s + 8 &&
+          this.isVisible(e) && e.visibleFor >= ENCOUNTER_RULES.visibleWarning) {
+        for (const spread of [-SCOUT_FIRE.spread, 0, SCOUT_FIRE.spread])
+          this.shoot(e, 'scout', SCOUT_FIRE.speed, { x: this.sim.x, z: this.sim.z }, spread);
+        e.fire = SCOUT_FIRE.cooldown;
+        this.sim.scoutNextFire = this.sim.time + SCOUT_FIRE.volleyGap;
       }
     }
   }
@@ -111,7 +118,7 @@ export class Encounter {
     return roadPoint(this.sim.s + this.sim.speed * travel, lane);
   }
   spawnDartWave() {
-    const wave = { index: this.waves.length, age: 0, anchor: this.sim.distance + 24, volley: -1 };
+    const wave = { index: this.waves.length, age: 0, anchor: this.sim.distance + 24 };
     this.waves.push(wave);
     for (let slot = 0; slot < 6; slot++) {
       const e = this.add('dart', slot, wave.anchor + Math.abs(slot - 2.5) * 5, (slot - 2.5) * 5, 6, 0.8, 1.2);
@@ -130,6 +137,7 @@ export class Encounter {
   updateDarts(dt) {
     if (this.waves.length < ENCOUNTER_RULES.dartWaves && this.age >= this.waves.length * ENCOUNTER_RULES.dartWaveInterval) this.spawnDartWave();
     for (const wave of this.waves) this.updateDartWave(wave, dt);
+    this.updateDartFire(dt);
     this.hint = `WAVE ${this.waves.length}/3 · ${ENCOUNTERS.darts.hint}`;
   }
   updateDartWave(wave, dt) {
@@ -147,28 +155,41 @@ export class Encounter {
       locate(e, wave.anchor + lerp(vS, colS, column), lerp(vX, colX, column));
       e.formationWarning = warning;
     }
-    const volley = Math.floor(Math.max(0, wave.age - 0.2) / ENCOUNTER_RULES.dartCycle);
-    if (wave.age >= 0.2 + volley * ENCOUNTER_RULES.dartCycle && wave.volley !== volley) {
-      wave.volley = volley;
-      for (const e of members) {
-        const delay = 0.7 + ((e.slot + volley) % 6) * 0.14;
-        const travel = Math.max(0, e.s - this.sim.s) / (32 + this.sim.speed);
-        const lead = e.role === 'predict' ? clamp(this.sim.vx * (delay + travel), -ENCOUNTER_RULES.dartLead, ENCOUNTER_RULES.dartLead) : 0;
-        const targetS = e.role === 'direct' ? this.sim.s : Math.min(e.s - 8, this.sim.s + this.sim.speed * (delay + travel));
-        const edge = trackAt(targetS).width / 2 - 1;
-        e.aimLane = clamp(this.sim.lateral + lead, -edge, edge);
-        e.aimTarget = roadPoint(targetS, e.aimLane); e.lastShot = -1;
-      }
+  }
+  updateDartFire(dt) {
+    const ready = e => e.hp > 0 && !e.passed && e.s >= this.sim.s + 8 &&
+      this.isVisible(e) && e.visibleFor >= ENCOUNTER_RULES.visibleWarning;
+    // One firing turn across ALL waves. No overdue volleys accumulate offscreen.
+    if (this.dartAttack && !ready(this.dartAttack.enemy)) {
+      this.dartAttack.enemy.charge = 0;
+      this.dartAttack = null; this.dartDelay = ENCOUNTER_RULES.dartAttackGap;
+      return;
     }
-    for (const e of members) {
-      const due = 0.9 + volley * ENCOUNTER_RULES.dartCycle + ((e.slot + volley) % 6) * 0.14;
-      e.charge = wave.age >= 0.2 + volley * ENCOUNTER_RULES.dartCycle && wave.age < due ? 1 : 0;
-      const count = e.role === 'direct' ? 3 : 1;
-      for (let shot = 0; shot < count; shot++) if (wave.age >= due + shot * 0.16 && e.lastShot < shot) {
-        if (e.role === 'spread') for (const spread of [-0.18, 0, 0.18]) this.shoot(e, 'dart-spread', 28, e.aimTarget, spread);
-        else this.shoot(e, `dart-${e.role}`, e.role === 'predict' ? 36 : 30, e.aimTarget);
-        e.lastShot = shot;
-      }
+    if (!this.dartAttack) {
+      this.dartDelay -= dt;
+      if (this.dartDelay > 0) return;
+      const candidates = this.members.filter(e => e.kind === 'dart' && ready(e));
+      const e = candidates.find(e => e.id > this.dartLastId) || candidates[0];
+      if (!e) return;
+      this.dartLastId = e.id;
+      const delay = ENCOUNTER_RULES.dartWarning;
+      const travel = Math.max(0, e.s - this.sim.s) / (32 + this.sim.speed);
+      const lead = e.role === 'predict' ? clamp(this.sim.vx * (delay + travel), -ENCOUNTER_RULES.dartLead, ENCOUNTER_RULES.dartLead) : 0;
+      const targetS = e.role === 'direct' ? this.sim.s : Math.min(e.s - 8, this.sim.s + this.sim.speed * (delay + travel));
+      const edge = trackAt(targetS).width / 2 - 1;
+      e.aimLane = clamp(this.sim.lateral + lead, -edge, edge);
+      e.aimTarget = roadPoint(targetS, e.aimLane);
+      this.dartAttack = { enemy: e, age: 0, shot: 0 };
+      e.charge = 1; return;
+    }
+    const attack = this.dartAttack, e = attack.enemy;
+    attack.age += dt; e.charge = attack.age < ENCOUNTER_RULES.dartWarning ? 1 : 0;
+    if (attack.age < ENCOUNTER_RULES.dartWarning + attack.shot * 0.16) return;
+    if (e.role === 'spread') for (const spread of [-0.18, 0, 0.18]) this.shoot(e, 'dart-spread', 28, e.aimTarget, spread);
+    else this.shoot(e, `dart-${e.role}`, e.role === 'predict' ? 36 : 30, e.aimTarget);
+    attack.shot++;
+    if (attack.shot >= (e.role === 'direct' ? 3 : 1)) {
+      this.dartAttack = null; this.dartDelay = ENCOUNTER_RULES.dartAttackGap;
     }
   }
   updateInterceptors(dt) {

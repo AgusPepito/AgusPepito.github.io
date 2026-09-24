@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 011 — 2026-09-24
+
+71 nonvisual tests pass. New integration checks measure red fan velocity and angular gaps, global volley spacing across reinforcement pairs and merged highway groups, Dart firing separation across three overlapping waves, cancellation on visibility loss/death, and pause/reset behavior. Existing role-pattern assertions now allow a full rotation of individually scheduled attacks. Reentry validation observes shot emission over time instead of requiring a bullet to remain in flight at one arbitrary instant. Prior visibility, encounters, controls and collision checks pass. Production build passes (about 0.59 MB). Gameplay balance remains for the user's playtest; no visual inspection performed.
+
+Nonvisual browser smoke also passes all four encounter runtime/menu/retry/result flows and mobile touch selection, with no browser runtime errors or screenshots.
+
 ## Experiment 010 — 2026-09-24
 
 67 nonvisual tests pass. New numerical camera checks cover full-body initial staging on desktop/portrait/landscape phone, actual projected shooting positions, visibility grace and reentry. Integration tests cover recurring red scouts in all encounters, three double-health Dart waves, heavy miners and wide/narrow rotating walls, four rear turrets, sustained side dashes, and safe Interceptor staging at boost speed with forward repositioning. Existing role, warning, reward, orbit, collision, control and highway tests pass.

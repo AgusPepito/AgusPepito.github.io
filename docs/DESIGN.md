@@ -1,6 +1,10 @@
 # Mechanics experiments
 
-## Current experiment: 010 — top-down visibility and combined threats
+## Current experiment: 011 — room between attacks
+
+User feedback identified overly effective red scouts and synchronized Dart walls. Red scout fans now travel at 12 m/s with 0.3-radian spacing and a 2.8-second individual reload. A shared 0.9-second volley interval prevents synchronization across cars and reinforcement pairs, also in the highway run. All Dart waves share a rotating attack turn: 0.7-second locked aim warning, the existing role attack, then a 0.25-second pause before the next ship prepares. Hidden/dead ships cancel their turn instead of accumulating shots. Dart health, waves, rewards and movement remain as before. Interceptors, miners and convoy attacks retain the prior tuning so the user can evaluate them with the reduced red-car pressure.
+
+## Experiment 010 — top-down visibility and combined threats
 
 User testing found shooters outside the top-down view and requested more endurance and simultaneous threats. Staging now fits the top-down camera, and a full-body camera projection gate with 0.7 seconds of readable exposure controls all encounter shooting. Interceptor preparation also requires visibility. Darts have 6 HP and three six-ship waves. The side dash lasts 1.05 seconds across up to 14 metres. Miners have 30 HP, faster orbit drops, and a separately warned wall of counter-rotating clusters. The convoy carries four rear turrets. Normal red scouts reinforce all four tests independently of the main objective.
 

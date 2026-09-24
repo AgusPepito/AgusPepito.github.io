@@ -3,6 +3,7 @@ import { FORMATION, placeEnemy, SHIELD_VOLLEY, shieldVolley } from './enemies.js
 import { vehicleSeed, createVehicle, moveVehicle } from './neutral-traffic.js';
 import { BoostMeter } from './boost.js';
 import { Encounter, ENCOUNTERS } from './encounters.js';
+import { SCOUT_FIRE } from './scout-fire.js';
 
 export const PLAYER = { halfWidth: 0.65, halfDepth: 1.1 };
 export const SPEED = { brake: 12, combat: 26, racing: 82, boost: 122 };
@@ -49,6 +50,7 @@ export class Simulation {
     this.wallHits = 0; this.hits = 0; this.lap = 1;
     this.invulnerability = 0; this.slowdown = 0; this.shieldRecovery = 0; this.followingShield = false;
     this.shotTimer = 0; this.nextId = 1; this.deathReason = '';
+    this.scoutNextFire = 0;
     this.groups = []; this.spawnedRamps = new Map();
     this.enemies = []; this.bullets = []; this.events = [];
     this.vehicles = []; this.nextVehicleSeed = 0; this.vehiclesDestroyed = 0;
@@ -186,13 +188,14 @@ export class Simulation {
       if (!e.active) continue;
       const road = trackAt(e.s);
       if (!e.encounter) e.fire -= dt;
-      if (!e.encounter && !e.armored && e.deployed === 1 && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
-        e.fire = 2.25;
+      if (!e.encounter && !e.armored && e.hp > 0 && e.deployed === 1 && road.tight < 0.5 && e.fire <= 0 && this.time >= this.scoutNextFire && e.s > this.s + 9 && e.s < this.s + 65) {
+        e.fire = SCOUT_FIRE.cooldown;
+        this.scoutNextFire = this.time + SCOUT_FIRE.volleyGap;
         const dx = this.x - e.x, dz = this.z - e.z;
         const length = Math.hypot(dx, dz), f = roadFrame(e.s);
-        for (const spread of [-0.15, 0, 0.15]) {
+        for (const spread of [-SCOUT_FIRE.spread, 0, SCOUT_FIRE.spread]) {
           const angle = Math.atan2(dx, dz) + spread;
-          this.bullets.push({ id: this.nextId++, x: e.x - f.fx * 1.6, z: e.z - f.fz * 1.6, s: e.s - 1.6, vx: Math.sin(angle) * 17, vz: Math.cos(angle) * 17, friendly: false, life: Math.min(5, length / 12 + 1) });
+          this.bullets.push({ id: this.nextId++, sourceId: e.id, pattern: 'scout', x: e.x - f.fx * 1.6, z: e.z - f.fz * 1.6, s: e.s - 1.6, vx: Math.sin(angle) * SCOUT_FIRE.speed, vz: Math.cos(angle) * SCOUT_FIRE.speed, friendly: false, life: Math.min(5, length / SCOUT_FIRE.speed + 1) });
         }
       }
       if (e.hp > 0 && e.kind !== 'lock' && sweptHitsEntity(oldX, oldZ, this.x, this.z, e, e.halfWidth + PLAYER.halfWidth, e.halfDepth + PLAYER.halfDepth)) {

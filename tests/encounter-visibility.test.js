@@ -44,7 +44,9 @@ test('hidden shooters cannot attack and reentry requires a fresh readable interv
   s.threatVisible = () => false; advance(s, 3);
   assert.equal(s.bullets.length, 0);
   s.threatVisible = () => true; advance(s, 0.6); assert.equal(s.bullets.length, 0);
-  advance(s, 3); assert.ok(s.bullets.length > 0);
+  let fired = false;
+  for (let i = 0; i < 120 * 3; i++) { s.step(1 / 120); fired ||= s.bullets.length > 0; }
+  assert.ok(fired);
   const previous = new Set(s.bullets.map(b => b.id)); s.threatVisible = () => false; advance(s, 2);
   assert.ok(s.bullets.every(b => previous.has(b.id)));
 });

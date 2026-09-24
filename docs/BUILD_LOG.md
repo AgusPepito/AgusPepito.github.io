@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 011: soften scouts and separate Dart attacks
+
+Responding to the user's playtest: red cars now fire at 12 rather than 17 m/s, with neighboring bullets 0.3 rather than 0.15 radians apart. Individual reload increased to 2.8 seconds. A shared 0.9-second volley interval prevents multiple cars firing together, even across spawn groups; both encounter reinforcements and highway scouts use the same tuning. Darts share one rotating attack turn across all active waves, retaining direct bursts, prediction and fans. Each turn has 0.7 seconds of locked aim preparation; after firing, the next ship waits 0.25 seconds before preparing. Hidden/dead attackers cancel their turn without accumulating shots.
+
+Dart health, wave count, movement and rewards remain as in lab 010. Interceptors, miners and convoy attacks are unchanged so the next test isolates the red-scout contribution. Validation: 71 tests and production build pass. No agent visual gameplay review.
+
+Nonvisual encounter browser smoke passes all four encounter flows and mobile touch selection without runtime errors. Preview rebuilt as lab 011.
+
 ## 2026-09-24 — experiment 010: visible attackers and combined encounter pressure
 
 Addressed the user's top-down feedback by moving encounter staging into the camera's forward view and requiring full-body projection within playable margins for 0.7 seconds before any encounter bullet can spawn. Visibility loss resets exposure; Interceptors also wait for visibility before preparation. The actual render camera supplies this check, covering camera toggles/transitions without changing the camera framing.
