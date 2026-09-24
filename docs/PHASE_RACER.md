@@ -118,3 +118,16 @@ Guidance now colors each approach segment for the next phase gate along that rou
 ### Drive-through checkpoint behavior
 
 Checkpoint completion automatically advances into the next stage with a short top notification; there is no Continue screen. Current speed, steering momentum/position, phase, jump and brake state carry through, held inputs remain active, and boost refills. The per-level timer resets, and best time/furthest checkpoint are saved. This supersedes the earlier paused checkpoint handoff. Stage geometry is rebuilt at the boundary; gameplay performance at that handoff awaits user evaluation.
+
+### Jump timing guidance
+Track gaps now show a gold takeoff band around the current lane on flat, inside and outside surfaces. Guide chevrons gather toward it; SPACE / JUMP appears in the estimated takeoff window. Orange means build speed with W first. Airborne, the band clears and the landing ring remains highlighted. Partial gaps only cue when the current lane crosses missing pavement.
+The shared cue uses analytic unboosted coast distance over the jump duration minus 50 ms, an 8 m landing margin, current brake target when braking, and the largest of nine track metric samples. The window is capped at the final 0.2 seconds before the edge. It assumes no further braking or steering; future turbo acceleration is not promised. Timing updates as speed changes. Reduced motion keeps the cue without pulsing. No automatic jump.
+
+
+### Frequent boost for time chasing
+Racer boost now regenerates 12% per second after a 0.8 second release delay (previously 6% and 2.5 seconds). Empty-to-full takes approximately 9.1 seconds including delay; minimum reusable charge takes approximately 2.05 seconds. Full burst remains four seconds, with the same speed, drain, and release-to-rearm behavior. Original highway defaults remain unchanged. Intended direction: learn a level safely, then master more boost for faster personal times. Long-gap tuning for fully boost-optional completion and competitive charts remain future work.
+
+
+### Lane-powered turbo
+Holding turbo while grounded on a matching phase strip now consumes no charge and works even with an empty battery. Charge is preserved, not refilled, during free turbo. Releasing turbo allows normal recharge; leaving the strip, changing to an unmatched phase, or jumping resumes normal battery rules. HUD labels matching lanes and free turbo. Original highway behavior is unchanged.
+

@@ -1,5 +1,11 @@
 # VECTOR SHIFT — mechanics prototype
 
+## Play online
+
+GitHub Pages: https://aguspepito.github.io/ — Phase Racer is the homepage; the preserved highway prototype is linked at `/highway.html`.
+
+Pushing `main` publishes through `.github/workflows/pages.yml`. The workflow installs dependencies, builds, packages `pages-dist/`, and deploys to Pages. It does not run tests. Local preview URLs remain unchanged. Records and progress are stored per browser/site, so local preview saves do not transfer to the hosted game.
+
 ## New: Phase Racer
 
 Open `/racer.html` for the separate racing pivot. The original highway game remains at `/index.html`, preserved before the pivot in commit `90f2982`. Both pages are included in the production build and link to each other.

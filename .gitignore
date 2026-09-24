@@ -1,7 +1,7 @@
 node_modules/
 dist/
+pages-dist/
 artifacts/
 *.log
 .env*
 !.env.example
-

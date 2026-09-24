@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { section, frame, wrap, clamp, GATES, PHASES } from './track.js';
 import { OBSTACLES, passageDirection } from './obstacles.js';
-import { GAPS, JUMP, gapAt, jumpPose } from './jumps.js';
+import { GAPS, JUMP, gapAt, jumpPose, gapJumpCue } from './jumps.js';
 
 // A Hermite curve in track coordinates: a world-space spline would cut through tubes.
 export class PassageGuide {
@@ -29,6 +29,13 @@ export class PassageGuide {
     this.marker = new THREE.Mesh(new THREE.TorusGeometry(1.8, 0.1, 6, 32), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }));
     this.landingMarker = new THREE.Mesh(this.marker.geometry, this.marker.material);
     this.phaseColors = PHASES.map(p => new THREE.Color(p.hex));
+    this.bandPositions = new Float32Array(24 * 18);
+    const bandGeometry = new THREE.BufferGeometry();
+    bandGeometry.setAttribute('position', new THREE.BufferAttribute(this.bandPositions, 3));
+    this.takeoffBand = new THREE.Mesh(bandGeometry, new THREE.MeshBasicMaterial({ color: 0xffdf88,
+      transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    this.takeoffBand.frustumCulled = false; this.takeoffBand.renderOrder = 7;
+    this.group.add(this.takeoffBand);
     this.group.add(this.marker, this.landingMarker); this.group.visible = false;
   }
   update(race, reducedMotion) {
@@ -39,6 +46,25 @@ export class PassageGuide {
     const leap = obstacle && (obstacle.kind === 'jump' || obstacle.kind === 'gap');
     this.group.visible = Boolean(obstacle && (leap || obstacle.s > race.s + 4) && race.mode === 'phase' && ['running', 'paused'].includes(race.state));
     if (!this.group.visible) return;
+    const cue = obstacle.kind === 'gap' ? gapJumpCue(race, obstacle) : null;
+    this.takeoffBand.visible = Boolean(cue && !race.airborne && race.s < cue.latest);
+    if (this.takeoffBand.visible) {
+      this.takeoffBand.material.color.setHex(cue.enough ? 0xffdf88 : 0xff945c);
+      this.takeoffBand.material.opacity = cue.ready ? 0.95 : 0.4;
+      const halfWidth = 5 / section(obstacle.start).halfWidth;
+      for (let i = 0; i < 24; i++) {
+        const a = race.u - halfWidth + halfWidth * 2 * i / 24;
+        const b = a + halfWidth * 2 / 24;
+        const vertices = [[cue.bandStart, a], [cue.latest, a], [cue.bandStart, b],
+          [cue.bandStart, b], [cue.latest, a], [cue.latest, b]];
+        vertices.forEach(([s, u], j) => {
+          const local = section(s);
+          const f = frame(s, local.closed ? wrap(u) : clamp(u, -0.97, 0.97));
+          f.p.addScaledVector(f.normal, 0.18).toArray(this.bandPositions, i * 18 + j * 3);
+        });
+      }
+      this.takeoffBand.geometry.attributes.position.needsUpdate = true;
+    }
     // Show the passage beyond the landing while the gap is still the active hazard.
     // Do not skip another missing section or another wall to reach that passage.
     const followingWall = obstacle.kind === 'gap' ? OBSTACLES.find(o => o.s > obstacle.end) : null;
@@ -62,7 +88,7 @@ export class PassageGuide {
     const delta = closedApproach ? wrap(targetU - race.u) : targetU - race.u;
     const tangent = clamp(race.lateralSpeed / section(race.s).halfWidth * length / Math.max(1, race.speed), -0.3, 0.3);
     const jumpRoute = obstacle.kind === 'jump' || obstacle.kind === 'gap' && Boolean(gapAt(obstacle.start + 0.1, race.u));
-    const takeoff = obstacle.kind === 'gap' ? obstacle.start - 6 : obstacle.s - Math.max(25, race.speed * 0.3);
+    const takeoff = obstacle.kind === 'gap' ? cue?.enough ? (cue.earliest + cue.latest) / 2 : obstacle.start - 2 : obstacle.s - Math.max(25, race.speed * 0.3);
     const fallbackColor = new THREE.Color(jumpRoute ? 0xffdf88 : 0xf1fff4);
     const routeGates = GATES.filter(g => g.s > race.s && g.s <= endS + 3);
     const colorAt = s => {
@@ -94,7 +120,11 @@ export class PassageGuide {
     this.arrowMesh.geometry.setDrawRange(0, count * 3);
     for (let i = 0; i < count; i++) {
       const travel = reducedMotion ? 0.5 : (race.time * 1.4) % 1;
-      const t = (i + travel) / count;
+      let t = (i + travel) / count;
+      // Pack the approaching chevrons toward the takeoff band, retaining the
+      // rest of the route and any following wall passage beyond the gap.
+      const bandT = cue && !race.airborne ? clamp((takeoff - startS) / length, 0, 1) : 0;
+      if (bandT > 0 && t < bandT) t = bandT * (1 - (1 - t / bandT) ** 1.6);
       const f = sample(t), next = sample(Math.min(1, t + 0.003));
       const direction = next.p.clone().sub(f.p).normalize();
       const right = direction.clone().cross(f.normal).normalize();
@@ -110,7 +140,7 @@ export class PassageGuide {
     this.arrowMesh.geometry.attributes.color.needsUpdate = true;
     const end = sample(1); this.marker.position.copy(end.p);
     this.marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), end.normal);
-    this.landingMarker.visible = Boolean(continuation && landingS > startS);
+    this.landingMarker.visible = Boolean(landingS > startS && (continuation || cue?.airborne));
     if (this.landingMarker.visible) {
       const landing = sample(clamp((landingS - startS) / length, 0, 1));
       this.landingMarker.position.copy(landing.ground).addScaledVector(landing.normal, 0.38);

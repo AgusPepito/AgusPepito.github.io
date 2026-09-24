@@ -212,3 +212,23 @@ Added level configuration and checkpoint progression: First Shift (2.4 km flat, 
 ## 2026-09-24 — Drive-through checkpoints
 
 Checkpoint crossings now save progress/time and automatically advance to the next stage before showing any results UI. Added a three-second notification at the top. Carry forward speed, lateral position/momentum, selected phase, jump state and brake state; held controls stay active, and boost refills. Explicit retries still reset at the current checkpoint. Source review and production rebuild only; no tests or visual gameplay inspection.
+
+### 2026-09-24 — Gap takeoff guidance
+Preserved the previous campaign as commit 30579eb before implementing. Added shared conservative range estimation, surface-following takeoff band, gathering guide chevrons, jump/boost prompt and airborne landing ring. Source reviewed and production preview rebuilt; no tests or visual gameplay checks, per user instruction.
+
+
+### 2026-09-24 — More frequent racer boost
+Doubled racer regeneration to 12% per second and reduced its delay to 0.8 seconds. Made delay configurable on BoostMeter while retaining original highway defaults. Source review and production build only; no tests or visual playtesting.
+
+
+### 2026-09-24 — Instant checkpoint retry
+A fresh Space press after a crash instantly retries the current checkpoint; during racing it still jumps. Holding Space does not retry or jump repeatedly. The mobile jump button becomes RETRY above the crash overlay and restarts on touch-down. R and the result retry button remain available. Production build only; no tests or visual playtesting.
+
+
+### 2026-09-24 — Free turbo on matched lanes
+Added an optional free-power input to the boost meter, supplied by the racer's existing grounded phase-strip match. Free turbo bypasses battery availability and preserves charge; normal consumption resumes off-lane. Updated HUD wording. Production build only; no tests or visual playtesting.
+
+
+### 2026-09-24 — GitHub Pages packaging
+Prepared automatic Pages deployment and a separate site package with Phase Racer at the root and the original at highway.html. Production build and packaging completed; no tests or gameplay inspection. Remote repository creation awaits explicit approval for public source/history disclosure and the repository name.
+

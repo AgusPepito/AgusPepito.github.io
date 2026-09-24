@@ -1,16 +1,22 @@
 export const BOOST = { capacity: 100, drain: 25, regen: 5, delay: 2.5, minimum: 15 };
 
 export class BoostMeter {
-  constructor({ regen = BOOST.regen } = {}) { this.regen = regen; this.reset(); }
+  constructor({ regen = BOOST.regen, delay = BOOST.delay } = {}) { this.regen = regen; this.delay = delay; this.reset(); }
   reset() { this.energy = BOOST.capacity; this.cooldown = 0; this.active = false; this.locked = false; }
-  step(dt, held, braking) {
+  step(dt, held, braking, free = false) {
     if (!held) this.locked = false;
     if (braking && held) this.locked = true;
+    // Matching racer lanes supply thrust even with an empty battery.
+    // Preserve charge while powered by the lane; normal drain resumes on exit.
+    if (free && held && !braking) {
+      this.active = true; this.locked = false; this.cooldown = this.delay;
+      return true;
+    }
     const canStart = this.active || this.energy >= BOOST.minimum;
     this.active = Boolean(held && !braking && !this.locked && canStart && this.energy > 0);
     if (this.active) {
       this.energy = Math.max(0, this.energy - BOOST.drain * dt);
-      this.cooldown = BOOST.delay;
+      this.cooldown = this.delay;
       if (this.energy < 1e-8) { this.energy = 0; this.active = false; this.locked = true; }
     } else {
       const regenTime = Math.max(0, dt - this.cooldown);

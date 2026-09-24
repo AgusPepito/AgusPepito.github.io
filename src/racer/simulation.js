@@ -6,7 +6,7 @@ import { JUMP, gapAt, jumpPose } from './jumps.js';
 export class Race {
   constructor() { this.mode = 'phase'; this.reset(); }
   reset() {
-    this.boost = new BoostMeter({ regen: 6 });
+    this.boost = new BoostMeter({ regen: 12, delay: 0.8 });
     Object.assign(this, { s: 0, u: 0, speed: 95, lateralSpeed: 0, phase: 0, time: 0,
       state: 'ready', boosting: false, stripBoost: false, boostActive: false, boostBlend: 0, thrustBlend: 0,
       height: 0, verticalSpeed: 0, airborne: false, landing: 0, jumpTime: -1, edgeGrace: 0, jumpOriginHeight: 0,
@@ -34,7 +34,7 @@ export class Race {
     this.edgeGrace = Math.max(0, this.edgeGrace - dt);
     this.scrape = Math.max(0, this.scrape - dt);
     this.stripBoost = !braking && this.mode === 'phase' && !this.airborne && !gapAt(this.s, this.u) && STRIPS.some(strip => strip.phase === this.phase && onStrip(strip, this.s, this.u));
-    this.boostActive = this.boost.step(dt, boostHeld, braking);
+    this.boostActive = this.boost.step(dt, boostHeld, braking, this.stripBoost);
     this.boosting = this.stripBoost || this.boostActive;
     this.boostBlend += ((this.boosting ? 1 : 0) - this.boostBlend) * (1 - Math.exp(-7 * dt));
     this.thrustBlend += ((this.boostActive ? 1 : 0) - this.thrustBlend) * (1 - Math.exp(-(this.boostActive ? 12 : 5) * dt));

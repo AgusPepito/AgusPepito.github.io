@@ -1,4 +1,35 @@
-import { section, wrap } from './track.js';
+import { section, wrap, frame } from './track.js';
+
+// Analytic coast distance: no assumed future boost, strip acceleration or steering.
+function coastRange(speed, time) {
+  let distance = 0;
+  for (const [target, rate] of speed > 110 ? [[154, 28], [110, 8]] : [[110, 24]]) {
+    if (speed > 110 && speed <= target) continue;
+    const duration = Math.min(time, Math.abs(speed - target) / rate);
+    const acceleration = Math.sign(target - speed) * rate;
+    distance += speed * duration + acceleration * duration * duration / 2;
+    speed += acceleration * duration; time -= duration;
+  }
+  return distance + speed * time;
+}
+
+export function gapJumpCue(race, gap) {
+  if (!gap || !gapAt(gap.start + 0.1, race.u)) return null;
+  // Use the largest sampled track metric so bends cannot overstate forward range.
+  let metric = 1;
+  for (let i = 0; i <= 8; i++) metric = Math.max(metric, frame(gap.start + (gap.end - gap.start) * i / 8, race.u).metric);
+  const speed = race.brakeTime > 0 ? Math.min(race.speed, race.brakeTarget) : race.speed;
+  const range = coastRange(speed, JUMP.duration - 0.05) / metric;
+  const latest = gap.start - 2;
+  const earliest = Math.max(gap.start - speed / metric * 0.2, gap.end + 8 - range);
+  const enough = earliest <= latest;
+  const airborne = race.airborne && race.jumpTime >= 0;
+  return { earliest, latest, enough, airborne, range,
+    bandStart: enough ? earliest : gap.start - 10,
+    ready: !airborne && enough && race.s >= earliest && (race.s <= latest || race.edgeGrace > 0),
+    near: gap.start - race.s < speed / metric * 1.5,
+  };
+}
 
 export const JUMP = { peak: 4.9, rise: 0.32, fall: 0.98, duration: 1.3, edgeGrace: 0.1, gravity: 32, hover: 1.05, bodyHalfHeight: 0.65 };
 // Fast ease-out launch, then an accelerating descent with no stationary apex hold.

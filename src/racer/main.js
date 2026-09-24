@@ -4,7 +4,7 @@ import { RaceView } from './view.js';
 import { PHASES, GATES, LENGTH, section } from './track.js';
 import { OBSTACLES, passageDirection } from './obstacles.js';
 import { PHASE_CHAINS } from './sequences.js';
-import { GAPS } from './jumps.js';
+import { GAPS, gapJumpCue } from './jumps.js';
 import { configureLevel, levelInfo } from './levels.js';
 
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set(), held = new Map();
@@ -87,11 +87,11 @@ function sync() {
       $('result-title').textContent = finished ? 'LEVEL CLEAR.' : gapCrash ? 'MISSED LANDING.' : wallCrash ? 'WALL IMPACT.' : 'OUT OF PHASE.';
       const gate = GATES.find(g => Math.abs(g.s - race.s) < 0.1);
       $('result-copy').textContent = finished ? `${levelInfo(currentLevel).name} · ${format(race.time)}. Next: ${levelInfo(currentLevel + 1).name}. Boost refills at the checkpoint.` :
-        gapCrash ? `${race.cause}. Press R to retry instantly.` :
-        wallCrash ? `${race.cause} at ${(race.s / 1000).toFixed(2)} km. Solid walls cannot be phased through. Press R to retry instantly.` :
-        `${gate ? `${PHASES[gate.phase].symbol} ${PHASES[gate.phase].name} was required` : race.cause}. You were in ${PHASES[race.phase].name} at ${(race.s / 1000).toFixed(2)} km. Press R to retry instantly.`;
+        gapCrash ? `${race.cause}. Press Space or R to retry instantly.` :
+        wallCrash ? `${race.cause} at ${(race.s / 1000).toFixed(2)} km. Solid walls cannot be phased through. Press Space or R to retry instantly.` :
+        `${gate ? `${PHASES[gate.phase].symbol} ${PHASES[gate.phase].name} was required` : race.cause}. You were in ${PHASES[race.phase].name} at ${(race.s / 1000).toFixed(2)} km. Press Space or R to retry instantly.`;
       $('sector-results').textContent = finished ? levelInfo(currentLevel + 1).lesson : `Retry starts at Level ${currentLevel + 1}: ${levelInfo(currentLevel).name}, with full boost.`;
-      $('retry').textContent = finished ? 'Continue to next level ↗' : 'Retry checkpoint ↗';
+      $('retry').textContent = finished ? 'Continue to next level ↗' : 'Retry checkpoint · SPACE ↗';
       if (finished && race.mode === 'phase') {
         try {
           const saved = Number(localStorage.getItem(progressKey));
@@ -121,6 +121,7 @@ for (const button of document.querySelectorAll('[data-phase]')) {
 for (const id of ['left', 'right', 'boost', 'jump']) {
   const button = $(id);
   button.addEventListener('pointerdown', e => {
+    if (id === 'jump' && race.state === 'crashed') { e.preventDefault(); start(); return; }
     if (race.state !== 'running') return;
     e.preventDefault(); button.setPointerCapture(e.pointerId); held.set(e.pointerId, id); button.classList.add('active');
     if (id === 'jump') jumpQueued = true;
@@ -141,7 +142,13 @@ window.addEventListener('keydown', e => {
     }
     return;
   }
-  if (['Space', 'ArrowUp', 'KeyJ'].includes(e.code)) { if (!e.repeat && race.state === 'running') jumpQueued = true; return; }
+  if (['Space', 'ArrowUp', 'KeyJ'].includes(e.code)) {
+    if (!e.repeat) {
+      if (e.code === 'Space' && race.state === 'crashed') start();
+      else if (race.state === 'running') jumpQueued = true;
+    }
+    return;
+  }
   const index = /^(Digit|Numpad)([123])$/.exec(e.code);
   if (index) { phase(Number(index[2]) - 1); return; }
   if (race.state === 'running') keys.add(e.code);
@@ -180,17 +187,31 @@ function updateHud() {
   $('speed').textContent = Math.round(race.speed * 3.6); $('time').textContent = format(race.time);
   $('section').textContent = `L${currentLevel + 1} · ${levelInfo(currentLevel).name} / ${section(race.s).name}`; $('best').textContent = race.mode === 'drive' ? 'DRIVING ONLY' : `LEVEL BEST ${best ? format(best.time) : '—'}`;
   $('drive-status').textContent = race.brakeTime > 0 ? 'BRAKE PULSE' : race.scrape ? 'EDGE CONTACT / SPEED LOST' : race.boostActive ?
-    race.stripBoost ? `${p.symbol} BOOST + PHASE STRIP` : 'BOOST / FULL THRUST' : race.stripBoost ? `${p.symbol} MATCHED / ACCELERATING` : `${p.symbol} ${p.name} / CARRY YOUR SPEED`;
+    race.stripBoost ? `${p.symbol} FREE TURBO / MATCHED LANE` : 'BOOST / FULL THRUST' : race.stripBoost ? `${p.symbol} MATCHED / HOLD BOOST FOR FREE TURBO` : `${p.symbol} ${p.name} / CARRY YOUR SPEED`;
   $('boost').style.setProperty('--charge', `${race.boost.energy}%`);
   $('boost').classList.toggle('active', race.state === 'running' && race.boostActive);
   $('boost').setAttribute('aria-pressed', String(race.state === 'running' && race.boostActive));
   $('boost-charge').textContent = `${Math.floor(race.boost.energy)}%`;
-  $('jump-status').textContent = race.airborne && race.edgeGrace <= 0 ? 'IN AIR' : 'SPACE';
+  $('jump').firstChild.textContent = race.state === 'crashed' ? 'RETRY ' : 'JUMP ';
+  $('jump').setAttribute('aria-label', race.state === 'crashed' ? 'Retry checkpoint' : 'Jump');
+  $('jump-status').textContent = race.state === 'crashed' ? 'TAP / SPACE' : race.airborne && race.edgeGrace <= 0 ? 'IN AIR' : 'SPACE';
   $('jump').classList.toggle('active', race.airborne);
-  $('boost-status').textContent = race.boost.locked ? 'RELEASE TO REARM' : race.boostActive ? 'BOOSTING' : race.boost.cooldown > 0 ? 'COOLING DOWN' : race.boost.energy < 100 ? 'RECHARGING' : 'HOLD W / SHIFT';
+  $('boost-status').textContent = race.stripBoost ? race.boostActive ? 'FREE TURBO / NO DRAIN' : 'MATCHED LANE / FREE TURBO' : race.boost.locked ? 'RELEASE TO REARM' : race.boostActive ? 'BOOSTING' : race.boost.cooldown > 0 ? 'COOLING DOWN' : race.boost.energy < 100 ? 'RECHARGING' : 'HOLD W / SHIFT';
   $('split').textContent = `CHECKPOINT · ${Math.max(0, (LENGTH - race.s) / 1000).toFixed(1)} KM`;
   const nextGate = GATES.find(g => g.s > race.s && g.s - race.s < 650);
   const gap = GAPS.find(g => g.end > race.s && g.start - race.s < 650);
+  const cue = gapJumpCue(race, gap);
+  const blockingWall = gap && OBSTACLES.some(o => o.s + o.depth > race.s && o.s < gap.start);
+  const cueVisible = cue && (!race.airborne || cue.airborne || race.edgeGrace > 0) && !blockingWall && race.mode === 'phase' && race.state === 'running' &&
+    (cue.airborne || cue.near);
+  $('jump-cue').hidden = !cueVisible;
+  if (cueVisible) {
+    const boostAvailable = race.boost.energy >= (race.boostActive ? 0.01 : 15);
+    $('jump-cue').dataset.tone = cue.airborne ? 'landing' : !cue.enough ? 'boost' : cue.ready ? 'jump' : 'wait';
+    $('jump-cue').textContent = cue.airborne ? 'AIM FOR THE LANDING RING' : !cue.enough ?
+      !boostAvailable ? 'LOW RANGE · BOOST EMPTY' : race.boost.locked ? 'RELEASE W · THEN BOOST' : 'W · BOOST FOR RANGE' :
+      cue.ready ? 'SPACE · JUMP' : race.s > cue.latest ? 'SPACE · JUMP NOW' : 'APPROACH THE GOLD BAND';
+  }
   const jumpWall = OBSTACLES.find(o => o.kind === 'jump' && o.s + o.depth > race.s && o.s - race.s < 650);
   const next = [nextGate, gap && { ...gap, s: gap.start, kind: 'gap' }, jumpWall].filter(Boolean).sort((a, b) => a.s - b.s)[0];
   $('gate-hint').hidden = !next || race.state !== 'running' || race.mode !== 'phase';
