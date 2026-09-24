@@ -236,3 +236,7 @@ Prepared automatic Pages deployment and a separate site package with Phase Racer
 ### 2026-09-24 — Mobile controls and HUD redesign
 Replaced touch arrow buttons with analog thumbpad, deliberate forward turbo and rearmed backward brake gesture. Added color-only vertical phase controls, jump/retry, and radial boost charge. Rebuilt compact HUD styles and removed redundant live text. Source review and production rebuild only; no tests or visual playtesting for this UI iteration.
 
+
+### 2026-09-24 — Fullscreen control
+Added an always-available fullscreen toggle beside pause, including on the start screen. It requests fullscreen on the whole document, resizes the renderer and resets touch input during transitions, and updates on browser-driven exits. Unsupported browsers receive a temporary home-screen hint; iOS standalone metadata is included. Build only; no gameplay tests or visual checks.
+

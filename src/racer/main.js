@@ -126,6 +126,41 @@ $('retry').addEventListener('click', () => start(race.state === 'checkpoint' ? c
 $('restart').addEventListener('click', () => start());
 $('level').addEventListener('change', () => updateLesson(Number($('level').value)));
 $('pause').addEventListener('click', pause); $('resume').addEventListener('click', pause);
+let fullscreenHintTimer;
+const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+function syncFullscreen() {
+  const active = Boolean(fullscreenElement());
+  $('fullscreen').setAttribute('aria-pressed', String(active));
+  $('fullscreen').setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+  $('fullscreen').title = active ? 'Exit fullscreen' : 'Fullscreen';
+  resetPad();
+  requestAnimationFrame(() => view?.resize());
+}
+function fullscreenHint(message) {
+  clearTimeout(fullscreenHintTimer);
+  $('fullscreen-hint').textContent = message; $('fullscreen-hint').hidden = false;
+  fullscreenHintTimer = setTimeout(() => { $('fullscreen-hint').hidden = true; }, 6500);
+}
+$('fullscreen').addEventListener('click', async () => {
+  clearInput();
+  const root = document.documentElement;
+  const enter = root.requestFullscreen || root.webkitRequestFullscreen;
+  const exit = document.exitFullscreen || document.webkitExitFullscreen;
+  if (!fullscreenElement() && !enter) {
+    fullscreenHint('Fullscreen is unavailable here. Try your browser’s Add to Home Screen option, then open the game from there.');
+    return;
+  }
+  try {
+    if (fullscreenElement()) await exit?.call(document);
+    else await enter.call(root);
+    $('fullscreen-hint').hidden = true;
+    syncFullscreen();
+  } catch {
+    fullscreenHint('The browser could not open fullscreen. Try opening the game directly in Chrome or Safari.');
+  }
+});
+document.addEventListener('fullscreenchange', syncFullscreen);
+document.addEventListener('webkitfullscreenchange', syncFullscreen);
 $('back').addEventListener('click', () => { clearInput(); race.reset(); view.snap = true; sync(); });
 for (const button of document.querySelectorAll('[data-phase]')) {
   const index = Number(button.dataset.phase); button.style.setProperty('--button-phase', PHASES[index].color);
