@@ -10,6 +10,7 @@ import { GameView } from './view.js';
 import { COURSE_LENGTH, clamp, trackAt } from './track.js';
 import { EFFECT_DEFAULTS } from './speed-effects.js';
 import { ENCOUNTERS } from './encounters.js';
+import { threatVisible } from './threat-visibility.js';
 
 const $ = id => document.getElementById(id);
 const settings = { encounter: 'darts', cameraShift: true, speedShift: true, invincible: false, sound: false, ...EFFECT_DEFAULTS };
@@ -236,7 +237,7 @@ function frame(now) {
     shieldShots: sim.bullets.filter(b => b.pattern === 'shield').length,
     encounter: sim.encounter ? {
       type: sim.encounter.type, age: sim.encounter.age, result: sim.encounter.result, outcome: sim.encounter.outcome,
-      clusters: sim.encounter.clusters.length,
+      clusters: sim.encounter.clusters.length, waves: sim.encounter.waves?.length, walls: sim.encounter.wallCount,
       mines: sim.encounter.mines.length, pickups: sim.encounter.pickups.length,
       locksOpened: sim.encounter.locksOpened, collected: sim.encounter.collected,
       members: sim.encounter.members.map(e => ({ id: e.id, kind: e.kind, slot: e.slot, role: e.role, hp: Number.isFinite(e.hp) ? e.hp : null, s: e.s, lateral: e.lateral, phase: e.phase, targetLane: e.targetLane, dashTarget: e.dashTarget, warning: e.formationWarning })),
@@ -248,6 +249,7 @@ function frame(now) {
 }
 try {
   view = new GameView(canvas);
+  sim.threatVisible = entity => threatVisible(view.camera, entity);
   view.render(sim, 1 / 60, settings);
   $('startb').disabled = false; $('startb').innerHTML = 'Start encounter <span aria-hidden="true">↗</span>';
   window.__READY__ = true; window.__START__ = start;

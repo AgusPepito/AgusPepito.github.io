@@ -10,9 +10,9 @@ export class EncounterView {
     this.rings = view.batch(ENCOUNTER_RULES.mineLimit * 32, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
     this.rings.geometry = new THREE.RingGeometry(2.05, 2.2, 3, 1, 0, Math.PI * 2 / 32 * 0.85);
     this.rings.geometry.rotateX(-Math.PI / 2);
-    this.orbits = view.batch(32, new THREE.MeshBasicMaterial({ color: 0x728c9a, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
+    this.orbits = view.batch(ENCOUNTER_RULES.mineLimit, new THREE.MeshBasicMaterial({ color: 0x728c9a, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false }));
     this.orbits.geometry = new THREE.RingGeometry(0.98, 1.02, 48); this.orbits.geometry.rotateX(-Math.PI / 2);
-    this.arrows = view.batch(96, new THREE.MeshBasicMaterial({ color: 0xb9e8ec }));
+    this.arrows = view.batch(ENCOUNTER_RULES.mineLimit * 3, new THREE.MeshBasicMaterial({ color: 0xb9e8ec }));
     this.arrows.geometry = new THREE.ConeGeometry(0.28, 0.9, 3); this.arrows.geometry.rotateX(Math.PI / 2);
     this.blasts = view.batch(64, new THREE.MeshBasicMaterial({ color: 0xffae42, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false }));
     this.blasts.geometry = new THREE.RingGeometry(0.85, 1, 32); this.blasts.geometry.rotateX(-Math.PI / 2);
@@ -36,7 +36,7 @@ export class EncounterView {
     let mines = 0, rings = 0, blasts = 0, paths = 0, pickups = 0, orbits = 0, arrows = 0;
     for (const label of this.labels) label.visible = false;
     if (encounter) {
-      for (const c of encounter.clusters.slice(0, 32)) {
+      for (const c of encounter.clusters.slice(0, ENCOUNTER_RULES.mineLimit)) {
         const center = roadPoint(c.s, c.lateral);
         v.put(this.orbits, orbits++, center.x, 0.04, center.z, c.radius, 1, c.radius);
         for (let i = 0; i < 3; i++) {

@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 010: visible attackers and combined encounter pressure
+
+Addressed the user's top-down feedback by moving encounter staging into the camera's forward view and requiring full-body projection within playable margins for 0.7 seconds before any encounter bullet can spawn. Visibility loss resets exposure; Interceptors also wait for visibility before preparation. The actual render camera supplies this check, covering camera toggles/transitions without changing the camera framing.
+
+Darts now have twice the health (6 HP) and two additional waves. Interceptor side dashes increased from 0.45 to 1.05 seconds and from 8 to 14 metres. Mine layers increased from 10 to 30 HP, drop clusters every 1.3 seconds and add warned rotating walls: four groups wide, two narrow, with individual shootable mines and persistent gaps. Mine arming is 0.85 seconds for the closer threat distance. Doubled the convoy to four independently targetable rear-row turrets with staggered roles. Recurring pairs of normal red scouts weave and shoot alongside every main encounter; they do not turn clearing the main objective into endless reinforcement cleanup.
+
+Validation: 67 tests, production build and nonvisual encounter/browser/touch smoke pass. Interceptor staging includes player-travel feed-forward so boost speed cannot collapse its intended gap. Updated preview and test guide; no visual gameplay inspection performed.
+
 ## 2026-09-24 — experiment 009: mixed attacks, orbit mines and armed convoy
 
 Implemented the user-approved encounter redesign after lab 008 still felt easy. Six fragile Darts now mix direct three-shot bursts, capped prediction shots, and three-bullet fans with role colors and staggered release. Three Interceptors stage farther ahead and alternate a charge followed by a separately warned, locked side dash; engines open afterward. Two Mine layers now deploy drifting three-mine orbits with stable directions, visible paths, persistent shot-out gaps and gradual road-width adjustment. Mines no longer chain-clear their clusters.

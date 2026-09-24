@@ -9,8 +9,9 @@ export const ENCOUNTERS = {
 export const ENCOUNTER_RULES = {
   dartHold: 2.2, dartWarning: 0.7, dartChange: 1, dartCycle: 2.8, dartLead: 6,
   interceptorAim: 0.55, interceptorLock: 0.65, interceptorCharge: 0.75, interceptorRecovery: 1.6,
-  dashWarning: 0.65, dashDuration: 0.45, dashDistance: 8,
-  mineArm: 1.15, mineDrop: 2.2, orbitRadius: 3.8, orbitSpeed: 0.9, orbitDrift: 6,
+  dashWarning: 0.65, dashDuration: 1.05, dashDistance: 14,
+  dartWaves: 3, dartWaveInterval: 7, visibleWarning: 0.7, supportInterval: 4.8,
+  mineArm: 0.85, mineDrop: 1.3, mineWallPeriod: 5.5, orbitRadius: 3.8, orbitSpeed: 0.9, orbitDrift: 6,
   blastRadius: 3.5, mineLimit: 96, reward: 600, clearBonus: 2000,
 };
 export const ATTACK_COLORS = { direct: 0xff6070, predict: 0x60ddff, spread: 0xffcc55, track: 0xff6070, sweep: 0xffcc55 };
@@ -30,45 +31,79 @@ export class Encounter {
     this.mines = []; this.clusters = []; this.blasts = []; this.pickups = []; this.locksOpened = 0; this.collected = 0;
     this.notice = ''; this.noticeUntil = 0;
     this.result = ''; this.outcome = ''; this.finishTimer = 0; this.hint = ENCOUNTERS[type].hint;
-    this.anchor = sim.s + 64;
+    this.anchor = sim.distance + 30;
+    this.supportTimer = 0.9; this.supportWave = 0;
     if (type === 'darts') { this.waves = []; this.spawnDartWave(); }
     if (type === 'interceptors') {
       for (let slot = 0; slot < 3; slot++) {
-        const e = this.add('interceptor', slot, sim.s + 80 + slot * 14, [-11, 11, 0][slot], 12, 1.25, 2);
+        const e = this.add('interceptor', slot, sim.distance + 32 + slot * 3, [-8, 8, 0][slot], 12, 1.25, 2);
         e.phase = 'waiting'; e.phaseAge = 0; e.contact = false;
       }
       this.turn = 0; this.attackDelay = 0.5;
     }
     if (type === 'mines') {
       this.layers = [-1, 1].map((side, slot) => {
-        const e = this.add('minelayer', slot, sim.s + 82 + slot * 18, side * 8, 10, 1.6, 2.2);
+        const e = this.add('minelayer', slot, sim.distance + 34 + slot * 5, side * 7, 30, 1.6, 2.2);
         e.dropTimer = 0.8 + slot * 1.1; return e;
       });
-      for (let row = 0; row < 4; row++) this.dropCluster(sim.s + 36 + row * 21, [-4, 4, -6, 6][row], row % 2 ? -1 : 1, 2);
+      this.wallTimer = 3.5; this.wallCount = 0;
+      for (let row = 0; row < 2; row++) this.dropCluster(sim.s + 18 + row * 14, row ? 5 : -5, row ? -1 : 1);
     }
     if (type === 'convoy') {
       this.hauler = this.add('hauler', 0, this.anchor, 0, Infinity, 3.7, 6.5);
       this.hauler.hideHealth = true; this.hauler.followSpeed = 24;
       this.convoyLane = 0; this.laneCycle = -1;
       this.locks = [-2.55, 0, 2.55].map((x, slot) => this.add('lock', slot, this.anchor - 7.2, x, 16, 0.78, 0.5));
-      this.turrets = [-4.5, 4.5].map((x, slot) => {
-        const e = this.add('turret', slot, this.anchor - 6.8, x, 10, 0.85, 0.8);
-        e.role = slot ? 'sweep' : 'track'; return e;
+      this.turrets = [-3.3, -1.1, 1.1, 3.3].map((x, slot) => {
+        const e = this.add('turret', slot, this.anchor - 8.4, x, 10, 0.6, 0.65);
+        e.role = slot % 2 ? 'sweep' : 'track'; return e;
       });
     }
   }
   add(kind, slot, s, lateral, hp, halfWidth, halfDepth) {
     const e = { id: this.sim.nextId++, encounter: true, kind, slot, hp, maxHp: hp, halfWidth, halfDepth,
-      active: true, age: 0, deployed: 1, armored: false, charge: 0, fire: 0 };
+      active: true, age: 0, deployed: 1, armored: false, charge: 0, fire: 0, visibleFor: 0 };
     locate(e, s, lateral); this.members.push(e); this.sim.enemies.push(e); return e;
   }
   shoot(e, pattern, speed = 15, target = null, spread = 0) {
-    if (e.hp <= 0 || e.s < this.sim.s + 8 || e.s > this.sim.s + (e.kind === 'dart' ? 140 : 125)) return;
+    if (e.hp <= 0 || e.s < this.sim.s + 8 || !this.isVisible(e) || e.visibleFor < ENCOUNTER_RULES.visibleWarning) return;
     const f = roadFrame(e.s), behind = e.halfDepth + 0.5;
     const x = e.x - f.fx * behind, z = e.z - f.fz * behind;
     const angle = (target ? Math.atan2(target.x - x, target.z - z) : Math.atan2(-f.fx, -f.fz)) + spread;
     this.sim.bullets.push({ id: this.sim.nextId++, sourceId: e.id, pattern, slot: e.slot,
       x, z, s: e.s - behind, vx: Math.sin(angle) * speed, vz: Math.cos(angle) * speed, friendly: false, life: 5, color: ATTACK_COLORS[e.role] });
+  }
+  isVisible(e) {
+    return this.sim.threatVisible ? this.sim.threatVisible(e) : e.s > this.sim.s - 5 && e.s < this.sim.distance + 45;
+  }
+  primaryResolved() {
+    if (this.type === 'darts' && this.waves.length < ENCOUNTER_RULES.dartWaves) return false;
+    if (this.type === 'convoy' && this.locksOpened === 3) return true;
+    return this.members.filter(e => !e.support && e.kind !== 'lock').every(e => e.hp <= 0 || e.passed);
+  }
+  updateSupports(dt) {
+    if (this.sim.options.encounterSupport === false) return;
+    this.supportTimer -= dt;
+    if (this.supportTimer <= 0 && !this.primaryResolved()) {
+      const alive = this.members.filter(e => e.support && e.hp > 0 && !e.passed);
+      if (alive.length <= 2) for (let slot = 0; slot < 2; slot++) {
+        const side = (slot + this.supportWave) % 2 ? 1 : -1;
+        const s = this.sim.distance + 25 + slot * 5;
+        const e = this.add('scout', slot, s, side * Math.min(14, trackAt(s).width / 2 - 2), 3, 1.2, 1.6);
+        e.support = true; e.side = side; e.fire = 1; e.entryLane = e.lateral;
+      }
+      this.supportWave++; this.supportTimer = ENCOUNTER_RULES.supportInterval;
+    }
+    for (const e of this.members) if (e.support && e.hp > 0 && !e.passed) {
+      const s = advanceOnRoad(e.s, 22 * dt), edge = Math.min(9, trackAt(s).width / 2 - 2);
+      const lane = e.side * edge * 0.65 + Math.sin(e.age * 1.6 + e.slot) * 2;
+      locate(e, s, lerp(e.entryLane, lane, smooth(e.age / 1.2)));
+      e.fire -= dt; e.charge = e.fire < 0.7 ? 1 : 0;
+      if (e.fire <= 0) {
+        for (const spread of [-0.15, 0, 0.15]) this.shoot(e, 'scout', 17, { x: this.sim.x, z: this.sim.z }, spread);
+        e.fire = 2.25;
+      }
+    }
   }
   aimPoint(e, lane = this.sim.lateral, speed = 27) {
     // Predict one point at firing time; bullets never track after launch.
@@ -76,24 +111,26 @@ export class Encounter {
     return roadPoint(this.sim.s + this.sim.speed * travel, lane);
   }
   spawnDartWave() {
-    const wave = { index: this.waves.length, age: 0, anchor: this.sim.s + 110, volley: -1 };
+    const wave = { index: this.waves.length, age: 0, anchor: this.sim.distance + 24, volley: -1 };
     this.waves.push(wave);
     for (let slot = 0; slot < 6; slot++) {
-      const e = this.add('dart', slot, wave.anchor + Math.abs(slot - 2.5) * 5, (slot - 2.5) * 5, 3, 0.8, 1.2);
+      const e = this.add('dart', slot, wave.anchor + Math.abs(slot - 2.5) * 5, (slot - 2.5) * 5, 6, 0.8, 1.2);
       e.wave = wave.index; e.role = ['direct', 'predict', 'spread'][slot % 3];
     }
   }
   update(dt) {
     this.age += dt;
-    for (const e of this.members) { e.age += dt; e.charge = 0; }
+    for (const e of this.members) { e.age += dt; e.charge = 0; e.visibleFor = this.isVisible(e) ? e.visibleFor + dt : 0; }
     if (this.type === 'darts') this.updateDarts(dt);
     if (this.type === 'interceptors') this.updateInterceptors(dt);
     if (this.type === 'mines') this.updateLayer(dt);
     if (this.type === 'convoy') this.updateConvoy(dt);
+    this.updateSupports(dt);
   }
   updateDarts(dt) {
+    if (this.waves.length < ENCOUNTER_RULES.dartWaves && this.age >= this.waves.length * ENCOUNTER_RULES.dartWaveInterval) this.spawnDartWave();
     for (const wave of this.waves) this.updateDartWave(wave, dt);
-    this.hint = ENCOUNTERS.darts.hint;
+    this.hint = `WAVE ${this.waves.length}/3 · ${ENCOUNTERS.darts.hint}`;
   }
   updateDartWave(wave, dt) {
     const duration = ENCOUNTER_RULES.dartHold + ENCOUNTER_RULES.dartWarning + ENCOUNTER_RULES.dartChange;
@@ -136,11 +173,11 @@ export class Encounter {
   }
   updateInterceptors(dt) {
     const sim = this.sim, rules = ENCOUNTER_RULES;
-    const rivals = this.members.filter(e => e.hp > 0 && !e.passed);
+    const rivals = this.members.filter(e => e.kind === 'interceptor' && e.hp > 0 && !e.passed);
     let attacker = rivals.find(e => ['aim', 'locked', 'charge', 'dashWarning', 'dash'].includes(e.phase));
     if (!attacker) {
       this.attackDelay -= dt;
-      const waiting = rivals.filter(e => e.phase === 'waiting');
+      const waiting = rivals.filter(e => e.phase === 'waiting' && e.visibleFor >= ENCOUNTER_RULES.visibleWarning);
       if (this.attackDelay <= 0 && waiting.length) {
         attacker = waiting.find(e => e.slot === this.turn) || waiting[0];
         attacker.phase = 'aim'; attacker.phaseAge = 0; attacker.contact = false;
@@ -149,10 +186,13 @@ export class Encounter {
     for (const e of rivals) {
       e.phaseAge += dt;
       if (e.phase === 'waiting' || e.phase === 'aim' || e.phase === 'locked') {
-        const gap = e.phase === 'waiting' ? 90 + e.slot * 8 : 64;
-        const s = lerp(e.s, sim.s + gap, 1 - Math.exp(-5 * dt));
-        const flank = [-1, 1, 0][e.slot] * Math.min(11, trackAt(s).width / 2 - 2.5);
+        const destination = Math.max(sim.s + 16, sim.distance + (e.phase === 'waiting' ? 32 + e.slot * 3 : 26));
+        // Feed forward player travel so pacing does not lag into the player at boost speed.
+        const s = lerp(advanceOnRoad(e.s, sim.speed * dt), destination, 1 - Math.exp(-5 * dt));
+        const side = [-1, 1, 0][e.slot], edge = trackAt(s).width / 2 - 2.5;
+        const flank = clamp(lerp(side * Math.min(8, edge), sim.lateral + side * 5, sim.raceBlend), -edge, edge);
         locate(e, s, lerp(e.lateral, flank, 1 - Math.exp(-4 * dt)));
+        if (e.phase !== 'waiting' && !this.isVisible(e)) { e.phase = 'aim'; e.phaseAge = 0; }
       }
       if (e.phase === 'aim') {
         e.targetLane = sim.lateral;
@@ -203,9 +243,9 @@ export class Encounter {
     const m = { id: this.sim.nextId++, kind: 'mine', active: true, hp: 1, maxHp: 1, halfWidth: 0.55, halfDepth: 0.55, age };
     locate(m, s, lateral); this.mines.push(m); return m;
   }
-  dropCluster(s, lateral, direction, age = 0) {
+  dropCluster(s, lateral, direction, age = 0, radiusLimit = ENCOUNTER_RULES.orbitRadius) {
     if (this.mines.length + 3 > ENCOUNTER_RULES.mineLimit) return;
-    const c = { id: this.sim.nextId++, s, lateral, direction, age, radius: Math.min(ENCOUNTER_RULES.orbitRadius, trackAt(s).width * 0.18), members: [] };
+    const c = { id: this.sim.nextId++, s, lateral, direction, age, radiusLimit, radius: Math.min(radiusLimit, trackAt(s).width * 0.18), members: [] };
     this.clusters.push(c);
     this.placeCluster(c, 0);
     for (let slot = 0; slot < 3; slot++) {
@@ -218,7 +258,7 @@ export class Encounter {
   placeCluster(c, dt) {
     // Fit the entire orbit, including its forward/backward extent, inside the road.
     const width = Math.min(...[-5, 0, 5].map(offset => trackAt(c.s + offset).width));
-    const target = Math.min(ENCOUNTER_RULES.orbitRadius, width * 0.18);
+    const target = Math.min(c.radiusLimit, width * 0.18);
     c.radius = Math.min(c.radius + (target - c.radius) * (1 - Math.exp(-3 * dt)), width / 2 - 2);
     const edge = Math.max(0, width / 2 - c.radius - 1.2);
     c.lateral = clamp(c.lateral, -edge, edge);
@@ -228,11 +268,18 @@ export class Encounter {
     }
   }
   updateLayer(dt) {
+    const live = this.layers.filter(e => e.hp > 0 && !e.passed);
+    this.wallTimer -= dt;
+    if (live.length && this.wallTimer <= 0) {
+      this.dropMineWall(Math.max(this.sim.s + 28, Math.min(...live.map(e => e.s)) - 10));
+      this.wallTimer = ENCOUNTER_RULES.mineWallPeriod;
+    }
     for (const e of this.layers) {
       if (e.hp <= 0 || e.passed) continue;
       const s = advanceOnRoad(e.s, 24 * dt), edge = Math.min(14, trackAt(s).width / 2 - 3);
       const lane = (e.slot ? 1 : -1) * edge * (0.55 + Math.sin(this.age * 1.5 + e.slot * 1.8) * 0.4);
       locate(e, s, lane); e.dropTimer -= dt;
+      e.charge = this.wallTimer < 0.8 ? 1 : 0;
       if (e.dropTimer <= 0) {
         if (e.s < this.sim.s + 200) this.dropCluster(e.s - 12, e.lateral * 0.7, e.slot ? -1 : 1);
         e.dropTimer += ENCOUNTER_RULES.mineDrop;
@@ -242,7 +289,18 @@ export class Encounter {
       c.age += dt; c.s = advanceOnRoad(c.s, ENCOUNTER_RULES.orbitDrift * dt); this.placeCluster(c, dt);
     }
     this.clusters = this.clusters.filter(c => c.s > this.sim.s - 35 && c.members.some(m => m.hp > 0));
-    this.hint = this.layers.every(e => e.hp <= 0 || e.passed) ? 'LAYERS GONE — their mine clusters keep rotating.' : ENCOUNTERS.mines.hint;
+    this.hint = !live.length ? 'LAYERS GONE — their mine clusters keep rotating.' : this.wallTimer < 0.8 ? 'MINE WALL INCOMING — shoot a moving gap.' : 'HEAVY LAYERS — orbit clusters and rotating mine walls.';
+  }
+  dropMineWall(s) {
+    const width = Math.min(...[-5, 0, 5].map(offset => trackAt(s + offset).width));
+    const count = width >= 28 ? 4 : 2;
+    const radius = Math.min(2.6, width / (count * 3.5));
+    const span = width / 2 - radius - 3;
+    this.wallCount++;
+    for (let i = 0; i < count; i++) {
+      const c = this.dropCluster(s, lerp(-span, span, i / (count - 1)), (i + this.wallCount) % 2 ? 1 : -1, 0, radius);
+      if (c) c.wall = this.wallCount;
+    }
   }
   updateConvoy(dt) {
     const speedPhase = this.age % 7;
@@ -261,16 +319,16 @@ export class Encounter {
       if (e.kind === 'hauler') locate(e, this.anchor, this.convoyLane);
       if (e.kind === 'lock') locate(e, this.anchor - 7.2, this.convoyLane + (e.slot - 1) * 2.55);
       if (e.kind === 'turret') {
-        locate(e, this.anchor - 6.8, this.convoyLane + (e.slot ? 4.5 : -4.5));
+        locate(e, this.anchor - 8.4, this.convoyLane + [-3.3, -1.1, 1.1, 3.3][e.slot]);
         this.updateTurret(e);
       }
     }
     this.hint = this.laneWarning ? `TRUCK MOVING ${this.laneTarget > this.convoyLane ? 'RIGHT' : 'LEFT'} — reposition.` :
       this.turrets.some(e => e.hp > 0 && e.retaliateAt != null) ? 'CARGO DEFENSE CHARGING — turrets retaliate next.' :
-      `${this.locksOpened}/3 LOCKS · ${this.collected} SALVAGE — red turret tracks; gold turret sweeps.`;
+      `${this.locksOpened}/3 LOCKS · FOUR TURRETS — break the rear gun line or raid its gaps.`;
   }
   updateTurret(e) {
-    const cycle = Math.floor((this.age - e.slot * 1.8) / 3.6);
+    const cycle = Math.floor((this.age - e.slot) / 4.4);
     if (e.retaliateAt != null) {
       e.charge = 1; e.aimTarget = e.defenseTarget;
       if (this.age >= e.retaliateAt) {
@@ -281,7 +339,7 @@ export class Encounter {
       e.suppressedCycle = cycle; return;
     }
     if (cycle < 0 || cycle === e.suppressedCycle) return;
-    const first = cycle * 3.6 + e.slot * 1.8 + 0.95;
+    const first = cycle * 4.4 + e.slot + 0.95;
     if (this.age >= first - 0.65 && this.age < first) {
       e.charge = 1; e.aimTarget = this.aimPoint(e); e.aimLane = this.sim.lateral;
     }
@@ -357,8 +415,10 @@ export class Encounter {
     this.pickups = this.pickups.filter(p => !p.collected && p.s > this.sim.s - 15 && p.age < 25);
   }
   finish(dt) {
-    const unfinished = this.members.some(e => e.hp > 0 && !e.passed && e.s < this.sim.s + 230 && e.kind !== 'lock');
-    const cleared = this.type === 'convoy' ? this.locksOpened === 3 : this.members.every(e => e.hp <= 0);
+    if (this.type === 'darts' && this.waves.length < ENCOUNTER_RULES.dartWaves) return;
+    const primary = this.members.filter(e => !e.support);
+    const unfinished = primary.some(e => e.hp > 0 && !e.passed && e.s < this.sim.s + 230 && e.kind !== 'lock');
+    const cleared = this.type === 'convoy' ? this.locksOpened === 3 : primary.every(e => e.hp <= 0);
     const hazardsAhead = this.mines.some(m => m.s > this.sim.s - 4 && m.s < this.sim.s + 200) || this.pickups.length > 0;
     if ((!unfinished || cleared) && !hazardsAhead) {
       this.finishTimer += dt;

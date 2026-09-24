@@ -185,7 +185,7 @@ export class Simulation {
       if (!e.encounter) { if (!group) continue; placeEnemy(e, group); }
       if (!e.active) continue;
       const road = trackAt(e.s);
-      e.fire -= dt;
+      if (!e.encounter) e.fire -= dt;
       if (!e.encounter && !e.armored && e.deployed === 1 && road.tight < 0.5 && e.fire <= 0 && e.s > this.s + 9 && e.s < this.s + 65) {
         e.fire = 2.25;
         const dx = this.x - e.x, dz = this.z - e.z;

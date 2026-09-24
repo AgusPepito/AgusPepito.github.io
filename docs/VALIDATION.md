@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 010 — 2026-09-24
+
+67 nonvisual tests pass. New numerical camera checks cover full-body initial staging on desktop/portrait/landscape phone, actual projected shooting positions, visibility grace and reentry. Integration tests cover recurring red scouts in all encounters, three double-health Dart waves, heavy miners and wide/narrow rotating walls, four rear turrets, sustained side dashes, and safe Interceptor staging at boost speed with forward repositioning. Existing role, warning, reward, orbit, collision, control and highway tests pass.
+
+Production build passes (about 0.59 MB). The extended encounter browser smoke passes all four runtime/menu/retry/result flows, red-scout presence and mobile touch input with no runtime errors. No screenshots or visual gameplay testing performed. The projection checks establish the programmed visibility bounds; visual readability and balance remain for the user's test.
+
 ## Experiment 009 — 2026-09-24
 
 60 nonvisual tests pass. Updated encounter coverage checks mixed Dart role counts/bursts/fans and capped, locked prediction; three serialized Interceptor chains, speed-independent warnings and delayed engine vulnerability; orbit drift, gaps, narrowing-road bounds, persistence and moving swept collisions; targetable turret bursts, warned retaliation, lane changes and cargo hit ordering; salvage feedback, distinct outcomes, one-time completion rewards, reset and bounded simulations. Superseded lab-008 pattern assertions were replaced with the new approved behaviors. Existing highway/control tests remain passing.

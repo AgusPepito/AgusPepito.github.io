@@ -20,6 +20,7 @@ try {
     const state = await page.evaluate(() => window.__GAME__);
     assert.equal(state.vehicles, 0);
     assert.ok(state.encounter.members.length >= 1);
+    assert.ok(state.encounter.members.some(e => e.kind === 'scout'), 'normal red enemies reinforce every encounter');
     assert.ok(state.encounter.members.every(e => Number.isFinite(e.s) && Number.isFinite(e.lateral)));
     assert.ok(state.draws > 0);
     if (state.status === 'complete') await page.click('#restart');

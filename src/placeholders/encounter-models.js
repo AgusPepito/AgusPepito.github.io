@@ -26,6 +26,7 @@ export function encounterModels(THREE) {
   box(interceptor, 0.6, 0.2, 0.6, 0, 1.9, 0, orange, 'signal');
   const minelayer = vehicle(3.2, 4.4, purple);
   box(minelayer, 1.8, 0.8, 0.12, 0, 0.55, -2.25, dark);
+  box(minelayer, 0.8, 0.2, 0.8, 0, 1.9, 0, orange, 'signal');
   const hauler = vehicle(7.4, 13, purple);
   box(hauler, 6.5, 1.5, 10.5, 0, 2.05, -0.6, purple);
   box(hauler, 0.25, 0.6, 2, 3.8, 1, -4, orange, 'indicator-left');
@@ -38,7 +39,7 @@ export function encounterModels(THREE) {
   box(lock, 1.55, 1.35, 0.7, 0, 0.85, 0, orange);
   box(lock, 0.5, 0.65, 0.1, 0, 0.9, -0.4, dark);
   const turret = new THREE.Group();
-  box(turret, 1.7, 0.6, 1.6, 0, 0.9, 0, dark);
+  box(turret, 1.2, 0.6, 1.3, 0, 0.9, 0, dark);
   const aim = new THREE.Group(); aim.name = 'aim'; turret.add(aim);
   box(aim, 1.1, 0.8, 1.1, 0, 1.4, 0, purple);
   box(aim, 0.35, 0.35, 1.6, 0, 1.4, -0.8, dark);

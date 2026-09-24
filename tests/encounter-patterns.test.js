@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { Simulation, sweptHitsEntity } from '../src/simulation.js';
 import { ENCOUNTERS, ENCOUNTER_RULES as R } from '../src/encounters.js';
 import { roadPoint, trackAt } from '../src/track.js';
-const run = (type, options = {}) => { const s = new Simulation({ encounter: type, ...options }); s.start(); return s; };
+const run = (type, options = {}) => { const s = new Simulation({ encounter: type, encounterSupport: false, ...options }); s.start(); return s; };
 function steps(s, seconds, input = {}) { for (let i = 0; i < seconds * 120; i++) s.step(1 / 120, typeof input === 'function' ? input(s) : input); }
 function player(s, at, lane) { s.s = s.distance = at; s.offset = 0; s.lateral = lane; Object.assign(s, roadPoint(at, lane)); }
 
 test('encounters isolate traffic, pause clocks and fully reset hazards', () => {
-  for (const [type, count] of Object.entries({ darts: 6, interceptors: 3, mines: 2, convoy: 6 })) {
+  for (const [type, count] of Object.entries({ darts: 6, interceptors: 3, mines: 2, convoy: 8 })) {
     const s = run(type, { invincible: true }); assert.equal(s.enemies.length, count);
     steps(s, 1); assert.equal(s.vehicles.length, 0); assert.equal(s.groups.length, 0);
     s.status = 'paused'; const age = s.encounter.age; s.step(2); assert.equal(s.encounter.age, age);
@@ -48,8 +48,13 @@ test('prediction lead is capped and targets stay fixed after a player reversal',
 });
 
 test('destroyed Darts stop firing and full clear pays its bonus once', () => {
-  const s = run('darts'); for (const e of s.enemies) s.hitTarget(e, 3); steps(s, 1);
-  assert.equal(s.encounter.outcome, 'cleared'); assert.equal(s.score, 6 * 250 + R.clearBonus);
+  const s = run('darts');
+  for (let i = 0; i < 120 * 16 && s.status === 'playing'; i++) {
+    for (const e of s.enemies) s.hitTarget(e, 6);
+    s.step(1 / 120);
+  }
+  assert.equal(s.encounter.waves.length, 3); assert.equal(s.encounter.members.length, 18);
+  assert.equal(s.encounter.outcome, 'cleared'); assert.equal(s.score, 18 * 250 + R.clearBonus);
   const score = s.score; steps(s, 5); assert.equal(s.score, score);
   assert.equal(s.bullets.some(b => !b.friendly), false);
 });
@@ -75,10 +80,10 @@ test('three Interceptors serialize attack chains and preserve warnings at boost 
 });
 
 test('side dash locks its destination, traverses laterally, then exposes the engine', () => {
-  const s = run('interceptors', { invincible: true }); s.shotTimer = Infinity; steps(s, 2.5);
+  const s = run('interceptors', { invincible: true }); s.shotTimer = Infinity; steps(s, 2.8);
   const e = s.enemies.find(e => e.phase === 'dashWarning'); assert.ok(e);
   const locked = e.dashTarget, start = e.dashStart; s.lateral = -locked;
-  for (let i = 0; i < 160 && e.phase !== 'recovery'; i++) { s.step(1 / 120); assert.equal(e.dashTarget, locked); }
+  for (let i = 0; i < 240 && e.phase !== 'recovery'; i++) { s.step(1 / 120); assert.equal(e.dashTarget, locked); }
   assert.equal(e.phase, 'recovery'); assert.ok(Math.abs(e.lateral - start) > 3);
   e.contact = false; const before = e.hp;
   s.hitTarget(e, 1, roadPoint(e.s - 5, e.lateral)); assert.equal(e.hp, before - 1.5);
@@ -86,7 +91,7 @@ test('side dash locks its destination, traverses laterally, then exposes the eng
 
 test('ordinary Interceptor staging stays ahead and armor protects unexposed engines', () => {
   const s = run('interceptors', { invincible: true }); s.shotTimer = Infinity; steps(s, 0.3, { boost: true });
-  assert.ok(s.enemies.every(e => e.s - s.s > 60));
+  assert.ok(s.enemies.every(e => e.s - s.s > 18 && e.s - s.distance < 42));
   const e = s.enemies[0]; s.hitTarget(e, 1, roadPoint(e.s - 5, e.lateral)); assert.ok(Math.abs(e.hp - 11.8) < 1e-8);
   e.phase = 'recovery'; e.contact = false; assert.ok(s.encounter.killReward(e) > s.encounter.passed(e) * 5);
 });
@@ -102,8 +107,8 @@ test('clusters rotate in opposite directions, drift, and preserve shot-out gaps'
 
 test('killing both layers preserves moving clusters and stops new drops', () => {
   const s = run('mines', { invincible: true }); s.shotTimer = Infinity;
-  for (const layer of s.encounter.layers) s.hitTarget(layer, 10);
-  const count = s.encounter.clusters.length, c = s.encounter.clusters[3], old = c.members[1].x;
+  for (const layer of s.encounter.layers) s.hitTarget(layer, 30);
+  const count = s.encounter.clusters.length, c = s.encounter.clusters[1], old = c.members[1].x;
   steps(s, 0.4); assert.equal(s.encounter.clusters.length, count); assert.notEqual(c.members[1].x, old);
   assert.equal(s.status, 'playing');
 });
@@ -141,10 +146,10 @@ test('convoy turrets are independently destructible and escorts are removed', ()
 
 test('turrets alternate tracking and sweeping bursts from the truck itself', () => {
   const s = run('convoy', { invincible: true }); s.shotTimer = Infinity; const seen = new Map();
-  for (let i = 0; i < 120 * 3.5; i++) { s.step(1 / 120); for (const b of s.bullets) seen.set(b.id, { ...b }); }
+  for (let i = 0; i < 120 * 4.75; i++) { s.step(1 / 120); for (const b of s.bullets) seen.set(b.id, { ...b }); }
   const track = [...seen.values()].filter(b => b.pattern === 'turret-track');
   const sweep = [...seen.values()].filter(b => b.pattern === 'turret-sweep');
-  assert.equal(track.length, 6); assert.equal(sweep.length, 7);
+  assert.equal(track.length, 12); assert.equal(sweep.length, 14);
   assert.ok(new Set(sweep.map(b => b.vx)).size >= 6);
   assert.ok([...seen.values()].every(b => s.encounter.turrets.some(e => e.id === b.sourceId)));
 });
@@ -154,7 +159,7 @@ test('lock retaliation is warned and killed turrets cannot respond', () => {
   const enc = s.encounter; s.hitTarget(enc.locks[0], 16); s.hitTarget(enc.turrets[0], 10);
   steps(s, 0.7); assert.equal(s.bullets.some(b => b.pattern === 'turret-defense'), false); assert.ok(enc.turrets[1].charge > 0);
   steps(s, 0.15); const shots = s.bullets.filter(b => b.pattern === 'turret-defense');
-  assert.equal(shots.length, 3); assert.ok(shots.every(b => b.sourceId === enc.turrets[1].id));
+  assert.equal(shots.length, 9); assert.ok(shots.every(b => b.sourceId !== enc.turrets[0].id));
 });
 
 test('convoy warns before lane changes and mounted targets move with the hull', () => {
@@ -162,7 +167,7 @@ test('convoy warns before lane changes and mounted targets move with the hull', 
   steps(s, 4.4); assert.equal(s.encounter.laneWarning, true); assert.equal(s.encounter.convoyLane, 0);
   steps(s, 1.5); const enc = s.encounter; assert.ok(enc.convoyLane > 1);
   assert.equal(enc.locks[1].lateral, enc.hauler.lateral);
-  assert.ok(Math.abs(enc.turrets[1].lateral - enc.hauler.lateral - 4.5) < 1e-6);
+  assert.ok(Math.abs(enc.turrets[3].lateral - enc.hauler.lateral - 3.3) < 1e-6);
 });
 
 test('autofire hits locks before hull, salvage pays once with feedback, full raid removes turrets', () => {
@@ -189,7 +194,7 @@ test('escape, partial raid and clear rewards stay distinct', () => {
 
 test('all encounters remain finite and bounded across cruise, fast and boost', () => {
   for (const type of Object.keys(ENCOUNTERS)) for (const input of [{}, { racing: true }, { boost: true }]) {
-    const s = run(type, { invincible: true });
+    const s = run(type, { invincible: true, encounterSupport: true });
     for (let i = 0; i < 120 * 25 && s.status === 'playing'; i++) {
       s.step(1 / 120, input); assert.ok(Number.isFinite(s.s + s.x + s.z + s.speed));
       assert.ok(s.encounter.mines.length <= R.mineLimit); assert.ok(s.bullets.length <= 220);

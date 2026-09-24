@@ -1,6 +1,12 @@
 # Mechanics experiments
 
-## Current experiment: 009 — attacks that disrupt firing position
+## Current experiment: 010 — top-down visibility and combined threats
+
+User testing found shooters outside the top-down view and requested more endurance and simultaneous threats. Staging now fits the top-down camera, and a full-body camera projection gate with 0.7 seconds of readable exposure controls all encounter shooting. Interceptor preparation also requires visibility. Darts have 6 HP and three six-ship waves. The side dash lasts 1.05 seconds across up to 14 metres. Miners have 30 HP, faster orbit drops, and a separately warned wall of counter-rotating clusters. The convoy carries four rear turrets. Normal red scouts reinforce all four tests independently of the main objective.
+
+Mine walls scale group count/radius to road width, keep shootable gaps, and arm after 0.85 seconds to remain relevant at the closer staging distance while preserving fast crossings before arming. Agents validate projection and simulation numerically; the user remains the sole gameplay visual tester.
+
+## Previous experiment: 009 — attacks that disrupt firing position
 
 User feedback: repeated volleys remained predictable, Interceptor contact felt incidental, straight autofire solved mine trails, and the convoy lacked its own attacks or understandable rewards. Implemented the approved first tests: six Darts split between direct burst, capped predictive aim and three-shot spread roles; three serialized charge/side-dash Interceptors; three-mine rotating clusters that retain shot-out gaps; and a lane-changing hauler with targetable tracking/sweeping turrets instead of escorts. Destroying cargo triggers a warned defensive fan. Roles, warnings, orbit motion and salvage value have explicit presentation cues.
 
