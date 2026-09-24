@@ -1,8 +1,22 @@
 # VECTOR SHIFT — mechanics prototype
 
+## New: Phase Racer
+
+Open `/racer.html` for the separate racing pivot. The original highway game remains at `/index.html`, preserved before the pivot in commit `90f2982`. Both pages are included in the production build and link to each other.
+
+The racer now has checkpoint progression: First Shift (2.4 km), Around the Tube (6.6 km), Take Flight (3.4 km), Combinations (6.6 km), and repeating Overload rounds. The guide previews required phase colors; checkpoints save the next stage and refill boost, and retries restart the current level. The original mixed course is preserved as Combinations: flat launch, outside tube, open connector, inside tube, final sprint. Gravity and the chase camera follow the local surface; full tubes permit 360-degree steering. The ship can jump away from the local surface, with in-air steering and boost. Three instantly selectable phases match boost strips and lethal energy gates. Solid walls require lateral dodges or passing through a white-marked opening on flat roads and both tube types; all phases collide with them. Low barriers can be jumped, medium walls offer jumping or an opening, and tall opening-only walls cannot be cleared. Full-width and partial track gaps require timed jumps or lateral avoidance; boost helps reach longer landings. No enemies, shooting, health, upgrades, or phase resource meter. Hold W/Shift or touch BOOST for a four-second rechargeable boost, which stacks with matching strips. Cruise is 110 m/s, strips reach 154 m/s, manual boost reaches 250 m/s, and both together reach 285 m/s. Speed carries beyond boosts and decays gradually. The original highway camera shake and wind streaks intensify under boost, with reduced-motion suppression. Edge scrapes reduce speed. Full-width and partial-width gates use matching phase colors and symbols, with advance HUD warnings. Best times are saved per level, along with the furthest reached checkpoint, when storage is available.
+
+Controls: **A/D or left/right** steer; **Space, Up, or J** jump; **W or Shift** boost; **1/2/3** select Ion/Sol/Flux; **S or Down** triggers a short brake pulse; **R** retries the current checkpoint; **P/Escape** pauses. Touch buttons support simultaneous steering, boosting, and phase selection. Focus loss pauses the race. Choose **Driving only** on the start screen for the continuous empty course with no strips, gates, walls, or gaps (jump remains available); these runs do not overwrite phase-race records.
+
+The racer uses separate `src/racer/` modules. These are temporary procedural prototype visuals, not final recipe art. User-owned gameplay testing remains pending; no tests or visual gameplay review were performed. See `docs/PHASE_RACER.md` for implementation details and tuning.
+
+If the default Vite config bundler encounters restricted-directory access on Windows, use `npm run build -- --configLoader native` (and the same flag for dev/preview).
+
+## Preserved highway prototype
+
 A ground-skimming scrolling shooter with cruise, unlimited fast mode, deliberate braking, and a separate rechargeable boost. Speed modes are player-controlled anywhere on the track.
 
-**Agent workflow:** Read `AGENTS.md`. The user is the sole visual gameplay tester; agents perform nonvisual checks and hand over playable changes for user feedback.
+**Agent workflow:** Read `AGENTS.md`. The user owns testing. Agents review source and rebuild playable changes, without running tests or visually reviewing gameplay.
 
 This is a **temporary primitive-only mechanics study**, not a submission-ready art build. The name is a working title.
 
@@ -41,3 +55,9 @@ npm run preview
 - No reference-game code or assets are used.
 - See `docs/JAM.md` for rules and the outstanding submission work; `docs/BUILD_LOG.md` records development.
 - See `docs/DESIGN.md` for the mechanics experiment and `docs/VALIDATION.md` for the local gate result. A local PASS is not a submitted entry.
+
+
+
+
+
+

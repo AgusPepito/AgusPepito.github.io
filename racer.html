@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#080e19" />
+  <title>Vector Shift — Phase Racer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080e19'/%3E%3Cpath d='M9 30L20 8l11 22-11-6z' fill='%234de1ff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <canvas id="race-world" aria-label="Phase racing course"></canvas>
+  <div id="speed-wash" aria-hidden="true"></div>
+  <header><a class="wordmark" href="./racer.html">VECTOR / SHIFT <small>PHASE RACER · CHECKPOINT RUN</small></a><nav><a href="./index.html">Original game ↗</a><button id="pause">Pause</button></nav></header>
+  <div id="race-hud">
+    <div id="checkpoint-notice" role="status" hidden></div>
+    <div class="telemetry"><span id="section">LAUNCH STRAIGHT</span><strong><span id="speed">0</span><small>KM/H</small></strong><span id="drive-status">AUTO ACCELERATION</span><span id="boost-status">HOLD W / SHIFT</span></div>
+    <div class="timing"><strong id="time">0:00.00</strong><span id="best">BEST —</span><span id="split">SECTOR 1 / 3</span></div>
+    <div id="gate-hint" hidden></div>
+    <div id="sequence-hint" hidden><small id="sequence-name"></small><div id="sequence-steps"></div></div>
+  </div>
+  <section id="menu" class="overlay"><div class="panel">
+    <p class="eyebrow">GRAVITY / MOMENTUM / PHASE</p><h1>FIND YOUR<br><em>FAST LINE.</em></h1>
+    <p>Follow the line's color to match the next phase. Learn one skill at a time, reach checkpoints, then take on increasingly demanding combinations.</p>
+    <div class="instructions"><span><b>← → / A D</b> Steer around the surface</span><span><b>S / ↓</b> Tap for a short brake pulse</span><span><b>Space / ↑ / J</b> Tap to jump</span><span><b>W / Shift</b> Hold to boost—even in the air</span><span><b>1 ● &nbsp; 2 ▲ &nbsp; 3 ◆</b> Switch phase instantly</span></div>
+    <p class="subtle">Drive through checkpoints to refill boost and enter the next stage. R retries your current level.<br>Gold edges: jumps or gaps. Tall red walls: use their opening.<br>After Combinations, Overload rounds keep coming.</p>
+    <label class="mode-choice" for="level">Starting checkpoint <select id="level"><option value="0">1 · First Shift — learn phases</option><option value="1">2 · Around the Tube — steering</option><option value="2">3 · Take Flight — jumps and turbo</option><option value="3">4 · Combinations — the original challenge</option><option value="4">5 · Overload — expert rounds</option></select></label>
+    <p id="level-lesson" class="subtle"></p>
+    <label class="mode-choice" for="mode">Course mode <select id="mode"><option value="phase">Phase race · phases, walls and jumps</option><option value="drive">Driving only · empty track</option></select></label>
+    <button id="start" class="primary">Start from checkpoint ↗</button><p id="loading-error" hidden></p>
+  </div></section>
+  <section id="result" class="overlay" hidden><div class="panel compact"><p class="eyebrow" id="result-label"></p><h1 id="result-title"></h1><p id="result-copy"></p><div id="sector-results"></div><button id="retry" class="primary">Race again ↗</button><button id="back">Back to start</button></div></section>
+  <section id="paused" class="overlay" hidden><div class="panel compact"><p class="eyebrow">TAKE A BREATH</p><h1>PAUSED.</h1><button id="resume" class="primary">Resume ↗</button><button id="restart">Restart race</button></div></section>
+  <footer><div class="steering"><button id="left" aria-label="Steer left">←</button><button id="right" aria-label="Steer right">→</button><button id="jump" aria-label="Jump">JUMP <small id="jump-status">SPACE</small></button><button id="boost" aria-label="Hold to boost" aria-pressed="false">BOOST <small id="boost-charge">100%</small></button></div><div id="phases" aria-label="Ship energy phase"><button data-phase="0"><small>1</small> ● ION</button><button data-phase="1"><small>2</small> ▲ SOL</button><button data-phase="2"><small>3</small> ◆ FLUX</button></div><span class="key-help">R restart · Esc pause</span></footer>
+  <script type="module" src="/src/racer/main.js"></script>
+</body>
+</html>
+
+
+
+

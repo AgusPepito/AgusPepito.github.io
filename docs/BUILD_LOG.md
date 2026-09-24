@@ -139,3 +139,76 @@ Initial source history is created before implementation and will be preserved.
 - Official recipe self-tests pass, including known-bad fixtures, assets outside the recipe folder, expected sizes, and preservation of animated asset hierarchy.
 - Initial local production jam gate passed using actual touch under the gate's mobile/4G conditions: 0.52 MB, 0.93 s ready, 16 peak draw calls, 9,820 peak triangles, no console errors or missing files. This is a development check, not a deployed entry verdict; camera refinements are followed by a fresh check.
 - Final committed camera revision also passes the local mobile gate: 0.8 s ready, 0.5 MB, 15 peak draw calls, 9,772 peak triangles, zero errors. The exact verdict and scope are retained in `docs/VALIDATION.md`.
+# 2026-09-24 — Phase Racer 001
+
+Preserved the highway combat version at commit `90f2982`. Added a separate `/racer.html` entry with a continuous flat/outside-tube/inside-tube course, surface-relative steering and chase camera, three phases, sustained boost strips, lethal matching gates, braking and speed carry, finish/sector times, and local personal-best storage. Added a driving-only option for evaluating the empty track. Existing highway game remains accessible and builds alongside the racer. New visuals remain procedural placeholders pending the recipe art pass. User owns testing: no tests or gameplay visual review performed. Production build uses Vite's native config loader to avoid a restricted-directory error in the default config bundler.
+
+## 2026-09-24 — Phase Racer 002: speed and manual boost
+
+Removed all racer braking controls and behavior. Space/Shift and touch BOOST use the original four-second rechargeable boost; phase strips stack for extra speed. Raised cruise/strip/manual/combined speeds to 110/154/170/190 m/s and lateral steering to 24 m/s. Reused the highway SpeedEffects module and defaults for camera-local shake and wind, with boost amplification and reduced-motion suppression. Stored the unshaken camera orientation separately to avoid accumulating vibration. Updated instructions, boost charge/status feedback, and the versioned personal-best record. Production build only; no tests or visual gameplay inspection.
+
+## 2026-09-24 — Phase Racer 003: solid walls and openings
+
+Added lateral-dodge walls and thick walls with one framed opening on flat, outside-tube and inside-tube sections. Geometry and swept collision share normalized surface spans, including wraparound handling. Solid impact is lethal in every phase. Added white opening guides, nearest-obstacle warnings, distinct wall crash feedback, and a new personal-best version. Driving-only mode stays empty. User owns testing; no tests or gameplay visual inspection performed.
+
+## 2026-09-24 — Faster tube steering
+
+User feedback: opposite-side tube openings could not be reached quickly enough. Increased lateral speed from 24 m/s to 30 m/s on flat roads and 52 m/s on full tubes, smoothly blended by surface curl. Increased steering response from 9/s to 14/s and release damping to 20/s to reduce overshoot. Capped visual banking at 0.32 radians so faster steering does not over-tilt the ship. Source review and production rebuild only; no tests or visual gameplay inspection.
+
+## 2026-09-24 — Visible passage direction
+
+Added repeated white directional signs to solid wall faces and downward signs above framed openings. Shared guidance selects valid clear sides on flat roads and the shortest route around tubes. Added a large distance-independent HUD arrow and extended the warning range to 650 metres. Arrow materials remain bright through fog. Rebuilt the preview without tests or gameplay visual inspection.
+
+## 2026-09-24 — Required phase sequences
+
+Added four authored full-width phase → different phase → solid obstacle chains and an advance three-action preview with passage direction. Preserved the empty driving option. Replaced the isolated partial gate at 4420 with its mandatory chain gate, sorted all gates, and versioned personal bests. Recorded an endless-generation proposal separately; the playable course remains finite. Production rebuild only, no tests or visual gameplay review.
+
+## 2026-09-24 — Stronger, riskier boost
+
+Raised manual boost from 170 to 250 m/s, combined boost from 190 to 285, and acceleration from 56 to 150 m/s². Added recoverable high-speed coast after release, stronger camera pullback/FOV/shake/wind/exhaust effects, and separated boost records. Cruise, strip-only speed and steering are unchanged. Rebuilt without tests or gameplay visual inspection.
+
+## 2026-09-24 — Dynamic passage spline
+
+Added a live white guidance ribbon from ahead of the ship to the next wall's opening or clear side, with flowing arrowheads and an endpoint ring. A track-coordinate Hermite curve incorporates current lateral motion and remains on the road/tube surface. Full closed-tube approaches take the shortest wrapped route; approaches spanning open sections stay within edges. The guide updates continuously inside the 650 m warning horizon, never skips an uncleared wall, and disappears while crossing the target. It is guidance only: no automatic steering, phase changes, or safety guarantee. Reduced motion stops arrow flow; driving-only mode hides the guide. Rebuilt without tests or visual gameplay review.
+
+## 2026-09-24 — Simplified passage guidance
+
+Removed the upper progress strip, wall-direction HUD arrow/text, repeated arrows mounted on wall faces, and opening arrow plaques. The dynamic passage spline is the navigation guide. Phase-gate warnings, sequence previews, opening edge markings and collisions remain. Removed unused arrow texture creation. Production rebuild only; no tests or visual gameplay review.
+
+## 2026-09-24 — Jump, gaps and obstacle height
+
+Implemented surface-relative jump on W/Up/J and touch, with in-air steering/boost and no repeat/double jump. Added full and partial track gaps on flat/exterior/interior surfaces; cut pavement and decorations from the same masks used for support. Added height-aware swept wall/roof collision, jump-only low barriers, a jump-or-opening wall, and tall opening-only walls. Added gold jump guidance arcs, gap/landing prompts, ground shadow, adjusted camera follow, updated controls and revision-006 records. Driving-only mode fills gaps and supports practice jumps. No tests or gameplay visual inspection; rebuild only.
+
+## 2026-09-24 — Jump/boost key swap
+
+Changed the racer to Space for jump and W for boost. Up/J remain alternate jump keys; Shift remains alternate boost. Updated the intro, button hints, live boost status and jump warnings. Original highway controls unchanged. Production rebuild only; no tests or visual playtesting.
+
+## 2026-09-24 — Snappier jump curve
+
+Replaced the symmetric ballistic jump with a fast ease-out rise (0.32 s to peak instead of 0.7 s) and an accelerating quadratic descent without an apex hold. Peak remains 4.9 m; total airtime is 1.3 s versus 1.4 s. Added a brief 0.14 m landing compression, suppressed under reduced motion. The guide uses the same height curve, and failed jumps continue falling below missing track. Landing support uses within-step contact interpolation. Rebuild only; no tests or visual gameplay review.
+
+## 2026-09-24 — Fair landing-to-opening approach
+
+User reported insufficient room and missing passage guidance after the exterior tube jump. Moved the opening-only wall from 2070 to 2370, increasing landing-edge clearance from 130 to 430 metres. Removed the intervening 2180–2290 partial gap and the 2350 phase gate so the recovery stretch remains clear. The passage spline now extends across a gap to a nearby following opening-only wall, showing its target throughout the airborne approach with a separate landing ring. The jump arc still ends at the landing, rather than stretching to the wall. Continuation does not skip intervening walls or gaps. Personal bests use revision 007. Source review and production rebuild only; no tests or visual gameplay inspection.
+
+## 2026-09-24 — Edge jump grace
+
+Added a 100 ms grace window after driving off supported track into a gap, allowing a slightly late jump. Grace is consumed on takeoff, expires during the fall, clears on landing/reset, and is never granted after an intentional jump, preventing double jumps. Launch starts from the current height to avoid a visible snap upward after leaving the edge. Jump hint remains available during grace. Production rebuild only; no tests or visual gameplay inspection.
+
+## 2026-09-24 — Slightly faster boost recharge
+
+Increased racer recharge from 5 to 6 percentage points per second: empty-to-full refill now takes about 16.7 seconds instead of 20, after the same 2.5-second delay. Boost duration and power are unchanged. BoostMeter accepts an optional regen override; the original highway retains its default rate. Production rebuild only, no tests run.
+
+## 2026-09-24 — Tap brake pulse
+
+S/Down now triggers a 0.25-second brake pulse, shedding 28% of current speed with a 65 m/s floor. It stops automatically and normal acceleration resumes. Holding/repeating a key cannot sustain or retrigger braking; both brake keys must be released before a fresh press, with a 0.65-second retrigger interval. Brake overrides strip acceleration and cancels held turbo through the existing boost meter; release/repress turbo to rearm. Added HUD pulse feedback and control instructions. Source review and production rebuild only; no tests or visual gameplay inspection.
+
+## 2026-09-24 — Phase-colored guidance and checkpoint progression
+
+The dynamic ribbon and flowing arrows now preview required gate phases by segment, changing to the next phase after a gate, with white passage/gold jump guidance after the last gate. Isolated gates receive a guide even when no physical obstacle is nearby.
+
+Added level configuration and checkpoint progression: First Shift (2.4 km flat, isolated phase gates and one dodge); Around the Tube (6.6 km, wide spaced walls/openings and no gaps); Take Flight (3.4 km flat, spaced jump challenges); Combinations (the developed 6.6 km course); then indefinitely repeatable Overload rounds with three-phase chains, phase permutations, mirrored layouts, bounded narrowing, and bounded gap/spacing changes. Retries restart the current level with full boost. Checkpoint completion saves the furthest reached next stage and per-level best times. The menu allows choosing early stages or jumping directly to the developed challenge. Old geometry/materials/textures are disposed at level changes instead of retaining an ever-growing course. Sequence preview handles three gates plus the obstacle. No tests or visual gameplay inspection; source review and production rebuild only.
+
+## 2026-09-24 — Drive-through checkpoints
+
+Checkpoint crossings now save progress/time and automatically advance to the next stage before showing any results UI. Added a three-second notification at the top. Carry forward speed, lateral position/momentum, selected phase, jump state and brake state; held controls stay active, and boost refills. Explicit retries still reset at the current checkpoint. Source review and production rebuild only; no tests or visual gameplay inspection.

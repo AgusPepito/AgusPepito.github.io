@@ -1,7 +1,7 @@
 export const BOOST = { capacity: 100, drain: 25, regen: 5, delay: 2.5, minimum: 15 };
 
 export class BoostMeter {
-  constructor() { this.reset(); }
+  constructor({ regen = BOOST.regen } = {}) { this.regen = regen; this.reset(); }
   reset() { this.energy = BOOST.capacity; this.cooldown = 0; this.active = false; this.locked = false; }
   step(dt, held, braking) {
     if (!held) this.locked = false;
@@ -15,7 +15,7 @@ export class BoostMeter {
     } else {
       const regenTime = Math.max(0, dt - this.cooldown);
       this.cooldown = Math.max(0, this.cooldown - dt);
-      this.energy = Math.min(BOOST.capacity, this.energy + BOOST.regen * regenTime);
+      this.energy = Math.min(BOOST.capacity, this.energy + this.regen * regenTime);
       // Holding an unavailable boost never auto-fires as soon as charge returns.
       if (held && !canStart) this.locked = true;
     }
