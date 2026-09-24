@@ -232,3 +232,7 @@ Added an optional free-power input to the boost meter, supplied by the racer's e
 ### 2026-09-24 — GitHub Pages packaging
 Prepared automatic Pages deployment and a separate site package with Phase Racer at the root and the original at highway.html. Production build and packaging completed; no tests or gameplay inspection. Remote repository creation awaits explicit approval for public source/history disclosure and the repository name.
 
+
+### 2026-09-24 — Mobile controls and HUD redesign
+Replaced touch arrow buttons with analog thumbpad, deliberate forward turbo and rearmed backward brake gesture. Added color-only vertical phase controls, jump/retry, and radial boost charge. Rebuilt compact HUD styles and removed redundant live text. Source review and production rebuild only; no tests or visual playtesting for this UI iteration.
+

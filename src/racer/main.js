@@ -1,13 +1,14 @@
 import './style.css';
 import { Race } from './simulation.js';
 import { RaceView } from './view.js';
-import { PHASES, GATES, LENGTH, section } from './track.js';
-import { OBSTACLES, passageDirection } from './obstacles.js';
-import { PHASE_CHAINS } from './sequences.js';
+import { PHASES, GATES, LENGTH } from './track.js';
+import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
 import { configureLevel, levelInfo } from './levels.js';
 
-const $ = id => document.getElementById(id), race = new Race(), keys = new Set(), held = new Map();
+const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
+const pad = { pointer: null, steer: 0, boost: false, brakeArmed: true };
+const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
 const progressKey = 'vector-shift-campaign-001-checkpoint';
 let currentLevel = 0, storageKey;
 let view, best = null, last = performance.now(), accumulator = 0, shown = '', resultSaved = false, jumpQueued = false, brakeQueued = false;
@@ -29,11 +30,23 @@ function updateLevelChoice() {
     option.textContent = `${currentLevel + 1} · ${levelInfo(currentLevel).name}`; $('level').append(option);
   }
   $('level').value = String(currentLevel);
-  $('level-lesson').textContent = levelInfo(currentLevel).lesson;
+  updateLesson(currentLevel);
+}
+function updateLesson(index) {
+  const lesson = levelInfo(index).lesson;
+  $('level-lesson').textContent = touchLayout.matches ? lesson.replace('Space jumps. W boosts.', 'Tap ↥ to jump. Push the pad forward for turbo.').replace('with 1, 2 or 3', 'with the three colors') : lesson;
 }
 configureLevel(currentLevel); loadBest(); updateLevelChoice();
 const format = seconds => `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;
-function clearInput() { keys.clear(); held.clear(); jumpQueued = false; brakeQueued = false; for (const id of ['left', 'right', 'boost', 'jump']) $(id).classList.remove('active'); }
+function resetPad() {
+  const pointer = pad.pointer;
+  pad.pointer = null; pad.steer = 0; pad.boost = false; pad.brakeArmed = true;
+  if (pointer !== null && $('thumbpad').hasPointerCapture(pointer)) $('thumbpad').releasePointerCapture(pointer);
+  $('pad-knob').style.transform = 'translate(-50%, -50%)';
+  $('thumbpad').classList.remove('pressed');
+}
+function clearInput() { keys.clear(); resetPad(); jumpQueued = false; brakeQueued = false; $('jump').classList.remove('active'); }
+
 function phase(index) { if (race.state === 'running' || race.state === 'ready') race.phase = index; }
 function start(index = currentLevel, carry = null) {
   if (!view) return;
@@ -76,7 +89,8 @@ function sync() {
   $('menu').hidden = race.state !== 'ready'; $('paused').hidden = race.state !== 'paused';
   $('result').hidden = !['crashed', 'checkpoint'].includes(race.state);
   $('pause').hidden = !['running', 'paused'].includes(race.state);
-  $('pause').textContent = race.state === 'paused' ? 'Resume' : 'Pause';
+  $('pause').textContent = race.state === 'paused' ? '▷' : 'Ⅱ';
+  $('pause').setAttribute('aria-label', race.state === 'paused' ? 'Resume' : 'Pause');
   if (race.state !== shown) {
     if (race.state === 'crashed' || race.state === 'checkpoint') {
       clearInput();
@@ -87,11 +101,11 @@ function sync() {
       $('result-title').textContent = finished ? 'LEVEL CLEAR.' : gapCrash ? 'MISSED LANDING.' : wallCrash ? 'WALL IMPACT.' : 'OUT OF PHASE.';
       const gate = GATES.find(g => Math.abs(g.s - race.s) < 0.1);
       $('result-copy').textContent = finished ? `${levelInfo(currentLevel).name} · ${format(race.time)}. Next: ${levelInfo(currentLevel + 1).name}. Boost refills at the checkpoint.` :
-        gapCrash ? `${race.cause}. Press Space or R to retry instantly.` :
-        wallCrash ? `${race.cause} at ${(race.s / 1000).toFixed(2)} km. Solid walls cannot be phased through. Press Space or R to retry instantly.` :
-        `${gate ? `${PHASES[gate.phase].symbol} ${PHASES[gate.phase].name} was required` : race.cause}. You were in ${PHASES[race.phase].name} at ${(race.s / 1000).toFixed(2)} km. Press Space or R to retry instantly.`;
+        gapCrash ? `${race.cause}. ${touchLayout.matches ? 'Tap ↻ to retry instantly.' : 'Press Space or R to retry instantly.'}` :
+        wallCrash ? `${race.cause} at ${(race.s / 1000).toFixed(2)} km. Solid walls cannot be phased through. ${touchLayout.matches ? 'Tap ↻ to retry instantly.' : 'Press Space or R to retry instantly.'}` :
+        `${gate ? `${PHASES[gate.phase].symbol} ${PHASES[gate.phase].name} was required` : race.cause}. You were in ${PHASES[race.phase].name} at ${(race.s / 1000).toFixed(2)} km. ${touchLayout.matches ? 'Tap ↻ to retry instantly.' : 'Press Space or R to retry instantly.'}`;
       $('sector-results').textContent = finished ? levelInfo(currentLevel + 1).lesson : `Retry starts at Level ${currentLevel + 1}: ${levelInfo(currentLevel).name}, with full boost.`;
-      $('retry').textContent = finished ? 'Continue to next level ↗' : 'Retry checkpoint · SPACE ↗';
+      $('retry').textContent = finished ? 'Continue to next level ↗' : touchLayout.matches ? 'Retry checkpoint ↻' : 'Retry checkpoint · SPACE ↗';
       if (finished && race.mode === 'phase') {
         try {
           const saved = Number(localStorage.getItem(progressKey));
@@ -110,7 +124,7 @@ function sync() {
 $('start').addEventListener('click', () => start(Number($('level').value)));
 $('retry').addEventListener('click', () => start(race.state === 'checkpoint' ? currentLevel + 1 : currentLevel));
 $('restart').addEventListener('click', () => start());
-$('level').addEventListener('change', () => { $('level-lesson').textContent = levelInfo(Number($('level').value)).lesson; });
+$('level').addEventListener('change', () => updateLesson(Number($('level').value)));
 $('pause').addEventListener('click', pause); $('resume').addEventListener('click', pause);
 $('back').addEventListener('click', () => { clearInput(); race.reset(); view.snap = true; sync(); });
 for (const button of document.querySelectorAll('[data-phase]')) {
@@ -118,17 +132,37 @@ for (const button of document.querySelectorAll('[data-phase]')) {
   button.addEventListener('pointerdown', e => { e.preventDefault(); phase(index); });
   button.addEventListener('click', () => phase(index));
 }
-for (const id of ['left', 'right', 'boost', 'jump']) {
-  const button = $(id);
-  button.addEventListener('pointerdown', e => {
-    if (id === 'jump' && race.state === 'crashed') { e.preventDefault(); start(); return; }
-    if (race.state !== 'running') return;
-    e.preventDefault(); button.setPointerCapture(e.pointerId); held.set(e.pointerId, id); button.classList.add('active');
-    if (id === 'jump') jumpQueued = true;
-  });
-  const release = e => { held.delete(e.pointerId); if (![...held.values()].includes(id)) button.classList.remove('active'); };
-  button.addEventListener('pointerup', release); button.addEventListener('pointercancel', release); button.addEventListener('lostpointercapture', release);
+$('jump').addEventListener('pointerdown', e => {
+  e.preventDefault();
+  if (race.state === 'crashed') { start(); return; }
+  if (race.state === 'running') jumpQueued = true;
+});
+const thumbpad = $('thumbpad');
+function movePad(e) {
+  if (pad.pointer !== e.pointerId || race.state !== 'running') return;
+  e.preventDefault();
+  const rect = thumbpad.getBoundingClientRect(), radius = rect.width * 0.38;
+  const x = Math.max(-1, Math.min(1, (e.clientX - rect.left - rect.width / 2) / radius));
+  const y = Math.max(-1, Math.min(1, (e.clientY - rect.top - rect.height / 2) / radius));
+  pad.steer = Math.abs(x) < 0.12 ? 0 : Math.sign(x) * (Math.abs(x) - 0.12) / 0.88;
+  // Separate axes retain full steering while pushing forward; hysteresis avoids chatter.
+  pad.boost = pad.boost ? y < -0.38 : y < -0.62;
+  if (y > 0.62 && pad.brakeArmed) { brakeQueued = true; pad.brakeArmed = false; }
+  if (y < 0.25) pad.brakeArmed = true;
+  const scale = radius / Math.max(1, Math.hypot(x, y));
+  $('pad-knob').style.transform = `translate(calc(-50% + ${x * scale}px), calc(-50% + ${y * scale}px))`;
 }
+thumbpad.addEventListener('pointerdown', e => {
+  if (race.state !== 'running' || pad.pointer !== null) return;
+  pad.pointer = e.pointerId; thumbpad.setPointerCapture(e.pointerId);
+  thumbpad.classList.add('pressed'); movePad(e);
+});
+thumbpad.addEventListener('pointermove', movePad);
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  thumbpad.addEventListener(type, e => { if (pad.pointer === e.pointerId) resetPad(); });
+}
+thumbpad.addEventListener('contextmenu', e => e.preventDefault());
+touchLayout.addEventListener('change', () => { clearInput(); updateLesson(Number($('level').value)); });
 const controlCodes = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyW', 'KeyJ', 'KeyA', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'Digit1', 'Digit2', 'Digit3', 'Numpad1', 'Numpad2', 'Numpad3', 'KeyR', 'KeyP', 'Escape'];
 window.addEventListener('keydown', e => {
   if (!controlCodes.includes(e.code)) return;
@@ -156,85 +190,59 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => keys.delete(e.code));
 function suspend() { clearInput(); if (race.state === 'running') { race.state = 'paused'; accumulator = 0; sync(); } }
 window.addEventListener('blur', suspend); document.addEventListener('visibilitychange', () => { if (document.hidden) suspend(); });
-window.addEventListener('resize', () => view?.resize());
+window.addEventListener('resize', () => { resetPad(); view?.resize(); });
 $('race-world').addEventListener('webglcontextlost', e => { e.preventDefault(); suspend(); $('loading-error').hidden = false; $('loading-error').textContent = 'Graphics interrupted. Reload this page to restart.'; race.state = 'ready'; view = null; $('start').disabled = true; sync(); });
 
 function updateHud() {
-  $('checkpoint-notice').hidden = !checkpointNotice || race.time >= 3 || race.state !== 'running';
+  const running = race.state === 'running', touch = touchLayout.matches;
+  $('checkpoint-notice').hidden = !checkpointNotice || race.time >= 3 || !running;
   $('checkpoint-notice').textContent = checkpointNotice;
-  const chain = PHASE_CHAINS.find(c => c.gates[0].s - race.s < 650 && c.obstacleS + 8 > race.s);
-  $('sequence-hint').hidden = !chain || race.state !== 'running' || race.mode !== 'phase';
-  if (chain) {
-    const obstacle = OBSTACLES.find(o => o.s === chain.obstacleS);
-    const turn = passageDirection(obstacle, race.u);
-    $('sequence-name').textContent = chain.name;
-    const steps = $('sequence-steps');
-    if (steps.dataset.chain !== chain.id) {
-      steps.replaceChildren(); steps.dataset.chain = chain.id;
-      for (let i = 0; i <= chain.gates.length; i++) {
-        if (i) { const arrow = document.createElement('b'); arrow.textContent = '›'; steps.append(arrow); }
-        const step = document.createElement('span'); step.id = `sequence-step-${i}`; steps.append(step);
-      }
-    }
-    chain.gates.forEach((gate, i) => {
-      const phase = PHASES[gate.phase], step = $(`sequence-step-${i}`);
-      step.textContent = `${phase.symbol} ${gate.phase + 1} ${phase.name}`;
-      step.style.color = phase.color; step.classList.toggle('cleared', race.s >= gate.s);
-    });
-    $(`sequence-step-${chain.gates.length}`).textContent = `${turn === 0 ? '↑' : turn > 0 ? '→' : '←'} ${obstacle.kind === 'hole' ? 'OPENING' : 'DODGE'}`;
-  }
+  $('level-notice').hidden = !running || race.time >= 2.5 || Boolean(checkpointNotice);
+  $('level-notice').textContent = `L${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
   const p = PHASES[race.phase]; document.documentElement.style.setProperty('--phase', p.color);
   $('speed').textContent = Math.round(race.speed * 3.6); $('time').textContent = format(race.time);
-  $('section').textContent = `L${currentLevel + 1} · ${levelInfo(currentLevel).name} / ${section(race.s).name}`; $('best').textContent = race.mode === 'drive' ? 'DRIVING ONLY' : `LEVEL BEST ${best ? format(best.time) : '—'}`;
-  $('drive-status').textContent = race.brakeTime > 0 ? 'BRAKE PULSE' : race.scrape ? 'EDGE CONTACT / SPEED LOST' : race.boostActive ?
-    race.stripBoost ? `${p.symbol} FREE TURBO / MATCHED LANE` : 'BOOST / FULL THRUST' : race.stripBoost ? `${p.symbol} MATCHED / HOLD BOOST FOR FREE TURBO` : `${p.symbol} ${p.name} / CARRY YOUR SPEED`;
-  $('boost').style.setProperty('--charge', `${race.boost.energy}%`);
-  $('boost').classList.toggle('active', race.state === 'running' && race.boostActive);
-  $('boost').setAttribute('aria-pressed', String(race.state === 'running' && race.boostActive));
-  $('boost-charge').textContent = `${Math.floor(race.boost.energy)}%`;
-  $('jump').firstChild.textContent = race.state === 'crashed' ? 'RETRY ' : 'JUMP ';
+  $('pause-level').textContent = `Level ${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
+  $('best').textContent = race.mode === 'drive' ? 'Driving only' : `Personal best · ${best ? format(best.time) : '—'}`;
+  const progress = Math.min(100, Math.max(0, race.s / LENGTH * 100));
+  $('course-progress').style.setProperty('--progress', `${progress}%`);
+  $('course-progress').setAttribute('aria-valuenow', String(Math.round(progress)));
+  $('boost-meter').setAttribute('aria-valuenow', String(Math.floor(race.boost.energy)));
+  $('boost-fill').style.width = `${race.boost.energy}%`;
+  $('pad-charge').style.strokeDasharray = `${race.boost.energy} 100`;
+  for (const id of ['thumbpad', 'boost-meter']) {
+    $(id).classList.toggle('free', race.stripBoost);
+    $(id).classList.toggle('boosting', race.boostActive);
+    $(id).classList.toggle('braking', race.brakeTime > 0);
+  }
+  $('boost-label').textContent = race.stripBoost ? 'FREE TURBO' : race.boost.locked ? 'RELEASE W' : 'TURBO';
+  $('jump-icon').textContent = race.state === 'crashed' ? '↻' : '↥';
   $('jump').setAttribute('aria-label', race.state === 'crashed' ? 'Retry checkpoint' : 'Jump');
-  $('jump-status').textContent = race.state === 'crashed' ? 'TAP / SPACE' : race.airborne && race.edgeGrace <= 0 ? 'IN AIR' : 'SPACE';
   $('jump').classList.toggle('active', race.airborne);
-  $('boost-status').textContent = race.stripBoost ? race.boostActive ? 'FREE TURBO / NO DRAIN' : 'MATCHED LANE / FREE TURBO' : race.boost.locked ? 'RELEASE TO REARM' : race.boostActive ? 'BOOSTING' : race.boost.cooldown > 0 ? 'COOLING DOWN' : race.boost.energy < 100 ? 'RECHARGING' : 'HOLD W / SHIFT';
-  $('split').textContent = `CHECKPOINT · ${Math.max(0, (LENGTH - race.s) / 1000).toFixed(1)} KM`;
-  const nextGate = GATES.find(g => g.s > race.s && g.s - race.s < 650);
   const gap = GAPS.find(g => g.end > race.s && g.start - race.s < 650);
   const cue = gapJumpCue(race, gap);
   const blockingWall = gap && OBSTACLES.some(o => o.s + o.depth > race.s && o.s < gap.start);
-  const cueVisible = cue && (!race.airborne || cue.airborne || race.edgeGrace > 0) && !blockingWall && race.mode === 'phase' && race.state === 'running' &&
-    (cue.airborne || cue.near);
+  const cueVisible = cue && (!race.airborne || cue.airborne || race.edgeGrace > 0) && !blockingWall &&
+    race.mode === 'phase' && running && cue.near && !cue.airborne;
   $('jump-cue').hidden = !cueVisible;
   if (cueVisible) {
-    const boostAvailable = race.boost.energy >= (race.boostActive ? 0.01 : 15);
-    $('jump-cue').dataset.tone = cue.airborne ? 'landing' : !cue.enough ? 'boost' : cue.ready ? 'jump' : 'wait';
-    $('jump-cue').textContent = cue.airborne ? 'AIM FOR THE LANDING RING' : !cue.enough ?
-      !boostAvailable ? 'LOW RANGE · BOOST EMPTY' : race.boost.locked ? 'RELEASE W · THEN BOOST' : 'W · BOOST FOR RANGE' :
-      cue.ready ? 'SPACE · JUMP' : race.s > cue.latest ? 'SPACE · JUMP NOW' : 'APPROACH THE GOLD BAND';
-  }
-  const jumpWall = OBSTACLES.find(o => o.kind === 'jump' && o.s + o.depth > race.s && o.s - race.s < 650);
-  const next = [nextGate, gap && { ...gap, s: gap.start, kind: 'gap' }, jumpWall].filter(Boolean).sort((a, b) => a.s - b.s)[0];
-  $('gate-hint').hidden = !next || race.state !== 'running' || race.mode !== 'phase';
-  if (next?.kind) {
-    $('gate-hint').style.setProperty('--gate', '#ffdf88');
-    $('gate-hint').textContent = next.kind === 'gap' ?
-      `TRACK GAP · ${Math.max(0, Math.ceil(next.start - race.s))} m TO EDGE\n${race.airborne ? `${Math.max(0, Math.ceil(next.end - race.s))} m TO LANDING · BOOST FOR RANGE` : next.full ? 'JUMP NEAR THE EDGE · BOOST FOR RANGE' : 'JUMP OR STEER AROUND THE MISSING PIECE'}` :
-      `LOW BARRIER · ${Math.max(0, Math.ceil(next.s - race.s))} m\nJUMP OVER · SPACE`;
-  } else if (next) {
-    const p = PHASES[next.phase]; $('gate-hint').style.setProperty('--gate', p.color);
-    $('gate-hint').textContent = `${p.symbol} ${p.name} GATE · ${Math.ceil(next.s - race.s)} m\n${next.full ? 'FULL WIDTH' : 'PARTIAL WIDTH'} · ${race.phase === next.phase ? 'PHASE MATCHED' : `SWITCH TO ${next.phase + 1}`}`;
+    const boostAvailable = race.stripBoost || race.boost.energy >= (race.boostActive ? 0.01 : 15);
+    $('jump-cue').dataset.tone = !cue.enough ? 'boost' : cue.ready ? 'jump' : 'wait';
+    $('jump-cue').textContent = !cue.enough ? !boostAvailable ? 'LOW TURBO' : race.boost.locked ?
+      touch ? 'CENTER · THEN PUSH UP' : 'RELEASE W · BOOST' : touch ? 'PUSH UP · TURBO' : 'W · TURBO' :
+      cue.ready || race.s > cue.latest ? touch ? '↥ JUMP' : 'SPACE · JUMP' : 'NEAR THE EDGE';
   }
   for (const b of document.querySelectorAll('[data-phase]')) b.setAttribute('aria-pressed', String(Number(b.dataset.phase) === race.phase));
   $('speed-wash').style.opacity = view?.reduced ? 0 : Math.min(1, race.thrustBlend + (race.stripBoost ? 0.45 : 0));
 }
+
 function loop(now) {
   const dt = Math.min((now - last) / 1000, 0.06); last = now;
   if (view) {
     accumulator += race.state === 'running' ? dt : 0;
     while (accumulator >= 1 / 120) {
-      const touch = [...held.values()];
-      const steer = Number(keys.has('ArrowRight') || keys.has('KeyD') || touch.includes('right')) - Number(keys.has('ArrowLeft') || keys.has('KeyA') || touch.includes('left'));
-      race.step(1 / 120, steer, keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || touch.includes('boost'), jumpQueued, brakeQueued);
+      const keyboardSteer = Number(keys.has('ArrowRight') || keys.has('KeyD')) - Number(keys.has('ArrowLeft') || keys.has('KeyA'));
+      const steer = Math.max(-1, Math.min(1, keyboardSteer + pad.steer));
+      race.step(1 / 120, steer, keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || pad.boost, jumpQueued, brakeQueued);
       jumpQueued = false; brakeQueued = false;
       accumulator -= 1 / 120;
       if (race.state === 'checkpoint') { advanceCheckpoint(); break; }

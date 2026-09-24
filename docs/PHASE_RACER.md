@@ -131,3 +131,8 @@ Racer boost now regenerates 12% per second after a 0.8 second release delay (pre
 ### Lane-powered turbo
 Holding turbo while grounded on a matching phase strip now consumes no charge and works even with an empty battery. Charge is preserved, not refilled, during free turbo. Releasing turbo allows normal recharge; leaving the strip, changing to an unmatched phase, or jumping resumes normal battery rules. HUD labels matching lanes and free turbo. Original highway behavior is unchanged.
 
+
+### Compact HUD and mobile thumbpad
+Mobile uses a circular left thumbpad: analog horizontal steering with 12% dead zone, turbo engages beyond 62% forward and disengages below 38%, backward beyond 62% triggers one brake pulse and rearms below 25%. Pointer capture supports simultaneous right-side phase and jump input; cancellation, pause, crash, resize and focus loss reset steering. Three color-only phase buttons sit in a right column; separate round jump becomes retry on crash. The thumbpad ring shows remaining turbo and glows on matched lanes.
+Both layouts now use a slim speed/time/pause row and checkpoint progress line. Level names appear briefly. Branding, original-game link and personal best move to menus. Removed gate/status/sequence text panels; world guidance retains phase previews. PC keeps numbered phase swatches and a slim boost meter, hiding touch controls. Coarse pointers and narrow screens select touch layout with touch-specific instructions. Browser safe areas and short landscape layouts are handled.
+
