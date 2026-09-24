@@ -132,7 +132,6 @@ export class Encounter {
     if (this.type === 'interceptors') this.updateInterceptors(dt);
     if (this.type === 'mines') this.updateLayer(dt);
     if (this.type === 'convoy') this.updateConvoy(dt);
-    this.updateSupports(dt);
   }
   updateDarts(dt) {
     if (this.waves.length < ENCOUNTER_RULES.dartWaves && this.age >= this.waves.length * ENCOUNTER_RULES.dartWaveInterval) this.spawnDartWave();
