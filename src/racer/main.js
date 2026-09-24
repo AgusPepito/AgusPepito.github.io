@@ -4,7 +4,7 @@ import { RaceView } from './view.js';
 import { PHASES, GATES, LENGTH } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
-import { configureLevel, levelInfo } from './levels.js';
+import { configureLevel, levelInfo, constructionReview, constructionBaseline, constructionCategory, constructionRevision } from './levels.js';
 
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
@@ -18,8 +18,54 @@ try {
   const saved = Number(localStorage.getItem(progressKey));
   if (Number.isSafeInteger(saved) && saved >= 0 && saved < 100000) currentLevel = saved;
 } catch { /* Storage is optional, including in private browsing. */ }
+if (constructionReview) {
+  currentLevel = 0;
+  const pipes = constructionCategory === '02';
+  const title = { '01': 'FLAT FOUNDATION', '02': 'PIPE BAYS', '03': 'GRILLE BAYS', '04': 'COVERED METAL', '05': 'MIXED HOUSINGS', '06': 'PHASE LANES' }[constructionCategory];
+  document.title = `Track library · ${constructionCategory} · ${constructionRevision}`;
+  $('menu').querySelector('.eyebrow').textContent = 'TRACK LIBRARY / AWAITING YOUR REVIEW';
+  $('menu').querySelector('h1').textContent = `${title}.`;
+  $('menu').querySelector('h1 + p').textContent = 'Graphite road panels, ivory edge trim and empty service-bay frames. No hazards. Gentle bends and a bare-edge interval expose the joins and terminations.';
+  if (pipes) $('menu').querySelector('h1 + p').textContent = 'Exposed pipe bundles, socket bulkheads, couplings, valves and offset runs inside the approved frames. No hazards. Both sides use different sequences.';
+  if (constructionCategory === '03') $('menu').querySelector('h1 + p').textContent = 'Lattice, angled louvers and reinforced grilles in the approved frames. Shallow dark backing, visible start/end trims, and occasional pipe sections for comparison.';
+  if (constructionCategory === '04') $('menu').querySelector('h1 + p').textContent = 'Quiet metal covers, segmented armor, service hatches and vents. Tapered start/end panels and occasional grille sections for comparison.';
+  $('menu').querySelector('p.subtle').textContent = 'Check width, frame depth, joins and readability at cruise and turbo.';
+  $('level').innerHTML = `<option value="0">${constructionCategory} · ${title} · ${constructionRevision}</option>`;
+  $('mode').closest('label').hidden = true;
+  $('start').textContent = 'Drive review segment ↗';
+  const compare = document.createElement('a'); compare.className = 'original-link';
+  compare.href = constructionBaseline ? `?review=${constructionCategory}` : pipes ? '?review=01' : '?review=01&surface=original';
+  compare.textContent = constructionBaseline ? 'View construction R1 ↗' : pipes ? 'Compare approved foundation ↗' : 'Compare original road ↗';
+  if (['03', '04'].includes(constructionCategory) && !constructionBaseline) { compare.href = '?review=01'; compare.textContent = 'Compare approved foundation ↗'; }
+  if (['R2', 'R3'].includes(constructionRevision)) {
+    $('menu').querySelector('h1 + p').textContent = 'Raised roadside housings: ivory supports, roof caps and inward-facing service bays. Full-height family connections; ramp caps only at run ends. Road surface and controls unchanged.';
+    compare.href = `?review=${constructionCategory}`; compare.textContent = 'Compare shallow R1 ↗';
+    if (constructionRevision === 'R3') {
+      $('menu').querySelector('h1 + p').textContent = 'Detailed 30° housings: machined pipe fittings, grille cartridges and sloped armor. Full-height family connections; ramp caps at exposed ends.';
+      compare.href = `?review=${constructionCategory}&revision=r2`; compare.textContent = 'Compare raised R2 ↗';
+    }
+  }
+  if (['05','06'].includes(constructionCategory)) {
+    $('mode').value = 'phase';
+    $('menu').querySelector('h1 + p').textContent = constructionCategory === '05'
+      ? 'Pipes, grilles, quiet armor and empty frames in unequal runs. Continuous family joins and ramp caps at exposed ends. Different arrangements on each side.'
+      : 'Flush cyan, amber and violet lane inserts through the mixed housings. Match your ship phase to the colored lane for turbo; neutral road intervals separate the runs.';
+    $('menu').querySelector('p.subtle').textContent = constructionCategory === '05'
+      ? 'Check family joins, roof continuity, exposed ends and the balance of busy and quiet sections.'
+      : 'Check lane boundaries, start/end readability and the distinction between colored lanes and neutral edge markers.';
+    compare.href = constructionCategory === '05' ? '?review=04&revision=r3' : '?review=05&revision=r1';
+    compare.textContent = constructionCategory === '05' ? 'Compare R3 covered bays ↗' : 'Compare mixed housings without lanes ↗';
+  }
+  $('start').after(compare);
+  const library = document.createElement('a'); library.className = 'original-link';
+  library.href = `./library.html?category=${constructionCategory}&revision=${constructionRevision.toLowerCase()}`; library.textContent = 'Individual asset library ↗'; compare.after(library);
+  const label = document.createElement('div'); label.id = 'construction-label';
+  label.textContent = constructionBaseline ? `${constructionCategory} · ORIGINAL ROAD` : `${constructionCategory} · ${title} ${constructionRevision}`;
+  document.body.append(label);
+}
 function loadBest() {
   storageKey = `vector-shift-campaign-001-level-${currentLevel}`; best = null;
+  if (constructionReview) return;
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (saved && Number.isFinite(saved.time) && saved.time > 0 && Array.isArray(saved.splits) && saved.splits.length === 1 && saved.splits.every(Number.isFinite)) best = saved;
@@ -66,9 +112,15 @@ function start(index = currentLevel, carry = null) {
   if (carry) Object.assign(race, carry);
   race.state = 'running'; resultSaved = false; accumulator = 0; view.snap = true;
   if (!carry) document.activeElement?.blur();
+  // Prepare the reset camera and HUD before removing the menu. Otherwise the
+  // browser can expose the previous frame/telemetry during the Play handoff.
+  updateHud();
+  view.render(race, 0);
+  last = performance.now();
   sync();
 }
 function advanceCheckpoint() {
+  if (constructionReview) { start(); checkpointNotice = `${constructionCategory} · SAMPLE RESTARTED`; return; }
   const completed = currentLevel, completedTime = race.time;
   if (race.mode === 'phase') {
     try {
@@ -279,12 +331,12 @@ function updateHud() {
   const running = race.state === 'running', touch = touchLayout.matches;
   $('checkpoint-notice').hidden = !checkpointNotice || race.time >= 3 || !running;
   $('checkpoint-notice').textContent = checkpointNotice;
-  $('level-notice').hidden = !running || race.time >= 2.5 || Boolean(checkpointNotice);
+  $('level-notice').hidden = constructionReview || !running || race.time >= 2.5 || Boolean(checkpointNotice);
   $('level-notice').textContent = `L${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
   const p = PHASES[race.phase]; document.documentElement.style.setProperty('--phase', p.color);
   $('speed').textContent = Math.round(race.speed * 3.6); $('time').textContent = format(race.time);
-  $('pause-level').textContent = `Level ${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
-  $('best').textContent = race.mode === 'drive' ? 'Driving only' : `Personal best · ${best ? format(best.time) : '—'}`;
+  $('pause-level').textContent = constructionReview ? levelInfo(currentLevel).name : `Level ${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
+  $('best').textContent = constructionReview ? 'Asset review · R retries this sample' : race.mode === 'drive' ? 'Driving only' : `Personal best · ${best ? format(best.time) : '—'}`;
   const progress = Math.min(100, Math.max(0, race.s / LENGTH * 100));
   $('course-progress').style.setProperty('--progress', `${progress}%`);
   $('course-progress').setAttribute('aria-valuenow', String(Math.round(progress)));
@@ -339,6 +391,8 @@ function loop(now) {
 try { view = new RaceView($('race-world')); }
 catch (error) { $('start').disabled = true; $('loading-error').hidden = false; $('loading-error').textContent = `Could not initialize the racer: ${error.message}`; }
 sync(); updateHud(); requestAnimationFrame(loop);
+
+
 
 
 

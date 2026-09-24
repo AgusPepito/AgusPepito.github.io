@@ -2,6 +2,13 @@ import { GATES, STRIPS, setTrackProfile } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS } from './jumps.js';
 import { PHASE_CHAINS } from './sequences.js';
+import { PHASE_REVIEW_STRIPS } from './lane-kit.js';
+
+const reviewParams = new URLSearchParams(globalThis.location?.search || '');
+export const constructionCategory = reviewParams.get('review');
+export const constructionRevision = ['05','06'].includes(constructionCategory) ? 'R1' : {r2:'R2',r3:'R3'}[reviewParams.get('revision')] || 'R1';
+export const constructionReview = ['01', '02', '03', '04', '05', '06'].includes(constructionCategory);
+export const constructionBaseline = constructionReview && reviewParams.get('surface') === 'original';
 
 // Keep the developed course as the combinations level, then vary it for later rounds.
 const original = structuredClone({ gates: GATES, strips: STRIPS, obstacles: OBSTACLES, gaps: GAPS, chains: PHASE_CHAINS });
@@ -12,6 +19,9 @@ const hole = (s, center, width, height = 9) => ({ s, kind: 'hole', center, width
 const jump = s => ({ s, kind: 'jump', center: 0, width: 1, depth: 5, height: 2.4 });
 const gap = (start, end) => ({ start, end, center: 0, width: 1, full: true });
 export function levelInfo(index) {
+  if (constructionReview) return { name: `CONSTRUCTION ${constructionCategory} · ${constructionRevision}`, length: 1800, profile: 'flat', lesson: constructionCategory === '06'
+    ? 'Match cyan, amber or violet with 1, 2 or 3 for lane turbo. Space jumps. W boosts. R retries the sample.'
+    : 'Inspect the side bays at cruise and turbo. The sample repeats; R or Pause → Retry restarts it.' };
   return [
     { name: 'FIRST SHIFT', length: 2400, profile: 'flat', lesson: 'Follow the colored line. Match each gate with 1, 2 or 3.' },
     { name: 'AROUND THE TUBE', length: 6600, profile: 'mixed', lesson: 'Steer around the surface and follow the line through wide openings.' },
@@ -22,7 +32,10 @@ export function levelInfo(index) {
 export function configureLevel(index) {
   const info = levelInfo(index);
   let data = { gates: [], strips: [], obstacles: [], gaps: [], chains: [] };
-  if (index === 0) {
+  if (constructionReview) {
+    // Construction reviews have no hazards; category 06 exercises real lanes.
+    if (constructionCategory === '06') data.strips = PHASE_REVIEW_STRIPS.map(strip => ({...strip}));
+  } else if (index === 0) {
     data.gates = [gate(500, 0), gate(1100, 1), gate(1700, 2)];
     data.strips = [strip(180, 420, 0), strip(780, 1020, 1), strip(1400, 1620, 2)];
     data.obstacles = [wall(2100, 0, 0.3)];
@@ -58,3 +71,4 @@ export function configureLevel(index) {
   PHASE_CHAINS.splice(0, PHASE_CHAINS.length, ...data.chains);
   return info;
 }
+

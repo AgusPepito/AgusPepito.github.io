@@ -5,6 +5,8 @@ import { PassageGuide } from './guidance.js';
 import { OBSTACLES, solidSpans, openingSpans, WALL_HEIGHT, HOLE_HEIGHT } from './obstacles.js';
 import { LENGTH, PHASES, STRIPS, GATES, section, frame, point, stripCenter, clamp } from './track.js';
 import { GAPS, JUMP, gapAt, surfaceSlices } from './jumps.js';
+import { constructionReview, constructionBaseline } from './levels.js';
+import { foundationChunk } from './construction.js';
 
 // Temporary procedural prototype geometry, pending the jam's final recipe art pass.
 function surface(s, u, height = 0) {
@@ -93,6 +95,10 @@ export class RaceView {
     const energy = PHASES.map(p => new THREE.MeshBasicMaterial({ color: p.hex, side: THREE.DoubleSide }));
     for (let start = -50; start < LENGTH + 200; start += 100) {
       const end = start + 100, group = new THREE.Group();
+      if (constructionReview && !constructionBaseline) {
+        group.add(foundationChunk(start));
+        this.chunks.push({ start, group }); this.scene.add(group); continue;
+      }
       group.add(new THREE.Mesh(ribbon(start, end, () => -1, () => 1, 0, 64), asphalt));
       for (let j = -3; j <= 3; j++) {
         const u = j / 3;
@@ -178,6 +184,7 @@ export class RaceView {
     const beaconGeometry = new THREE.BoxGeometry(0.4, 6, 0.4);
     const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x53778d });
     for (let s = 0; s <= LENGTH; s += 100) {
+      if (constructionReview) break;
       if (section(s).closed) continue;
       const chunk = this.chunks.find(c => s >= c.start && s < c.start + 100);
       for (const side of [-1, 1]) {
@@ -275,7 +282,7 @@ export class RaceView {
     for (const { obstacle, group } of this.walls) group.visible = race.mode === 'phase' && obstacle.s > race.s - 40 && obstacle.s < race.s + 730;
     this.gapFills.visible = race.mode === 'drive';
     for (const { gap, group } of this.gapMarkers) group.visible = race.mode === 'phase' && gap.end > race.s - 50 && gap.start < race.s + 730;
-    this.finish.visible = race.s > LENGTH - 750;
+    this.finish.visible = !constructionReview && race.s > LENGTH - 750;
     this.passageGuide.update(race, this.reduced);
     this.speedEffects.update({ speed: race.speed, time: race.time, distance: race.s,
       boostBlend: race.boostBlend, status: race.state }, {
