@@ -8,7 +8,7 @@ import { configureLevel, levelInfo } from './levels.js';
 
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, boost: false, brakeArmed: true };
-const actionTouches = new Map();
+const actionPad = { pointer: null, zone: null, jumpArmed: true };
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
 const progressKey = 'vector-shift-campaign-001-checkpoint';
 let currentLevel = 0, storageKey;
@@ -35,7 +35,7 @@ function updateLevelChoice() {
 }
 function updateLesson(index) {
   const lesson = levelInfo(index).lesson;
-  $('level-lesson').textContent = touchLayout.matches ? lesson.replace('Space jumps. W boosts.', 'Tap ↥ to jump. Push the pad forward for turbo.').replace('with 1, 2 or 3', 'with the three colors') : lesson;
+  $('level-lesson').textContent = touchLayout.matches ? lesson.replace('Space jumps. W boosts.', 'Right pad up jumps. Left pad forward boosts.').replace('with 1, 2 or 3', 'with the right pad directions') : lesson;
 }
 configureLevel(currentLevel); loadBest(); updateLevelChoice();
 const format = seconds => `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;
@@ -48,10 +48,7 @@ function resetPad() {
 }
 function clearInput() {
   keys.clear(); resetPad(); jumpQueued = false; brakeQueued = false;
-  const captures = [...actionTouches]; actionTouches.clear();
-  for (const [pointer, touch] of captures) {
-    if (touch.source.hasPointerCapture(pointer)) touch.source.releasePointerCapture(pointer);
-  }
+  resetActionPad();
   $('jump').classList.remove('active');
 }
 
@@ -141,7 +138,7 @@ function syncFullscreen() {
   $('fullscreen').setAttribute('aria-pressed', String(active));
   $('fullscreen').setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
   $('fullscreen').title = active ? 'Exit fullscreen' : 'Fullscreen';
-  resetPad();
+  resetPad(); resetActionPad();
   requestAnimationFrame(() => view?.resize());
 }
 function fullscreenHint(message) {
@@ -172,47 +169,56 @@ document.addEventListener('webkitfullscreenchange', syncFullscreen);
 $('back').addEventListener('click', () => { clearInput(); race.reset(); view.snap = true; sync(); });
 for (const button of document.querySelectorAll('[data-phase]')) {
   const index = Number(button.dataset.phase); button.style.setProperty('--button-phase', PHASES[index].color);
-  // Pointer activation is handled by the shared sliding gesture below.
-  // Retain keyboard/assistive activation without reselecting the starting phase on release.
+  button.addEventListener('pointerdown', e => { e.preventDefault(); phase(index); });
   button.addEventListener('click', e => { if (e.detail === 0) phase(index); });
 }
-$('jump').addEventListener('click', e => {
-  if (e.detail !== 0) return;
-  if (race.state === 'crashed') start();
-  else if (race.state === 'running') jumpQueued = true;
-});
-function slideAction(e) {
-  const touch = actionTouches.get(e.pointerId);
-  if (!touch || race.state !== 'running') return;
+$('jump').addEventListener('pointerdown', e => {
   e.preventDefault();
-  // Pointer capture stays on the initial button; hit-test the actual thumb location.
-  const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('#jump, [data-phase]');
-  if (target === touch.target) return;
-  touch.target = target;
-  if (!target) return;
-  if (target.id === 'jump') {
-    if (!touch.jumped) { jumpQueued = true; touch.jumped = true; }
-  } else phase(Number(target.dataset.phase));
+  if (race.state === 'crashed') start();
+});
+$('jump').addEventListener('click', e => {
+  if (e.detail === 0 && race.state === 'crashed') start();
+});
+function resetActionPad() {
+  const pointer = actionPad.pointer;
+  actionPad.pointer = null; actionPad.zone = null; actionPad.jumpArmed = true;
+  const control = $('action-pad');
+  if (pointer !== null && control.hasPointerCapture(pointer)) control.releasePointerCapture(pointer);
+  control.removeAttribute('data-zone');
+  $('action-knob').style.transform = 'translate(-50%, -50%)';
 }
-for (const button of document.querySelectorAll('#jump, [data-phase]')) {
-  button.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    if (button.id === 'jump' && race.state === 'crashed') { start(); return; }
-    if (race.state !== 'running') return;
-    actionTouches.set(e.pointerId, { source: button, target: null, jumped: false });
-    button.setPointerCapture(e.pointerId);
-    slideAction(e);
-  });
-  button.addEventListener('pointermove', slideAction);
-  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-    button.addEventListener(type, e => {
-      actionTouches.delete(e.pointerId);
-      if (button.hasPointerCapture(e.pointerId)) button.releasePointerCapture(e.pointerId);
-    });
+function moveActionPad(e) {
+  if (actionPad.pointer !== e.pointerId || race.state !== 'running') return;
+  e.preventDefault();
+  const rect = $('action-pad').getBoundingClientRect(), radius = rect.width * 0.38;
+  const x = (e.clientX - rect.left - rect.width / 2) / radius;
+  const y = (e.clientY - rect.top - rect.height / 2) / radius;
+  const distance = Math.hypot(x, y), scale = radius / Math.max(1, distance);
+  $('action-knob').style.transform = `translate(calc(-50% + ${x * scale}px), calc(-50% + ${y * scale}px))`;
+  if (distance < 0.28) {
+    actionPad.zone = null; actionPad.jumpArmed = true;
+    $('action-pad').removeAttribute('data-zone'); return;
   }
-  button.addEventListener('contextmenu', e => e.preventDefault());
+  if (distance < 0.48) return;
+  const horizontal = Math.abs(x) > Math.abs(y);
+  const zone = horizontal ? x < 0 ? 'left' : 'right' : y < 0 ? 'up' : 'down';
+  // Keep the current sector near diagonal boundaries to avoid accidental toggles.
+  if (actionPad.zone && zone !== actionPad.zone && Math.abs(Math.abs(x) - Math.abs(y)) < 0.16) return;
+  actionPad.zone = zone; $('action-pad').dataset.zone = zone;
+  if (zone === 'up') {
+    if (actionPad.jumpArmed) { jumpQueued = true; actionPad.jumpArmed = false; }
+  } else phase(zone === 'left' ? 0 : zone === 'down' ? 1 : 2);
 }
+$('action-pad').addEventListener('pointerdown', e => {
+  if (race.state !== 'running' || actionPad.pointer !== null || e.button !== 0) return;
+  actionPad.pointer = e.pointerId;
+  $('action-pad').setPointerCapture(e.pointerId); moveActionPad(e);
+});
+$('action-pad').addEventListener('pointermove', moveActionPad);
+for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  $('action-pad').addEventListener(type, e => { if (actionPad.pointer === e.pointerId) resetActionPad(); });
+}
+$('action-pad').addEventListener('contextmenu', e => e.preventDefault());
 const thumbpad = $('thumbpad');
 function movePad(e) {
   if (pad.pointer !== e.pointerId || race.state !== 'running') return;
@@ -294,6 +300,8 @@ function updateHud() {
   $('jump-icon').textContent = race.state === 'crashed' ? '↻' : '↥';
   $('jump').setAttribute('aria-label', race.state === 'crashed' ? 'Retry checkpoint' : 'Jump');
   $('jump').classList.toggle('active', race.airborne);
+  $('action-pad').dataset.phase = String(race.phase);
+  $('action-pad').classList.toggle('airborne', race.airborne);
   const gap = GAPS.find(g => g.end > race.s && g.start - race.s < 650);
   const cue = gapJumpCue(race, gap);
   const blockingWall = gap && OBSTACLES.some(o => o.s + o.depth > race.s && o.s < gap.start);
@@ -305,7 +313,7 @@ function updateHud() {
     $('jump-cue').dataset.tone = !cue.enough ? 'boost' : cue.ready ? 'jump' : 'wait';
     $('jump-cue').textContent = !cue.enough ? !boostAvailable ? 'LOW TURBO' : race.boost.locked ?
       touch ? 'CENTER · THEN PUSH UP' : 'RELEASE W · BOOST' : touch ? 'PUSH UP · TURBO' : 'W · TURBO' :
-      cue.ready || race.s > cue.latest ? touch ? '↥ JUMP' : 'SPACE · JUMP' : 'NEAR THE EDGE';
+      cue.ready || race.s > cue.latest ? touch ? 'RIGHT PAD ↑ · JUMP' : 'SPACE · JUMP' : 'NEAR THE EDGE';
   }
   for (const b of document.querySelectorAll('[data-phase]')) b.setAttribute('aria-pressed', String(Number(b.dataset.phase) === race.phase));
   $('speed-wash').style.opacity = view?.reduced ? 0 : Math.min(1, race.thrustBlend + (race.stripBoost ? 0.45 : 0));

@@ -244,3 +244,7 @@ Added an always-available fullscreen toggle beside pause, including on the start
 ### 2026-09-24 — Larger jump target and sliding actions
 Mobile Jump now spans the phase column height, inward of the edge-aligned colors (72 by 168 px, 66 by 148 px in short landscape). Captured right-hand gestures hit-test all action buttons: sliding through phases selects them immediately; entering Jump triggers once per touch until release. Sliding back to phases remains available after jumping. Pause, crash, retry and resize clear captures; stale pointer clicks do not reselect the starting phase. Source review and build only; no tests or visual playtesting.
 
+
+### 2026-09-24 — Right action thumbpad
+Replaced mobile phase column and jump target with one captured directional pad: up jumps, left Ion, down Sol, right Flux. Phase persists at center and on release. Jump fires once until centered or released, with a neutral dead zone and diagonal hysteresis. Left controls and PC keys are unchanged. Retry occupies the right pad location after crashes. Source review and build only; no gameplay tests or visual review.
+
