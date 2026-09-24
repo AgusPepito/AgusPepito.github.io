@@ -13,6 +13,8 @@
 .highway-choice { grid-column: 1 / -1; min-height: 54px !important; }
 #choose-result { margin-top: 12px; }
 .sector p { max-width: min(460px, 66vw); }
+#encounter-notice { position: fixed; top: 28%; left: 50%; transform: translateX(-50%); color: #bffff0; background: #102a30e8; border: 1px solid #62ffdf; padding: 10px 16px; font: bold 14px monospace; white-space: nowrap; pointer-events: none; }
+#encounter-notice:empty { display: none; }
 @media(max-width:600px) {
   .intro { padding-top: 90px; padding-bottom: 25px; }
   #encounter-options { gap: 7px; }

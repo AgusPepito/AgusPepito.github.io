@@ -170,6 +170,7 @@ function input() {
   };
 }
 function updateUI() {
+  $('encounter-notice').textContent = sim.encounter && sim.encounter.age < sim.encounter.noticeUntil ? sim.encounter.notice : '';
   const road = trackAt(sim.s);
   $('sector-name').textContent = road.label; $('sector-hint').textContent = road.hint;
   if (sim.enemies.some(e => e.armored && e.active && e.s > sim.s && e.s < sim.s + 140)) {
@@ -235,10 +236,10 @@ function frame(now) {
     shieldShots: sim.bullets.filter(b => b.pattern === 'shield').length,
     encounter: sim.encounter ? {
       type: sim.encounter.type, age: sim.encounter.age, result: sim.encounter.result, outcome: sim.encounter.outcome,
-      waves: sim.encounter.waves?.length,
+      clusters: sim.encounter.clusters.length,
       mines: sim.encounter.mines.length, pickups: sim.encounter.pickups.length,
       locksOpened: sim.encounter.locksOpened, collected: sim.encounter.collected,
-      members: sim.encounter.members.map(e => ({ id: e.id, kind: e.kind, slot: e.slot, hp: Number.isFinite(e.hp) ? e.hp : null, s: e.s, lateral: e.lateral, phase: e.phase, targetLane: e.targetLane, warning: e.formationWarning })),
+      members: sim.encounter.members.map(e => ({ id: e.id, kind: e.kind, slot: e.slot, role: e.role, hp: Number.isFinite(e.hp) ? e.hp : null, s: e.s, lateral: e.lateral, phase: e.phase, targetLane: e.targetLane, dashTarget: e.dashTarget, warning: e.formationWarning })),
     } : null,
     track: { center: trackAt(sim.s).center, width: trackAt(sim.s).width, tight: trackAt(sim.s).tight },
     options: { ...settings },

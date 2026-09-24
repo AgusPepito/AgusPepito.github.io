@@ -7,6 +7,10 @@ import { SpeedEffects } from './speed-effects.js';
 import { cameraPose } from './camera.js';
 import { encounterModels } from './placeholders/encounter-models.js';
 import { EncounterView } from './encounter-view.js';
+import { ATTACK_COLORS } from './encounters.js';
+
+const attackColors = Object.fromEntries(Object.values(ATTACK_COLORS).map(color => [color, new THREE.Color(color)]));
+const attackMaterials = Object.fromEntries(Object.entries(ATTACK_COLORS).map(([key, color]) => [key, new THREE.MeshBasicMaterial({ color })]));
 
 // Everything in this file is temporary graybox presentation, including track geometry.
 // The simulation owns dimensions and collisions; render assets never determine hitboxes.
@@ -271,13 +275,24 @@ export class GameView {
       if (!e.active) continue;
       active.add(e.id);
       let mesh = this.enemyMeshes.get(e.id);
-      if (!mesh) { mesh = (this.encounterTemplates[e.kind] || (e.armored ? this.armoredTemplate : this.enemyTemplate)).clone(); this.enemyMeshes.set(e.id, mesh); this.scene.add(mesh); }
+      if (!mesh) {
+        mesh = (this.encounterTemplates[e.kind] || (e.armored ? this.armoredTemplate : this.enemyTemplate)).clone();
+        if (e.role) for (const name of ['signal', 'role']) {
+          const part = mesh.getObjectByName(name); if (part) part.material = attackMaterials[e.role];
+        }
+        this.enemyMeshes.set(e.id, mesh); this.scene.add(mesh);
+      }
       mesh.position.set(e.x, 0.6, e.z);
       mesh.rotation.set(0, Math.PI + e.yaw, e.armored || e.encounter ? 0 : Math.cos(e.age * 1.6 + e.slot) * 0.08, 'YXZ');
       const signal = mesh.getObjectByName('signal');
       if (signal) signal.visible = e.formationWarning || (e.charge || 0) > 0;
       if (e.kind === 'interceptor') mesh.getObjectByName('engine').visible = e.phase === 'recovery' && !e.contact;
       if (e.kind === 'hauler') for (let i = 0; i < 3; i++) mesh.getObjectByName(`open-${i}`).visible = sim.encounter.locks[i].hp <= 0;
+      if (e.kind === 'hauler') for (const side of ['left', 'right']) {
+        const direction = sim.encounter.laneTarget > sim.encounter.convoyLane ? 'right' : 'left';
+        mesh.getObjectByName(`indicator-${side}`).visible = sim.encounter.laneWarning && side === direction && Math.floor(sim.time * 10) % 2 === 0;
+      }
+      if (e.kind === 'turret' && e.aimTarget) mesh.getObjectByName('aim').rotation.y = Math.atan2(e.aimTarget.x - e.x, e.aimTarget.z - e.z) - e.yaw;
       if (e.armored) {
         mesh.getObjectByName('shield').scale.x = e.halfWidth * 2;
         const charge = mesh.getObjectByName('charge');
@@ -294,7 +309,7 @@ export class GameView {
     for (const b of sim.bullets) {
       const yaw = Math.atan2(b.vx, b.vz);
       if (b.friendly && friendly < 220) this.put(this.shots, friendly++, b.x, 1, b.z, 0.14, 0.15, 1.7, yaw);
-      if (!b.friendly && hostile < 220) this.put(this.hostileShots, hostile++, b.x, 1, b.z, 0.48, 0.48, 0.7, yaw, b.pattern === 'shield' ? PURPLE_SHOT : PINK_SHOT);
+      if (!b.friendly && hostile < 220) this.put(this.hostileShots, hostile++, b.x, 1, b.z, 0.48, 0.48, 0.7, yaw, attackColors[b.color] || (b.pattern === 'shield' ? PURPLE_SHOT : PINK_SHOT));
     }
     this.finish(this.shots, friendly); this.finish(this.hostileShots, hostile);
     let particles = 0;

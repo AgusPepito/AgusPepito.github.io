@@ -20,6 +20,7 @@ export function encounterModels(THREE) {
   nose.rotation.x = Math.PI / 2; nose.position.y = 0.55; dart.add(nose);
   box(dart, 1.6, 0.2, 0.55, 0, 0.6, -0.4, purple);
   box(dart, 0.45, 0.2, 0.6, 0, 1, 0, orange, 'signal');
+  box(dart, 0.5, 0.15, 1.4, 0, 0.8, 0, orange, 'role');
   const interceptor = vehicle(2.5, 4, red);
   box(interceptor, 1.25, 0.8, 0.15, 0, 0.65, -2.05, cyan, 'engine');
   box(interceptor, 0.6, 0.2, 0.6, 0, 1.9, 0, orange, 'signal');
@@ -27,6 +28,8 @@ export function encounterModels(THREE) {
   box(minelayer, 1.8, 0.8, 0.12, 0, 0.55, -2.25, dark);
   const hauler = vehicle(7.4, 13, purple);
   box(hauler, 6.5, 1.5, 10.5, 0, 2.05, -0.6, purple);
+  box(hauler, 0.25, 0.6, 2, 3.8, 1, -4, orange, 'indicator-left');
+  box(hauler, 0.25, 0.6, 2, -3.8, 1, -4, orange, 'indicator-right');
   for (let slot = 0; slot < 3; slot++) {
     box(hauler, 1.9, 1.8, 0.1, -(slot - 1) * 2.55, 1.1, -6.56, dark);
     box(hauler, 1.2, 0.7, 0.13, -(slot - 1) * 2.55, 1.05, -6.65, cyan, `open-${slot}`);
@@ -34,7 +37,12 @@ export function encounterModels(THREE) {
   const lock = new THREE.Group();
   box(lock, 1.55, 1.35, 0.7, 0, 0.85, 0, orange);
   box(lock, 0.5, 0.65, 0.1, 0, 0.9, -0.4, dark);
-  const escort = vehicle(2.1, 3.6, purple);
-  box(escort, 0.7, 0.2, 0.7, 0, 1.9, 0, orange, 'signal');
-  return { dart, interceptor, minelayer, hauler, lock, escort };
+  const turret = new THREE.Group();
+  box(turret, 1.7, 0.6, 1.6, 0, 0.9, 0, dark);
+  const aim = new THREE.Group(); aim.name = 'aim'; turret.add(aim);
+  box(aim, 1.1, 0.8, 1.1, 0, 1.4, 0, purple);
+  box(aim, 0.35, 0.35, 1.6, 0, 1.4, -0.8, dark);
+  box(turret, 0.6, 0.15, 0.6, 0, 2, 0, orange, 'signal');
+  box(turret, 1.2, 0.15, 0.35, 0, 1.85, 0, orange, 'role');
+  return { dart, interceptor, minelayer, hauler, lock, turret };
 }

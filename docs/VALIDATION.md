@@ -1,5 +1,11 @@
 # Prototype validation
 
+## Experiment 009 — 2026-09-24
+
+60 nonvisual tests pass. Updated encounter coverage checks mixed Dart role counts/bursts/fans and capped, locked prediction; three serialized Interceptor chains, speed-independent warnings and delayed engine vulnerability; orbit drift, gaps, narrowing-road bounds, persistence and moving swept collisions; targetable turret bursts, warned retaliation, lane changes and cargo hit ordering; salvage feedback, distinct outcomes, one-time completion rewards, reset and bounded simulations. Superseded lab-008 pattern assertions were replaced with the new approved behaviors. Existing highway/control tests remain passing.
+
+Production build passes (about 0.58 MB). Nonvisual browser smoke passes every encounter's runtime, start/retry/result/menu paths and mobile touch selection, with no browser errors. No screenshots or visual gameplay checks. These results establish behavior and integration, not a claim that the new difficulty or readability is approved.
+
 ## Experiment 008 — 2026-09-24
 
 58 nonvisual tests pass. Difficulty checks exercise idle autofire and straight boost through all four encounters: every case encounters damage, straight boost never awards a clear, and Darts require all three waves. A separate timed-dodge simulation passes both Interceptors unharmed and earns both clean-pass rewards. Other new checks cover two-link mine chain limits, convoy brake/swap warnings, and clear/partial/escaped outcomes. Existing timing, arming, swept collisions, controls, reset and highway unit checks remain passing.

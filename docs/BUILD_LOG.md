@@ -1,5 +1,13 @@
 # Build receipts
 
+## 2026-09-24 — experiment 009: mixed attacks, orbit mines and armed convoy
+
+Implemented the user-approved encounter redesign after lab 008 still felt easy. Six fragile Darts now mix direct three-shot bursts, capped prediction shots, and three-bullet fans with role colors and staggered release. Three Interceptors stage farther ahead and alternate a charge followed by a separately warned, locked side dash; engines open afterward. Two Mine layers now deploy drifting three-mine orbits with stable directions, visible paths, persistent shot-out gaps and gradual road-width adjustment. Mines no longer chain-clear their clusters.
+
+Replaced convoy escorts with two independently targetable rear turrets: tracking and sweeping bursts, cargo-triggered defensive volleys with warnings, and signaled truck lane changes. Cargo locks still end the encounter without another hull-health grind. Cyan pickups now read SALVAGE +600 and announce collection. Increased combat rewards relative to passing and added a one-time 2,000-point clear bonus. No generated assets, upgrades, extra cluster sizes or side-deployed vehicles were added in this first behavior test.
+
+Validation: 60 unit tests, production build and nonvisual encounter/menu/touch/runtime smoke pass. Gameplay visuals and feel remain for the user's playtest. Preview rebuilt; no visual inspection performed.
+
 ## 2026-09-24 — experiment 008: encounter difficulty
 
 User found all four encounters trivial and approved a substantial pressure increase. Darts now have three eight-ship waves, seven seconds apart, with faster sequential shots alternating convergence and straight sweeps. Spawn distance and first-shot timing let them threaten maximum-speed approaches. Interceptors retain a readable speed-independent lock warning, occupy the charged lane longer, prepare the next attack during recovery and expose engines for less time. Colliding does not grant an automatic clean pass; a successful dodge still does.

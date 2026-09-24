@@ -1,6 +1,12 @@
 # Mechanics experiments
 
-## Current experiment: 008 — encounter pressure
+## Current experiment: 009 — attacks that disrupt firing position
+
+User feedback: repeated volleys remained predictable, Interceptor contact felt incidental, straight autofire solved mine trails, and the convoy lacked its own attacks or understandable rewards. Implemented the approved first tests: six Darts split between direct burst, capped predictive aim and three-shot spread roles; three serialized charge/side-dash Interceptors; three-mine rotating clusters that retain shot-out gaps; and a lane-changing hauler with targetable tracking/sweeping turrets instead of escorts. Destroying cargo triggers a warned defensive fan. Roles, warnings, orbit motion and salvage value have explicit presentation cues.
+
+Kills and objectives now pay much more than bypassing enemies, with a 2,000-point full-clear bonus and labeled +600 salvage. Two-/four-mine cluster variants and side-deployed convoy vehicles remain follow-up experiments. This version intentionally focuses the six-Dart squad and turret-only convoy before mixing more units into them. Nonvisual tests check behavior, not human challenge; the user remains sole visual gameplay tester.
+
+## Previous experiment: 008 — encounter pressure
 
 After the user found all four encounters trivial, added overlapping Dart waves and converging volleys; faster alternating Interceptor attacks with a longer collision corridor and shorter rear-engine opening; two Mine layers with overlapping fields and limited chain propagation; and rear convoy guards with alternating aimed/straight bursts, side swaps, and hauler speed changes. Collision damage stays unchanged. Cargo locks now need roughly 1.28 seconds of sustained twin-gun fire. Results distinguish clears, escapes and partial raids. See `ENCOUNTERS.md` for exact rules.
 

@@ -101,7 +101,7 @@ export class Simulation {
     if (e.hp < 1e-7) e.hp = 0;
     if (e.hp === 0) {
       if (e.neutral) this.vehiclesDestroyed++;
-      else if (e.kind !== 'lock' && e.kind !== 'hauler') { this.kills++; this.score += e.armored ? 400 : 100; }
+      else if (e.kind !== 'lock' && e.kind !== 'hauler') { this.kills++; this.score += e.encounter ? this.encounter.killReward(e) : e.armored ? 400 : 100; }
       this.encounter?.destroyed(e);
       this.events.push({ kind: 'kill', x: e.x, z: e.z, s: e.s });
     } else this.events.push({ kind: 'spark', x: e.x, z: e.z, s: e.s });
