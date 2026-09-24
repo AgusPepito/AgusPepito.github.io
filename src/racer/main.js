@@ -7,8 +7,8 @@ import { GAPS, gapJumpCue } from './jumps.js';
 import { configureLevel, levelInfo } from './levels.js';
 
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
-const pad = { pointer: null, steer: 0, boost: false, brakeArmed: true };
-const actionPad = { pointer: null, zone: null, jumpArmed: true };
+const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
+const actionPad = { pointer: null, zone: null, boost: false };
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
 const progressKey = 'vector-shift-campaign-001-checkpoint';
 let currentLevel = 0, storageKey;
@@ -35,13 +35,13 @@ function updateLevelChoice() {
 }
 function updateLesson(index) {
   const lesson = levelInfo(index).lesson;
-  $('level-lesson').textContent = touchLayout.matches ? lesson.replace('Space jumps. W boosts.', 'Right pad up jumps. Left pad forward boosts.').replace('with 1, 2 or 3', 'with the right pad directions') : lesson;
+  $('level-lesson').textContent = touchLayout.matches ? lesson.replace('Space jumps. W boosts.', 'Left pad up jumps. Right pad up boosts.').replace('with 1, 2 or 3', 'with the right pad directions') : lesson;
 }
 configureLevel(currentLevel); loadBest(); updateLevelChoice();
 const format = seconds => `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(2).padStart(5, '0')}`;
 function resetPad() {
   const pointer = pad.pointer;
-  pad.pointer = null; pad.steer = 0; pad.boost = false; pad.brakeArmed = true;
+  pad.pointer = null; pad.steer = 0; pad.jumpArmed = true; pad.brakeArmed = true;
   if (pointer !== null && $('thumbpad').hasPointerCapture(pointer)) $('thumbpad').releasePointerCapture(pointer);
   $('pad-knob').style.transform = 'translate(-50%, -50%)';
   $('thumbpad').classList.remove('pressed');
@@ -181,7 +181,7 @@ $('jump').addEventListener('click', e => {
 });
 function resetActionPad() {
   const pointer = actionPad.pointer;
-  actionPad.pointer = null; actionPad.zone = null; actionPad.jumpArmed = true;
+  actionPad.pointer = null; actionPad.zone = null; actionPad.boost = false;
   const control = $('action-pad');
   if (pointer !== null && control.hasPointerCapture(pointer)) control.releasePointerCapture(pointer);
   control.removeAttribute('data-zone');
@@ -196,7 +196,7 @@ function moveActionPad(e) {
   const distance = Math.hypot(x, y), scale = radius / Math.max(1, distance);
   $('action-knob').style.transform = `translate(calc(-50% + ${x * scale}px), calc(-50% + ${y * scale}px))`;
   if (distance < 0.28) {
-    actionPad.zone = null; actionPad.jumpArmed = true;
+    actionPad.zone = null; actionPad.boost = false;
     $('action-pad').removeAttribute('data-zone'); return;
   }
   if (distance < 0.48) return;
@@ -205,9 +205,8 @@ function moveActionPad(e) {
   // Keep the current sector near diagonal boundaries to avoid accidental toggles.
   if (actionPad.zone && zone !== actionPad.zone && Math.abs(Math.abs(x) - Math.abs(y)) < 0.16) return;
   actionPad.zone = zone; $('action-pad').dataset.zone = zone;
-  if (zone === 'up') {
-    if (actionPad.jumpArmed) { jumpQueued = true; actionPad.jumpArmed = false; }
-  } else phase(zone === 'left' ? 0 : zone === 'down' ? 1 : 2);
+  actionPad.boost = zone === 'up';
+  if (zone !== 'up') phase(zone === 'left' ? 0 : zone === 'down' ? 1 : 2);
 }
 $('action-pad').addEventListener('pointerdown', e => {
   if (race.state !== 'running' || actionPad.pointer !== null || e.button !== 0) return;
@@ -228,7 +227,8 @@ function movePad(e) {
   const y = Math.max(-1, Math.min(1, (e.clientY - rect.top - rect.height / 2) / radius));
   pad.steer = Math.abs(x) < 0.12 ? 0 : Math.sign(x) * (Math.abs(x) - 0.12) / 0.88;
   // Separate axes retain full steering while pushing forward; hysteresis avoids chatter.
-  pad.boost = pad.boost ? y < -0.38 : y < -0.62;
+  if (y < -0.62 && pad.jumpArmed) { jumpQueued = true; pad.jumpArmed = false; }
+  if (y > -0.38) pad.jumpArmed = true;
   if (y > 0.62 && pad.brakeArmed) { brakeQueued = true; pad.brakeArmed = false; }
   if (y < 0.25) pad.brakeArmed = true;
   const scale = radius / Math.max(1, Math.hypot(x, y));
@@ -291,7 +291,7 @@ function updateHud() {
   $('boost-meter').setAttribute('aria-valuenow', String(Math.floor(race.boost.energy)));
   $('boost-fill').style.width = `${race.boost.energy}%`;
   $('pad-charge').style.strokeDasharray = `${race.boost.energy} 100`;
-  for (const id of ['thumbpad', 'boost-meter']) {
+  for (const id of ['action-pad', 'boost-meter']) {
     $(id).classList.toggle('free', race.stripBoost);
     $(id).classList.toggle('boosting', race.boostActive);
     $(id).classList.toggle('braking', race.brakeTime > 0);
@@ -301,7 +301,8 @@ function updateHud() {
   $('jump').setAttribute('aria-label', race.state === 'crashed' ? 'Retry checkpoint' : 'Jump');
   $('jump').classList.toggle('active', race.airborne);
   $('action-pad').dataset.phase = String(race.phase);
-  $('action-pad').classList.toggle('airborne', race.airborne);
+  $('thumbpad').classList.toggle('airborne', race.airborne);
+  $('thumbpad').classList.toggle('braking', race.brakeTime > 0);
   const gap = GAPS.find(g => g.end > race.s && g.start - race.s < 650);
   const cue = gapJumpCue(race, gap);
   const blockingWall = gap && OBSTACLES.some(o => o.s + o.depth > race.s && o.s < gap.start);
@@ -312,8 +313,8 @@ function updateHud() {
     const boostAvailable = race.stripBoost || race.boost.energy >= (race.boostActive ? 0.01 : 15);
     $('jump-cue').dataset.tone = !cue.enough ? 'boost' : cue.ready ? 'jump' : 'wait';
     $('jump-cue').textContent = !cue.enough ? !boostAvailable ? 'LOW TURBO' : race.boost.locked ?
-      touch ? 'CENTER · THEN PUSH UP' : 'RELEASE W · BOOST' : touch ? 'PUSH UP · TURBO' : 'W · TURBO' :
-      cue.ready || race.s > cue.latest ? touch ? 'RIGHT PAD ↑ · JUMP' : 'SPACE · JUMP' : 'NEAR THE EDGE';
+      touch ? 'CENTER · THEN PUSH UP' : 'RELEASE W · BOOST' : touch ? 'RIGHT PAD ↑ · TURBO' : 'W · TURBO' :
+      cue.ready || race.s > cue.latest ? touch ? 'LEFT PAD ↑ · JUMP' : 'SPACE · JUMP' : 'NEAR THE EDGE';
   }
   for (const b of document.querySelectorAll('[data-phase]')) b.setAttribute('aria-pressed', String(Number(b.dataset.phase) === race.phase));
   $('speed-wash').style.opacity = view?.reduced ? 0 : Math.min(1, race.thrustBlend + (race.stripBoost ? 0.45 : 0));
@@ -326,7 +327,7 @@ function loop(now) {
     while (accumulator >= 1 / 120) {
       const keyboardSteer = Number(keys.has('ArrowRight') || keys.has('KeyD')) - Number(keys.has('ArrowLeft') || keys.has('KeyA'));
       const steer = Math.max(-1, Math.min(1, keyboardSteer + pad.steer));
-      race.step(1 / 120, steer, keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || pad.boost, jumpQueued, brakeQueued);
+      race.step(1 / 120, steer, keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || actionPad.boost, jumpQueued, brakeQueued);
       jumpQueued = false; brakeQueued = false;
       accumulator -= 1 / 120;
       if (race.state === 'checkpoint') { advanceCheckpoint(); break; }

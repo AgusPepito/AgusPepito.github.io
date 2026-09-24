@@ -248,3 +248,7 @@ Mobile Jump now spans the phase column height, inward of the edge-aligned colors
 ### 2026-09-24 — Right action thumbpad
 Replaced mobile phase column and jump target with one captured directional pad: up jumps, left Ion, down Sol, right Flux. Phase persists at center and on release. Jump fires once until centered or released, with a neutral dead zone and diagonal hysteresis. Left controls and PC keys are unchanged. Retry occupies the right pad location after crashes. Source review and build only; no gameplay tests or visual review.
 
+
+### 2026-09-24 — Swap jump and turbo pads
+Left pad now combines analog steering with one-shot upward jump (62% activation, rearmed below 38%) and backward brake. Right pad holds turbo in its upper sector while retaining the selected phase; center, release or another sector stops turbo. Moved charge ring and boost feedback to the right pad and updated instructions/cues. Build and source review only; no gameplay tests.
+

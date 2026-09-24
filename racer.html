@@ -26,7 +26,7 @@
     <p class="eyebrow">GRAVITY / MOMENTUM / PHASE</p><h1>FIND YOUR<br><em>FAST LINE.</em></h1>
     <p>Follow the line's color to match the next phase. Learn one skill at a time, reach checkpoints, then take on increasingly demanding combinations.</p>
     <div class="instructions desktop-help"><span><b>← → / A D</b> Steer around the surface</span><span><b>S / ↓</b> Tap for a short brake pulse</span><span><b>Space / ↑ / J</b> Tap to jump</span><span><b>W / Shift</b> Hold to boost—even in the air</span><span><b>1 ● &nbsp; 2 ▲ &nbsp; 3 ◆</b> Switch phase instantly</span></div>
-    <div class="instructions touch-help"><span><b>Left thumbpad</b> Drag sideways to steer</span><span><b>Push forward</b> Hold for turbo</span><span><b>Pull backward</b> One short brake pulse</span><span><b>Right thumbpad</b> Left cyan · down amber · right violet</span><span><b>Right pad up</b> Jump · return to center to rearm</span></div>
+    <div class="instructions touch-help"><span><b>Left thumbpad</b> Drag sideways to steer</span><span><b>Left pad up</b> Jump · pull back to rearm</span><span><b>Pull backward</b> One short brake pulse</span><span><b>Right thumbpad</b> Left cyan · down amber · right violet</span><span><b>Right pad up</b> Hold for turbo</span></div>
     <p class="subtle">Checkpoints refill boost and save your progress.<br>Gold edges: jumps or gaps. Tall red walls: use their opening.</p>
     <label class="mode-choice" for="level">Starting checkpoint <select id="level"><option value="0">1 · First Shift — learn phases</option><option value="1">2 · Around the Tube — steering</option><option value="2">3 · Take Flight — jumps and turbo</option><option value="3">4 · Combinations — the original challenge</option><option value="4">5 · Overload — expert rounds</option></select></label>
     <p id="level-lesson" class="subtle"></p>
@@ -36,13 +36,14 @@
   <section id="result" class="overlay" hidden><div class="panel compact"><p class="eyebrow" id="result-label"></p><h1 id="result-title"></h1><p id="result-copy"></p><div id="sector-results"></div><button id="retry" class="primary">Race again ↗</button><button id="back">Back to start</button></div></section>
   <section id="paused" class="overlay" hidden><div class="panel compact"><p class="eyebrow">VECTOR SHIFT / PHASE RACER</p><h1>PAUSED.</h1><p id="pause-level"></p><p id="best"></p><button id="resume" class="primary">Resume ↗</button><button id="restart">Retry checkpoint</button><a class="original-link" href="./index.html">Original game ↗</a></div></section>
   <footer>
-    <div id="thumbpad" role="group" aria-label="Drag sideways to steer, forward for turbo, backward to brake">
-      <svg class="charge-ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="56"/><circle id="pad-charge" cx="60" cy="60" r="56" pathLength="100"/></svg>
-      <span class="pad-forward" aria-hidden="true">⌃</span><span class="pad-back" aria-hidden="true">−</span><span id="pad-knob"></span>
+    <div id="thumbpad" role="group" aria-label="Drag sideways to steer, forward to jump, backward to brake">
+
+      <span class="pad-forward" aria-hidden="true">↥</span><span class="pad-back" aria-hidden="true">−</span><span id="pad-knob"></span>
     </div>
     <div id="boost-meter" role="meter" aria-label="Turbo charge" aria-valuemin="0" aria-valuemax="100"><span id="boost-label">TURBO</span><div><i id="boost-fill"></i></div></div>
-    <div id="action-pad" role="group" aria-label="Right thumbpad: up jumps, left selects cyan, down amber, right violet">
-      <span class="action-up" aria-hidden="true">↥</span><span class="action-left" aria-hidden="true"></span><span class="action-down" aria-hidden="true"></span><span class="action-right" aria-hidden="true"></span><span id="action-knob"></span>
+    <div id="action-pad" role="group" aria-label="Right thumbpad: up holds turbo, left selects cyan, down amber, right violet">
+      <svg class="charge-ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-track" cx="60" cy="60" r="56"/><circle id="pad-charge" cx="60" cy="60" r="56" pathLength="100"/></svg>
+      <span class="action-up" aria-hidden="true">»</span><span class="action-left" aria-hidden="true"></span><span class="action-down" aria-hidden="true"></span><span class="action-right" aria-hidden="true"></span><span id="action-knob"></span>
     </div>
     <button id="jump" aria-label="Retry checkpoint"><span id="jump-icon" aria-hidden="true">↻</span></button>
     <div id="phases" aria-label="Ship energy phase"><button data-phase="0" aria-label="Ion phase" aria-pressed="true"><small>1</small></button><button data-phase="1" aria-label="Sol phase" aria-pressed="false"><small>2</small></button><button data-phase="2" aria-label="Flux phase" aria-pressed="false"><small>3</small></button></div>
