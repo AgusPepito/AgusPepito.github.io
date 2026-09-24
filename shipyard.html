@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#0b121c"><title>Vector Shift — Ship Studies</title></head>
+<body>
+  <header><div><small>VECTOR SHIFT / DESIGN STUDIES</small><h1>Orbital motorsport.</h1></div><a href="./racer.html">Back to the race ↗</a></header>
+  <main>
+    <section class="preview"><canvas id="ship-canvas" aria-label="Interactive ship preview: drag to orbit, pinch or scroll to zoom"></canvas><span class="view-note">Drag to orbit · pinch to zoom</span><p id="load-error" role="alert" hidden></p></section>
+    <aside>
+      <p class="eyebrow">01 / CHOOSE A SILHOUETTE</p>
+      <div id="candidates"><button data-ship="kestrel" aria-pressed="true"><b>A · KESTREL</b><span>Angular armor · twin nacelles</span></button><button data-ship="manta" aria-pressed="false"><b>B · MANTA</b><span>Swept body · rounded engines</span></button><button data-ship="splitframe" aria-pressed="false"><b>C · SPLITFRAME</b><span>Exposed frame · separated pods</span></button></div>
+      <p id="description">A narrow central hull suspended between two armored engine pods. Rear fins frame the phase core.</p>
+      <p class="eyebrow">02 / VIEW & ENERGY</p>
+      <div id="views"><button data-view="rear" aria-pressed="true">Chase</button><button data-view="front" aria-pressed="false">Front</button><button data-view="side" aria-pressed="false">Side</button><button data-view="top" aria-pressed="false">Top</button><button data-view="underside" aria-pressed="false">Below</button></div>
+      <div id="colors"><button data-color="#4de1ff" aria-label="Cyan phase" aria-pressed="true"></button><button data-color="#ffbe55" aria-label="Amber phase" aria-pressed="false"></button><button data-color="#dc8aff" aria-label="Violet phase" aria-pressed="false"></button><button id="spin" aria-pressed="false">Rotate</button></div>
+      <p class="dimensions">3.1 m wide · 3.9 m long · 0.95 m tall</p>
+      <p class="footnote">Three original code-built candidates from one reference. These are design previews, awaiting your selection and recipe verification. The racing ship is unchanged.</p>
+    </aside>
+  </main>
+  <script type="module" src="/src/shipyard/main.js"></script>
+</body>
+</html>

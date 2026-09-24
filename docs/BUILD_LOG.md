@@ -252,3 +252,7 @@ Replaced mobile phase column and jump target with one captured directional pad: 
 ### 2026-09-24 — Swap jump and turbo pads
 Left pad now combines analog steering with one-shot upward jump (62% activation, rearmed below 38%) and backward brake. Right pad holds turbo in its upper sector while retaining the selected phase; center, release or another sector stops turbo. Moved charge ring and boost feedback to the right pad and updated instructions/cues. Build and source review only; no gameplay tests.
 
+
+### 2026-09-24 — First recipe ship candidates
+Created an original image reference and three independent code-built ship interpretations: Kestrel, Manta and Splitframe. Added a separate shipyard with orbit/view controls and phase-color previews, using the official recipe loader. Preserved source candidates, reference prompt, expectations and utility license. No candidate selected or integrated into gameplay yet; official verification remains pending. Production build only, no tests or visual gameplay review.
+
