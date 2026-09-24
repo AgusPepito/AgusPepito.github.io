@@ -240,3 +240,7 @@ Replaced touch arrow buttons with analog thumbpad, deliberate forward turbo and 
 ### 2026-09-24 — Fullscreen control
 Added an always-available fullscreen toggle beside pause, including on the start screen. It requests fullscreen on the whole document, resizes the renderer and resets touch input during transitions, and updates on browser-driven exits. Unsupported browsers receive a temporary home-screen hint; iOS standalone metadata is included. Build only; no gameplay tests or visual checks.
 
+
+### 2026-09-24 — Larger jump target and sliding actions
+Mobile Jump now spans the phase column height, inward of the edge-aligned colors (72 by 168 px, 66 by 148 px in short landscape). Captured right-hand gestures hit-test all action buttons: sliding through phases selects them immediately; entering Jump triggers once per touch until release. Sliding back to phases remains available after jumping. Pause, crash, retry and resize clear captures; stale pointer clicks do not reselect the starting phase. Source review and build only; no tests or visual playtesting.
+

@@ -8,6 +8,7 @@ import { configureLevel, levelInfo } from './levels.js';
 
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, boost: false, brakeArmed: true };
+const actionTouches = new Map();
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
 const progressKey = 'vector-shift-campaign-001-checkpoint';
 let currentLevel = 0, storageKey;
@@ -45,7 +46,14 @@ function resetPad() {
   $('pad-knob').style.transform = 'translate(-50%, -50%)';
   $('thumbpad').classList.remove('pressed');
 }
-function clearInput() { keys.clear(); resetPad(); jumpQueued = false; brakeQueued = false; $('jump').classList.remove('active'); }
+function clearInput() {
+  keys.clear(); resetPad(); jumpQueued = false; brakeQueued = false;
+  const captures = [...actionTouches]; actionTouches.clear();
+  for (const [pointer, touch] of captures) {
+    if (touch.source.hasPointerCapture(pointer)) touch.source.releasePointerCapture(pointer);
+  }
+  $('jump').classList.remove('active');
+}
 
 function phase(index) { if (race.state === 'running' || race.state === 'ready') race.phase = index; }
 function start(index = currentLevel, carry = null) {
@@ -164,14 +172,47 @@ document.addEventListener('webkitfullscreenchange', syncFullscreen);
 $('back').addEventListener('click', () => { clearInput(); race.reset(); view.snap = true; sync(); });
 for (const button of document.querySelectorAll('[data-phase]')) {
   const index = Number(button.dataset.phase); button.style.setProperty('--button-phase', PHASES[index].color);
-  button.addEventListener('pointerdown', e => { e.preventDefault(); phase(index); });
-  button.addEventListener('click', () => phase(index));
+  // Pointer activation is handled by the shared sliding gesture below.
+  // Retain keyboard/assistive activation without reselecting the starting phase on release.
+  button.addEventListener('click', e => { if (e.detail === 0) phase(index); });
 }
-$('jump').addEventListener('pointerdown', e => {
-  e.preventDefault();
-  if (race.state === 'crashed') { start(); return; }
-  if (race.state === 'running') jumpQueued = true;
+$('jump').addEventListener('click', e => {
+  if (e.detail !== 0) return;
+  if (race.state === 'crashed') start();
+  else if (race.state === 'running') jumpQueued = true;
 });
+function slideAction(e) {
+  const touch = actionTouches.get(e.pointerId);
+  if (!touch || race.state !== 'running') return;
+  e.preventDefault();
+  // Pointer capture stays on the initial button; hit-test the actual thumb location.
+  const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('#jump, [data-phase]');
+  if (target === touch.target) return;
+  touch.target = target;
+  if (!target) return;
+  if (target.id === 'jump') {
+    if (!touch.jumped) { jumpQueued = true; touch.jumped = true; }
+  } else phase(Number(target.dataset.phase));
+}
+for (const button of document.querySelectorAll('#jump, [data-phase]')) {
+  button.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    if (button.id === 'jump' && race.state === 'crashed') { start(); return; }
+    if (race.state !== 'running') return;
+    actionTouches.set(e.pointerId, { source: button, target: null, jumped: false });
+    button.setPointerCapture(e.pointerId);
+    slideAction(e);
+  });
+  button.addEventListener('pointermove', slideAction);
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    button.addEventListener(type, e => {
+      actionTouches.delete(e.pointerId);
+      if (button.hasPointerCapture(e.pointerId)) button.releasePointerCapture(e.pointerId);
+    });
+  }
+  button.addEventListener('contextmenu', e => e.preventDefault());
+}
 const thumbpad = $('thumbpad');
 function movePad(e) {
   if (pad.pointer !== e.pointerId || race.state !== 'running') return;
@@ -225,7 +266,7 @@ window.addEventListener('keydown', e => {
 window.addEventListener('keyup', e => keys.delete(e.code));
 function suspend() { clearInput(); if (race.state === 'running') { race.state = 'paused'; accumulator = 0; sync(); } }
 window.addEventListener('blur', suspend); document.addEventListener('visibilitychange', () => { if (document.hidden) suspend(); });
-window.addEventListener('resize', () => { resetPad(); view?.resize(); });
+window.addEventListener('resize', () => { clearInput(); view?.resize(); });
 $('race-world').addEventListener('webglcontextlost', e => { e.preventDefault(); suspend(); $('loading-error').hidden = false; $('loading-error').textContent = 'Graphics interrupted. Reload this page to restart.'; race.state = 'ready'; view = null; $('start').disabled = true; sync(); });
 
 function updateHud() {
