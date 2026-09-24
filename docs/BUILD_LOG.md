@@ -256,3 +256,7 @@ Left pad now combines analog steering with one-shot upward jump (62% activation,
 ### 2026-09-24 — First recipe ship candidates
 Created an original image reference and three independent code-built ship interpretations: Kestrel, Manta and Splitframe. Added a separate shipyard with orbit/view controls and phase-color previews, using the official recipe loader. Preserved source candidates, reference prompt, expectations and utility license. No candidate selected or integrated into gameplay yet; official verification remains pending. Production build only, no tests or visual gameplay review.
 
+
+### 2026-09-24 — Detailed ship V2 and stronger phase energy
+Added three detailed candidate revisions while keeping V1 for comparison. Corrected buried energy-strip placement, added prominent energy surfaces, and introduced adjustable tenfold emissive output plus bloom in the shipyard. No gameplay integration or automatic visual tests. Production build only.
+

@@ -22,3 +22,7 @@ The shipyard loads candidates through the official asset loader (merges rigid ge
 
 ## Next
 User compares silhouettes, rear/front/side/top/below views and all three phase colors in `/shipyard.html`. Record their chosen candidate and changes here. Run official asset verification only after explicit authorization under the standing no-tests rule. Keep discarded candidates and the real selection history; do not claim these as verified final assets yet.
+
+## Revision 2 — user rejected the initial detail and phase visibility
+Preserved V1, authored three -v2 siblings with layered deck panels, vent louvers, fasteners, exposed pipes, underside fittings, nested exhaust collars and injector blades. Raised/widened phase rails above armor and enlarged deck cores. Modules remain self-contained standard-material geometry. Shipyard V2 uses saturated energy colors, emissive intensity 18 (10x original 1.8), and HDR bloom followed by tone mapping. Brightness is adjustable; V1 comparison disables bloom and restores original material intensity. This is an art iteration, not a verified final asset. No verifier or visual testing performed.
+
