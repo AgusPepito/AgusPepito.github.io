@@ -2,7 +2,7 @@
 
 Status: category 01 revision 1 approved by the user on 2026-09-24. Category 02 revision 1 approved by the user; categories 03 and 04 revision 1 awaiting review, jointly authorized. Individual asset viewer: library.html.
 
-Current extension, 2026-09-24: user authorized revising category 05 around reuse of R3 and building categories 05–06 together. Their first samples are delivered for review; this authorization does not imply visual approval of either sample. See [05–06 delivery](art/track/05-06-mixed-lanes-r1.md).
+Current extension, 2026-09-24: phase 06 accepted after its visibility/Play corrections. The existing library was committed locally as `484ea2a`. User authorized categories 07–08 together; their R1 tube samples are delivered for review. See [07–08 delivery](art/track/07-08-tubes-r1.md).
 
 Visual direction: dark graphite running surfaces, ivory structural framing, recessed mechanical service bays, restrained phase colors. References: [track concept images](art/track/README.md).
 
@@ -54,8 +54,8 @@ Delivery: [Raised roadside R2](art/track/01-04-raised-r2.md).
 | 04 | Covered-bay straight | R1 awaiting user review | — |
 | 05 | Mixed R3 housing assembly | R1 awaiting user review | — |
 | 06 | Flat phase-lane sample | Approved 2026-09-24 after visibility/Play fixes | 06-r1 |
-| 07 | Outside-tube sample | Not started | — |
-| 08 | Inside-tube sample | Not started | — |
+| 07 | Outside-tube sample | R1 awaiting user review | — |
+| 08 | Inside-tube sample | R1 awaiting user review | — |
 | 09 | Flat ↔ outside transition sample | Not started | — |
 | 10 | Flat ↔ inside transition sample | Not started | — |
 | 11 | Gap samples on all road types | Not started | — |
@@ -198,41 +198,47 @@ Delivery: [05–06 mixed assembly and lanes R1](art/track/05-06-mixed-lanes-r1.m
 
 ## 07 — Outside tube
 
-Depends on: 06.
+Depends on: approved 06-r1. Joint implementation with 08 authorized 2026-09-24.
 
 Items:
-- [ ] Convex road skin and panel-course mapping using the established surface system.
-- [ ] Flush circumferential rib/band appearance; no raised structures across the driving path.
-- [ ] Flush tube closure seam.
-- [ ] Curvature-following bay frames and rigid fitting placement where genuinely visible.
-- [ ] Narrow visible mouth thickness/end cap for the sample entrance; omit buried internal support rings.
+- [x] Convex road skin with curved graphite panel courses, using the gameplay tube radius/profile.
+- [x] Flush ivory circumferential bands; no raised structures across the driving path.
+- [x] Flush tube closure seam.
+- [x] Curved flush service frames, protective grilles, shallow pipes and sealed covers where exposed.
+- [x] Narrow visible mouth thickness/end cap; buried internal support rings omitted.
 
 Review segment: a complete outside tube long enough to steer a full 360 degrees. Include approved phase lanes and a few service sections, with no new hazards.
 
 User checks: seam continuity, all-around readability, visible joins, accidental protrusions, whether service decoration remains useful on this road type.
 
-- [ ] Visibility notes recorded; unnecessary internal geometry explicitly omitted.
-- [ ] Segment delivered for user testing.
+- [x] Visibility notes recorded; unnecessary internal geometry explicitly omitted.
+- [x] Segment delivered for user testing.
 - [ ] Feedback addressed and explicit approval recorded.
 
 ## 08 — Inside tube
 
-Depends on: 07.
+Depends on: shared 07 tube generator. Joint implementation authorized; neither tube's visual approval is inferred.
 
 Items:
-- [ ] Concave road skin and panel courses.
-- [ ] Flush interior bands and closure seam.
-- [ ] Recessed service bays only where they do not remove or obstruct the driving surface.
-- [ ] Tube-mouth trim with only the visible exterior thickness.
-- [ ] Restrained neutral illumination sufficient to read all sides.
+- [x] Concave road skin and panel courses.
+- [x] Flush interior bands and closure seam.
+- [x] Shallow service recesses bridged by protective flush grilles/covers; nominal driving surface retained.
+- [x] Tube-mouth trim with only the visible exterior thickness.
+- [x] Neutral recessed strip emitters and ambient fill for all-around readability, pending user assessment.
 
 Review segment: complete inside tube with 360-degree steering, all service families where appropriate and a phase lane winding around the circumference.
 
 User checks: visibility of floor/walls/ceiling, camera clearance, light levels, phase readability and repetitive tunnel rhythm.
 
-- [ ] Visibility notes recorded; concealed outer skeleton omitted.
-- [ ] Segment delivered for user testing.
+- [x] Visibility notes recorded; concealed outer skeleton omitted.
+- [x] Segment delivered for user testing.
 - [ ] Feedback addressed and explicit approval recorded.
+
+Delivery: [07–08 tubes R1](art/track/07-08-tubes-r1.md). Two 1,800 m straight tube samples, each drivable around the full circumference. Both reuse the accepted lane factory at 6.48 m physical width. Flat↔tube transitions remain category 09–10 work.
+
+R2 service section: the user approved the twelve-metre composition on 2026-09-24 and requested variations. Four variations now extend it: pipe-heavy manifolds, split cooling banks, reinforced access hatches and quiet replacement armor. Both tube types have eight sections across 1,800 m, with unequal graphite intervals and shifted circumferential arrangements. User feedback on the variations: “the detailed rings look great.” The original approved composition remains available. See [approved service section](art/track/07-08-service-candidate-r2.md) and [R2 variations](art/track/07-08-service-variations-r2.md).
+
+Shared slab style approved 2026-09-24: “100 time better! i approve of this.” Dedicated 600 m samples use shallow bevelled repair-plate layouts, brushed roughness/normal detail and a soft metallic reflection environment, with a crossing violet lane, on flat and both tube types. The user requested a local checkpoint of all current stages. Existing plate variations are sufficient; applying this approved style to the existing assemblies is the recommended next step. See [approved slab style](art/track/slab-candidate-r1.md).
 
 ## 09 — Flat ↔ outside-tube transitions
 
@@ -404,7 +410,7 @@ R3: user requested a single detailed pipe-housing candidate with a 30-degree lea
 
 ## Detailed R3 set completion
 
-User approved the detailed pipe candidate and 30-degree profile, authorizing the same pass across the four existing raised sets. All 28 R3 modules delivered: frame 5, pipe 8, grille 7, cover 8. Original candidate, R1 and R2 preserved. Full-height connectors remain distinct from rare ramp caps. Individual new variants await user review. Categories 05–06 were subsequently authorized and delivered using this set; category 07 and later remain pending.
+User approved the detailed pipe candidate and 30-degree profile, authorizing the same pass across the four existing raised sets. All 28 R3 modules delivered: frame 5, pipe 8, grille 7, cover 8. Original candidate, R1 and R2 preserved. Full-height connectors remain distinct from rare ramp caps. Individual new variants await user review. Later category status is recorded in the approval ledger above.
 
 Delivery and URLs: [01-04-detailed-r3](art/track/01-04-detailed-r3.md).
 

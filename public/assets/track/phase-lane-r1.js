@@ -21,7 +21,9 @@ export default function generate(THREE, { kind = 'middle', phase = 0, color = [0
     mat.polygonOffsetUnits = -1;
   }
   function panel(name, x, z, w, l, y, material) {
-    const geo = new THREE.PlaneGeometry(w, l, 1, Math.max(1, Math.ceil(l / 2)));
+    // Crosswise samples allow the same inset to follow a tube instead of
+    // spanning it as a flat chord. Flat-road dimensions remain unchanged.
+    const geo = new THREE.PlaneGeometry(w, l, Math.max(1, Math.ceil(w / .4)), Math.max(1, Math.ceil(l / 2)));
     geo.rotateX(-Math.PI / 2);
     const mesh = new THREE.Mesh(geo, mats[material]); mesh.name = name;
     mesh.position.set(x, y, z); root.add(mesh); return mesh;

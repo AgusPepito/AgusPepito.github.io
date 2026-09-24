@@ -8,6 +8,8 @@ import { raisedKit, addRaisedBays } from '../racer/raised-kit.js';
 import detailedPipe from '../../public/assets/track/raised-pipe-detail-r3.js';
 import { detailedKit, addDetailedBays } from '../racer/detailed-kit.js';
 import { reviewCatalog } from './review-assets.js';
+import { slabAssembly, applySlabEnvironment } from '../racer/slab-kit.js';
+import slabs from '../../public/assets/track/slab-surface-r1.js';
 
 const $ = id => document.getElementById(id);
 const catalog = {
@@ -53,6 +55,13 @@ if (revision !== 'r1') for (const [id, family] of [['01','frame'],['02','pipe'],
 if (revision === 'r2') catalog['02'].unshift(['detail-r3', 'R3 candidate · 30° detailed pipe housing', detailedPipe]);
 if (revision === 'r3') catalog['02'].push(['detail-r3', 'Approved original R3 reference', detailedPipe]);
 Object.assign(catalog, reviewCatalog(THREE));
+for(const [category,shape]of [['01','flat'],['07','outside'],['08','inside']]){
+  const half=shape==='flat'?18:Math.PI*18;
+  catalog[category].unshift(
+    ['slab-candidate','Slab candidate · brushed metal with crossing lane',()=>slabAssembly(THREE,{shape,length:50,courseEnd:50,strips:[{start:0,end:50,phase:2,from:-6/half,to:6/half,width:3.24/half}]})],
+    ['slab-closeup','Slab candidate · unwrapped plate detail',()=>slabs(THREE,{width:12,length:25,columns:2})],
+  );
+}
 function release(group) {
   const geometries = new Set(), materials = new Set();
   group.traverse(n => { if (n.geometry) geometries.add(n.geometry); if (n.material) materials.add(n.material); });
@@ -101,6 +110,7 @@ try {
     if (asset) { scene.remove(asset); release(asset); }
     const entry = catalog[$('category').value].find(a => a[0] === $('asset').value);
     asset = entry[2](THREE); scene.add(asset); asset.updateMatrixWorld(true);
+    if(entry[0].startsWith('slab-'))applySlabEnvironment(THREE,renderer,asset);
     nodes = []; asset.traverse(n => { if (n.isMesh) nodes.push(n); });
     $('node').replaceChildren(new Option('Whole asset', 'all'));
     nodes.forEach((node, i) => $('node').add(new Option(`${i + 1} · ${node.name || 'mesh'}`, String(i))));
@@ -109,21 +119,35 @@ try {
     if (revision === 'r3') $('description').textContent = 'Detailed R3 set: approved 30° profile, full-height family connectors and separate ramp caps. Individual modules are 12 m long; mounted bays use a 12.5 m pitch.';
     if ($('category').value === '05') $('description').textContent = 'Mixed assembly R1 reuses R3 housings. Full-height family joins, empty frames and ramp caps only at exposed ends. The driving sample uses unequal runs across chunk boundaries.';
     if ($('category').value === '06') $('description').textContent = 'Phase lanes R1: dark inset beds, narrow colored borders, end symbols and neutral edge markers. Active lane width 6.48 m. Drive the sample for matching-phase turbo.';
+    if (['07','08'].includes($('category').value)) $('description').textContent = 'Tube R1: 18 m radius, fully drivable circumference, flush bands and shallow protected service recesses. The approved lane geometry follows the curvature at the same 6.48 m width. Use Front to look through the mouth, or zoom into the inside tube.';
+    if(['07','08'].includes($('category').value)){
+      const detail=$('asset').value.startsWith('detail-');
+      const variation=$('asset').value.startsWith('variation-');
+      $('drive').href=`./racer.html?review=${$('category').value}&revision=r1${variation?'&detail=variations':detail?'&detail=service':''}`;
+      $('status').textContent=variation?`${$('category').value} · R2 variations · awaiting review`:detail?`${$('category').value} · R2 service section · approved`:`${$('category').value} · R1 · awaiting review`;
+      if(detail)$('description').textContent='Approved twelve-metre ivory service section: 70 cm pipe/cooling recesses, stepped couplings, louvers, asymmetric access doors and replacement plates. Shared geometry follows either tube.';
+      if(variation)$('description').textContent='Four variations of the approved 12 m section: twin-feed pipe manifolds, split cooling banks, reinforced access hatches and quiet replacement armor. Drive eight sections with unequal graphite intervals and shifted panel arrangements around the tube.';
+    }
+    if($('asset').value.startsWith('slab-')){
+      $('description').textContent='Initial shared slab candidate: shallow machined bevels, inset joints, asymmetric repair plates, flush fasteners and brushed metal grain. Soft environment highlights reveal changes in polish. The driving sample includes a crossing violet lane.';
+      $('status').textContent=`${$('category').value} · Metal slab style · approved`;
+      $('drive').href=`./racer.html?review=${$('category').value}&detail=slabs`;
+    }
     if ($('asset').value === 'detail-r3') {
       $('description').textContent = 'Approved original R3 reference: 30° from vertical, matching trapezoid end cheeks, detailed pipe couplings and roof. Preserved for comparison with the complete set.';
       $('status').textContent = 'Original R3 reference · approved';
     }
     $('drive').hidden = $('asset').value === 'detail-r3';
     for (const n of nodes) n.material.wireframe = $('wireframe').checked;
-    const url = new URL(location.href); url.searchParams.set('category', $('category').value); url.searchParams.set('asset', entry[0]); url.searchParams.set('revision', ['05','06'].includes($('category').value) ? 'r1' : revision); history.replaceState(null, '', url);
+    const url = new URL(location.href); url.searchParams.set('category', $('category').value); url.searchParams.set('asset', entry[0]); url.searchParams.set('revision', ['05','06','07','08'].includes($('category').value) ? 'r1' : revision); history.replaceState(null, '', url);
     fit();
   }
   function category(preferred) {
     const id = $('category').value;
-    const newSample = ['05','06'].includes(id);
+    const newSample = ['05','06','07','08'].includes(id);
     $('revision').disabled = newSample;
     $('revision').value = newSample ? 'r1' : revision;
-    $('revision').querySelector('[value="r1"]').textContent = newSample ? 'R1 · First sample using R3 housings' : 'R1 · Shallow inserts';
+    $('revision').querySelector('[value="r1"]').textContent = newSample ? 'R1 · First category sample' : 'R1 · Shallow inserts';
     $('asset').replaceChildren(...catalog[id].map(a => new Option(a[1], a[0])));
     if (catalog[id].some(a => a[0] === preferred)) $('asset').value = preferred;
     $('status').textContent = `${id} · R1 ${['01', '02'].includes(id) ? 'approved' : 'awaiting your review'}`;

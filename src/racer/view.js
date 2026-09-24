@@ -5,8 +5,10 @@ import { PassageGuide } from './guidance.js';
 import { OBSTACLES, solidSpans, openingSpans, WALL_HEIGHT, HOLE_HEIGHT } from './obstacles.js';
 import { LENGTH, PHASES, STRIPS, GATES, section, frame, point, stripCenter, clamp } from './track.js';
 import { GAPS, JUMP, gapAt, surfaceSlices } from './jumps.js';
-import { constructionReview, constructionBaseline } from './levels.js';
+import { constructionReview, constructionBaseline, constructionCategory, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail } from './levels.js';
 import { foundationChunk } from './construction.js';
+import { tubeChunk } from './tube-kit.js';
+import { slabChunk, applySlabEnvironment, disposeSlabEnvironment } from './slab-kit.js';
 
 // Temporary procedural prototype geometry, pending the jam's final recipe art pass.
 function surface(s, u, height = 0) {
@@ -87,6 +89,7 @@ export class RaceView {
     this.scene.add(new THREE.HemisphereLight(0xb5d8ff, 0x465578, 2.4));
     const sun = new THREE.DirectionalLight(0xd6eeff, 2.4); sun.position.set(120, 180, 40); this.scene.add(sun);
     const fill = new THREE.DirectionalLight(0x6a9bdf, 1.5); fill.position.set(-70, -100, -60); this.scene.add(fill);
+    if (constructionCategory === '08') this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
     this.chunks = []; this.gates = []; this.energyGroups = []; this.walls = []; this.gapMarkers = [];
     this.gapFills = new THREE.Group(); this.scene.add(this.gapFills);
     const asphalt = new THREE.MeshStandardMaterial({ color: 0x263649, roughness: 0.8, side: THREE.DoubleSide });
@@ -95,8 +98,12 @@ export class RaceView {
     const energy = PHASES.map(p => new THREE.MeshBasicMaterial({ color: p.hex, side: THREE.DoubleSide }));
     for (let start = -50; start < LENGTH + 200; start += 100) {
       const end = start + 100, group = new THREE.Group();
+      if(constructionSlabDetail){
+        group.add(slabChunk(THREE,start,constructionCategory==='01'?'flat':constructionCategory==='08'?'inside':'outside',LENGTH,STRIPS));
+        this.chunks.push({start,group});this.scene.add(group);continue;
+      }
       if (constructionReview && !constructionBaseline) {
-        group.add(foundationChunk(start));
+        group.add(['07','08'].includes(constructionCategory) ? tubeChunk(THREE,start,constructionCategory==='08',LENGTH,STRIPS,constructionTubeDetail,constructionTubeVariations) : foundationChunk(start));
         this.chunks.push({ start, group }); this.scene.add(group); continue;
       }
       group.add(new THREE.Mesh(ribbon(start, end, () => -1, () => 1, 0, 64), asphalt));
@@ -125,6 +132,7 @@ export class RaceView {
       }
       this.chunks.push({ start, group }); this.scene.add(group);
     }
+    if(constructionSlabDetail)applySlabEnvironment(THREE,this.renderer,this.scene);
     const gapEdge = new THREE.MeshBasicMaterial({ color: 0xffdf88, side: THREE.DoubleSide, fog: false });
     for (const gap of GAPS) {
       const group = new THREE.Group(), left = gap.full ? -1 : gap.center - gap.width, right = gap.full ? 1 : gap.center + gap.width;
@@ -244,6 +252,7 @@ export class RaceView {
       }
     });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose());
+    disposeSlabEnvironment(this.renderer);
     this.renderer.dispose();
   }
   resize() {

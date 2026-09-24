@@ -18,6 +18,7 @@ export const wrap = u => ((u + 1) % 2 + 2) % 2 - 1;
 // The same parameterization supplies geometry, collision, driving and the camera frame.
 export function section(s) {
   if (profile === 'flat') return { curl: 0, halfWidth: 18, closed: false, name: 'OPEN ROAD' };
+  if (profile === 'outside' || profile === 'inside') return { curl: profile === 'inside' ? 1 : -1, halfWidth: Math.PI * RADIUS, closed: true, name: profile === 'inside' ? 'INSIDE TUBE' : 'OUTSIDE TUBE' };
   let curl = 0, name = 'LAUNCH STRAIGHT';
   if (s >= 850 && s < 1300) { curl = -smooth((s - 850) / 450); name = 'ROLLING OUTWARD'; }
   else if (s >= 1300 && s < 2500) { curl = -1; name = 'OUTSIDE / ORBIT'; }
@@ -36,10 +37,11 @@ export function point(s, u) {
   const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k * lateral) / k;
   const y = Math.abs(k) < 1e-7 ? 0 : (1 - Math.cos(k * lateral)) / k;
   // Authored bends have truly straight approaches and exits; z remains monotonic.
-  const centerX = profile === 'flat' ? 18 * smooth((s / LENGTH - 0.15) / 0.2) - 36 * smooth((s / LENGTH - 0.4) / 0.2) + 18 * smooth((s / LENGTH - 0.7) / 0.2) : 95 * smooth((s - 300) / 550) - 170 * smooth((s - 1450) / 750)
+  const tubeReview = profile === 'outside' || profile === 'inside';
+  const centerX = tubeReview ? 0 : profile === 'flat' ? 18 * smooth((s / LENGTH - 0.15) / 0.2) - 36 * smooth((s / LENGTH - 0.4) / 0.2) + 18 * smooth((s / LENGTH - 0.7) / 0.2) : 95 * smooth((s - 300) / 550) - 170 * smooth((s - 1450) / 750)
     + 210 * smooth((s - 2950) / 500) - 180 * smooth((s - 4050) / 900)
     + 45 * smooth((s - 5900) / 450);
-  const centerY = profile === 'flat' ? 0 : 24 * smooth((s - 1500) / 800) - 40 * smooth((s - 4150) / 900);
+  const centerY = profile === 'flat' || tubeReview ? 0 : 24 * smooth((s - 1500) / 800) - 40 * smooth((s - 4150) / 900);
   return new Vector3(x + centerX, y + centerY, -s);
 }
 

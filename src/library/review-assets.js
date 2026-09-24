@@ -5,6 +5,9 @@ import { detailedKit } from '../racer/detailed-kit.js';
 import { addMixedBays, expandRuns, mountDetailedBay } from '../racer/mixed-kit.js';
 import { addPhaseLanes } from '../racer/lane-kit.js';
 import { PHASES } from '../racer/track.js';
+import tubeSurface, {wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
+import serviceBelt, {SERVICE_BELT_VARIANTS} from '../../public/assets/track/tube-service-belt-r2.js';
+import { tubeAssembly } from '../racer/tube-kit.js';
 
 function road(THREE, layouts, lanes = false) {
   const root = foundation(THREE);
@@ -49,5 +52,47 @@ export function reviewCatalog(THREE) {
       ])),
       ['edge-marker','Neutral flush edge marker',() => marker(THREE)],
     ],
+    ...Object.fromEntries([['07',false],['08',true]].map(([id,inside])=>[id,[
+      ...SERVICE_BELT_VARIANTS.map(variant=>[`variation-${variant}`,`R2 variation · ${variant==='armor'?'quiet armor':variant+'-heavy'} · 12 m belt`,()=>wrapTubeSurface(THREE,serviceBelt(THREE,{variant}),inside)]),
+      ['variation-road','R2 variation · pipe belt in graphite road',()=>tubeAssembly(THREE,{inside,length:100,courseEnd:100,belts:[{at:50,variant:'pipe'}]})],
+      ['detail-r2','Approved R2 · ivory service section in road',()=>tubeAssembly(THREE,{inside,length:100,courseEnd:100,detail:true,detailAt:50})],
+      ['detail-belt','Approved R2 · complete twelve-metre ivory belt',()=>wrapTubeSurface(THREE,serviceBelt(THREE),inside)],
+      ...['pipe','cooling','access','armor'].map(family=>[`detail-${family}`,`Approved R2 · ${family} cartridge`,()=>detailedTubePart(THREE,inside,family)]),
+      ['assembly',`${inside?'Inside':'Outside'} tube with phase lane`,()=>tubeAssembly(THREE,{inside,length:100,courseEnd:100,strips:[{start:12.5,end:87.5,phase:inside?2:1,from:0,to:.4,width:3.24/(Math.PI*18)}]})],
+      ['skin','Curved road skin and panel courses',()=>tubeSurface(THREE,{inside,services:false,startCap:false,endCap:false})],
+      ['mouth','Exposed mouth cross-section',()=>tubePart(THREE,inside,n=>n.name.includes('mouth'))],
+      ['bands','Flush bands and closure seam',()=>tubePart(THREE,inside,n=>n.name.includes('band')||n.name.includes('closure'))],
+      ...['pipe','grille','cover'].map(family=>[family,`Protected ${family} service recess`,()=>tubePart(THREE,inside,n=>n.userData.serviceFamily===family)]),
+      ...(inside?[['lights','Neutral recessed light strips',()=>tubePart(THREE,inside,n=>n.name.includes('light'))]]:[]),
+    ]])),
   };
+}
+
+function tubePart(THREE,inside,select) {
+  const root=tubeSurface(THREE,{inside});
+  const removedMaterials=new Set(),keptMaterials=new Set();
+  for(const mesh of [...root.children]) {
+    if(select(mesh))keptMaterials.add(mesh.material);
+    else {root.remove(mesh);mesh.geometry.dispose();removedMaterials.add(mesh.material);}
+  }
+  for(const material of removedMaterials)if(!keptMaterials.has(material))material.dispose();
+  return root;
+}
+
+function detailedTubePart(THREE,inside,family){
+  const root=serviceBelt(THREE);
+  // Keep one cartridge near the central driving meridian for a useful fit.
+  const cell=2*Math.PI*18/24;
+  const targetIndex={access:12,armor:11,pipe:14,cooling:10}[family];
+  const x=-Math.PI*18+(targetIndex+.5)*cell;
+  const materials=new Set(),kept=new Set();
+  for(const mesh of [...root.children]){
+    mesh.geometry.computeBoundingBox();
+    const bounds=mesh.geometry.boundingBox;
+    const center=(bounds.min.x+bounds.max.x)/2+mesh.position.x;
+    if(mesh.userData.serviceFamily===family&&Math.abs(center-x)<cell/2)kept.add(mesh.material);
+    else{root.remove(mesh);mesh.geometry.dispose();materials.add(mesh.material);}
+  }
+  for(const material of materials)if(!kept.has(material))material.dispose();
+  return wrapTubeSurface(THREE,root,inside);
 }

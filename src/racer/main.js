@@ -4,7 +4,7 @@ import { RaceView } from './view.js';
 import { PHASES, GATES, LENGTH } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
-import { configureLevel, levelInfo, constructionReview, constructionBaseline, constructionCategory, constructionRevision } from './levels.js';
+import { configureLevel, levelInfo, constructionReview, constructionBaseline, constructionCategory, constructionRevision, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail } from './levels.js';
 
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
@@ -21,7 +21,7 @@ try {
 if (constructionReview) {
   currentLevel = 0;
   const pipes = constructionCategory === '02';
-  const title = { '01': 'FLAT FOUNDATION', '02': 'PIPE BAYS', '03': 'GRILLE BAYS', '04': 'COVERED METAL', '05': 'MIXED HOUSINGS', '06': 'PHASE LANES' }[constructionCategory];
+  const title = { '01': 'FLAT FOUNDATION', '02': 'PIPE BAYS', '03': 'GRILLE BAYS', '04': 'COVERED METAL', '05': 'MIXED HOUSINGS', '06': 'PHASE LANES', '07': 'OUTSIDE TUBE', '08': 'INSIDE TUBE' }[constructionCategory];
   document.title = `Track library · ${constructionCategory} · ${constructionRevision}`;
   $('menu').querySelector('.eyebrow').textContent = 'TRACK LIBRARY / AWAITING YOUR REVIEW';
   $('menu').querySelector('h1').textContent = `${title}.`;
@@ -57,10 +57,49 @@ if (constructionReview) {
     compare.textContent = constructionCategory === '05' ? 'Compare R3 covered bays ↗' : 'Compare mixed housings without lanes ↗';
   }
   $('start').after(compare);
+  if (['07','08'].includes(constructionCategory)) {
+    $('mode').value='phase';
+    $('menu').querySelector('h1 + p').textContent=constructionCategory==='08'
+      ? 'Drive the complete inner circumference. Curved graphite panels, flush ivory bands, protected service recesses and a violet lane winding around the tunnel.'
+      : 'Drive the complete outer circumference. Curved graphite panels, flush ivory bands, protected service recesses and phase lanes leading around the tube.';
+    $('menu').querySelector('p.subtle').textContent='Check the closure seam, all-around lane readability, mouth thickness and service recesses. No hazards; R retries.';
+    compare.href=constructionCategory==='08'?'?review=07&revision=r1':'?review=06&revision=r1';
+    compare.textContent=constructionCategory==='08'?'Compare outside tube ↗':'Compare approved flat lanes ↗';
+  }
   const library = document.createElement('a'); library.className = 'original-link';
   library.href = `./library.html?category=${constructionCategory}&revision=${constructionRevision.toLowerCase()}`; library.textContent = 'Individual asset library ↗'; compare.after(library);
+  if(constructionTubeDetail){
+    document.title=`Tube ${constructionCategory} · R2 service section`;
+    $('menu').querySelector('h1').textContent='IVORY SERVICE SECTION.';
+    $('menu').querySelector('h1 + p').textContent='One twelve-metre ivory section: deep pipe trays, cooling cartridges, asymmetric access doors and replacement armor plates. Quiet graphite surrounds it.';
+    $('menu').querySelector('p.subtle').textContent='Approved twelve-metre composition. Steer around the tube to see each panel family. W boosts; R retries.';
+    $('level').options[0].textContent=`${constructionCategory} · R2 APPROVED SERVICE SECTION`;
+    compare.href=`?review=${constructionCategory}&revision=r1`;compare.textContent='Compare original tube R1 ↗';
+    library.href+= '&asset=detail-r2';
+  }
+  if(constructionTubeVariations){
+    document.title=`Tube ${constructionCategory} · R2 service variations`;
+    $('menu').querySelector('h1').textContent='SERVICE VARIATIONS.';
+    $('menu').querySelector('h1 + p').textContent='Pipe manifolds, split cooling banks, reinforced access hatches and quiet armor. Eight twelve-metre ivory sections punctuate unequal graphite stretches across this 1,800 m tube.';
+    $('menu').querySelector('p.subtle').textContent='First section at 100 m. Steer around the tube to compare the panels. W boosts; R retries.';
+    $('level').options[0].textContent=`${constructionCategory} · R2 SERVICE VARIATIONS`;
+    compare.href=`?review=${constructionCategory}&detail=service`;compare.textContent='Compare approved service section ↗';
+    library.href=`./library.html?category=${constructionCategory}&revision=r1&asset=variation-pipe`;
+  }
+  if(constructionSlabDetail){
+    document.title=`Track ${constructionCategory} · brushed metal slab candidate`;
+    $('mode').value='phase';
+    $('menu').querySelector('h1').textContent='BRUSHED METAL SLABS.';
+    $('menu').querySelector('h1 + p').textContent='Shallow bevels, inset joints, repair plates and brushed metal highlights across a 600 m sample. A violet lane crosses the slab layouts from 75 m.';
+    $('menu').querySelector('p.subtle').textContent='Compare the plate depth, sheen and readability at speed. Press 3 to match the violet lane; W boosts and R retries.';
+    $('level').options[0].textContent=`${constructionCategory} · SLAB CANDIDATE`;
+    compare.href=`?review=${constructionCategory}&revision=r1`;compare.textContent='Compare original slabs ↗';
+    library.href=`./library.html?category=${constructionCategory}&revision=r1&asset=slab-candidate`;
+  }
   const label = document.createElement('div'); label.id = 'construction-label';
   label.textContent = constructionBaseline ? `${constructionCategory} · ORIGINAL ROAD` : `${constructionCategory} · ${title} ${constructionRevision}`;
+  if(constructionTubeDetail)label.textContent=`${constructionCategory} · R2 ${constructionTubeVariations?'SERVICE VARIATIONS':'APPROVED SERVICE SECTION'}`;
+  if(constructionSlabDetail)label.textContent=`${constructionCategory} · BRUSHED METAL SLAB CANDIDATE`;
   document.body.append(label);
 }
 function loadBest() {

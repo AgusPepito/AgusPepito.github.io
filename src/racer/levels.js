@@ -3,11 +3,16 @@ import { OBSTACLES } from './obstacles.js';
 import { GAPS } from './jumps.js';
 import { PHASE_CHAINS } from './sequences.js';
 import { PHASE_REVIEW_STRIPS } from './lane-kit.js';
+import { tubeReviewStrips } from './tube-kit.js';
+import { slabReviewStrips } from './slab-kit.js';
 
 const reviewParams = new URLSearchParams(globalThis.location?.search || '');
 export const constructionCategory = reviewParams.get('review');
-export const constructionRevision = ['05','06'].includes(constructionCategory) ? 'R1' : {r2:'R2',r3:'R3'}[reviewParams.get('revision')] || 'R1';
-export const constructionReview = ['01', '02', '03', '04', '05', '06'].includes(constructionCategory);
+export const constructionRevision = ['05','06','07','08'].includes(constructionCategory) ? 'R1' : {r2:'R2',r3:'R3'}[reviewParams.get('revision')] || 'R1';
+export const constructionReview = ['01', '02', '03', '04', '05', '06', '07', '08'].includes(constructionCategory);
+export const constructionTubeVariations = ['07','08'].includes(constructionCategory) && reviewParams.get('detail') === 'variations';
+export const constructionTubeDetail = ['07','08'].includes(constructionCategory) && ['service','variations'].includes(reviewParams.get('detail'));
+export const constructionSlabDetail = ['01','07','08'].includes(constructionCategory) && reviewParams.get('detail') === 'slabs';
 export const constructionBaseline = constructionReview && reviewParams.get('surface') === 'original';
 
 // Keep the developed course as the combinations level, then vary it for later rounds.
@@ -19,6 +24,8 @@ const hole = (s, center, width, height = 9) => ({ s, kind: 'hole', center, width
 const jump = s => ({ s, kind: 'jump', center: 0, width: 1, depth: 5, height: 2.4 });
 const gap = (start, end) => ({ start, end, center: 0, width: 1, full: true });
 export function levelInfo(index) {
+  if(constructionSlabDetail)return {name:`CONSTRUCTION ${constructionCategory} · METAL SLAB CANDIDATE`,length:600,profile:constructionCategory==='01'?'flat':constructionCategory==='08'?'inside':'outside',lesson:'Brushed metal slabs with shallow bevels and repair plates. Violet lane from 75 m: press 3 for matching-phase turbo. W boosts; R retries.'};
+  if (['07','08'].includes(constructionCategory)) return { name: `CONSTRUCTION ${constructionCategory} · ${constructionTubeVariations?'R2 VARIATIONS':constructionTubeDetail?'R2 SERVICE SECTION':'R1'}`, length:constructionTubeDetail&&!constructionTubeVariations?400:1800, profile:constructionCategory==='08'?'inside':'outside', lesson:constructionTubeVariations?'Eight twelve-metre service sections: pipes, cooling, access and quiet armor. Steer around the tube. W boosts; R retries.':constructionTubeDetail?'One ivory service section at 100 m. Steer around it to inspect the pipe, cooling and access panels. R retries.':'Steer a full circle around the tube. Match lane colors with 1, 2 or 3 for turbo. Space jumps. W boosts. R retries.' };
   if (constructionReview) return { name: `CONSTRUCTION ${constructionCategory} · ${constructionRevision}`, length: 1800, profile: 'flat', lesson: constructionCategory === '06'
     ? 'Match cyan, amber or violet with 1, 2 or 3 for lane turbo. Space jumps. W boosts. R retries the sample.'
     : 'Inspect the side bays at cruise and turbo. The sample repeats; R or Pause → Retry restarts it.' };
@@ -33,8 +40,10 @@ export function configureLevel(index) {
   const info = levelInfo(index);
   let data = { gates: [], strips: [], obstacles: [], gaps: [], chains: [] };
   if (constructionReview) {
-    // Construction reviews have no hazards; category 06 exercises real lanes.
+    // Construction reviews have no hazards; categories 06–08 use real lanes.
     if (constructionCategory === '06') data.strips = PHASE_REVIEW_STRIPS.map(strip => ({...strip}));
+    if (['07','08'].includes(constructionCategory) && !constructionTubeDetail) data.strips = tubeReviewStrips(constructionCategory==='08');
+    if(constructionSlabDetail)data.strips=slabReviewStrips(constructionCategory!=='01');
   } else if (index === 0) {
     data.gates = [gate(500, 0), gate(1100, 1), gate(1700, 2)];
     data.strips = [strip(180, 420, 0), strip(780, 1020, 1), strip(1400, 1620, 2)];
