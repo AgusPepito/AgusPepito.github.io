@@ -32,11 +32,12 @@ function setView(name) {
 }
 setView('rear');
 const descriptions = {
+  'reference-reconstruction': 'Image-led reconstruction: long tapered monocoque, faceted framed cockpit, rear reactor well and open octagonal engine housings. Agent-written from the reference; not hosted-model output.',
   kestrel: 'A narrow central hull suspended between two armored engine pods. Rear fins frame the phase core.',
   manta: 'A continuous swept silhouette with inset engines and a long energy spine. A smoother interpretation of the reference.',
   splitframe: 'An exposed chassis links two hexagonal pods to a central energy drum. More mechanical, with strong gaps between the parts.',
 };
-let selected = null, phase = '#4de1ff', request = 0, candidate = 'kestrel', revision = 'v2';
+let selected = null, phase = '#4de1ff', request = 0, candidate = 'reference-reconstruction', revision = 'v2';
 const saturated = { '#4de1ff': '#00cfff', '#ffbe55': '#ff9200', '#dc8aff': '#b800ff' };
 const ships = new Map();
 function tint(ship) {
@@ -50,7 +51,9 @@ function tint(ship) {
 }
 async function choose(name) {
   candidate = name;
-  const asset = revision === 'v2' ? `${name}-v2` : name;
+  if (name === 'reference-reconstruction') { revision = 'v2'; document.getElementById('revision').value = 'v2'; }
+  document.getElementById('revision').disabled = name === 'reference-reconstruction';
+  const asset = name === 'reference-reconstruction' ? name : revision === 'v2' ? `${name}-v2` : name;
   const id = ++request;
   try {
     if (!ships.has(asset)) {
@@ -96,4 +99,4 @@ function resize() {
 }
 new ResizeObserver(resize).observe(canvas); resize();
 renderer.setAnimationLoop(() => { controls.update(); composer.render(); });
-choose('kestrel');
+choose('reference-reconstruction');

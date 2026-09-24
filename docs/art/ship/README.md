@@ -26,3 +26,7 @@ User compares silhouettes, rear/front/side/top/below views and all three phase c
 ## Revision 2 — user rejected the initial detail and phase visibility
 Preserved V1, authored three -v2 siblings with layered deck panels, vent louvers, fasteners, exposed pipes, underside fittings, nested exhaust collars and injector blades. Raised/widened phase rails above armor and enlarged deck cores. Modules remain self-contained standard-material geometry. Shipyard V2 uses saturated energy colors, emissive intensity 18 (10x original 1.8), and HDR bloom followed by tone mapping. Brightness is adjustable; V1 comparison disables bloom and restores original material intensity. This is an art iteration, not a verified final asset. No verifier or visual testing performed.
 
+
+## Image-led reconstruction / D
+The user requested a closer image-to-code attempt after rejecting the loose interpretations. Reopened and inspected the existing reference, then authored reference-reconstruction.js from scratch: octagonal section lofts for the central monocoque and open nacelles, framed faceted glass, stepped armor panels, recessed rear nozzle sleeves, radial injector blades, reactor well and retaining lugs. The image's hidden underside and exact dimensions are inferred; this is not a recovered mesh. The shipyard starts with this candidate and includes the original picture for direct user comparison. Generator is this coding agent (route B), not the hosted 404 model. No verification or visual output review performed; selection remains pending.
+

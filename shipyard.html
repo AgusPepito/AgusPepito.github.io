@@ -8,14 +8,14 @@
     <aside>
       <p class="eyebrow">01 / CHOOSE A SILHOUETTE</p>
       <label class="tuning">Version<select id="revision"><option value="v2">V2 · detailed / high energy</option><option value="v1">V1 · original comparison</option></select></label>
-      <div id="candidates"><button data-ship="kestrel" aria-pressed="true"><b>A · KESTREL</b><span>Angular armor · twin nacelles</span></button><button data-ship="manta" aria-pressed="false"><b>B · MANTA</b><span>Swept body · rounded engines</span></button><button data-ship="splitframe" aria-pressed="false"><b>C · SPLITFRAME</b><span>Exposed frame · separated pods</span></button></div>
+      <div id="candidates"><button data-ship="reference-reconstruction" aria-pressed="true"><b>D · FROM THE PICTURE</b><span>Reference reconstruction</span></button><button data-ship="kestrel" aria-pressed="false"><b>A · KESTREL</b><span>Angular armor · twin nacelles</span></button><button data-ship="manta" aria-pressed="false"><b>B · MANTA</b><span>Swept body · rounded engines</span></button><button data-ship="splitframe" aria-pressed="false"><b>C · SPLITFRAME</b><span>Exposed frame · separated pods</span></button></div>
       <p id="description">A narrow central hull suspended between two armored engine pods. Rear fins frame the phase core.</p>
       <p class="eyebrow">02 / VIEW & ENERGY</p>
       <div id="views"><button data-view="rear" aria-pressed="true">Chase</button><button data-view="front" aria-pressed="false">Front</button><button data-view="side" aria-pressed="false">Side</button><button data-view="top" aria-pressed="false">Top</button><button data-view="underside" aria-pressed="false">Below</button></div>
       <div id="colors"><button data-color="#4de1ff" aria-label="Cyan phase" aria-pressed="true"></button><button data-color="#ffbe55" aria-label="Amber phase" aria-pressed="false"></button><button data-color="#dc8aff" aria-label="Violet phase" aria-pressed="false"></button><button id="spin" aria-pressed="false">Rotate</button></div>
       <label class="tuning" for="glow">V2 energy brightness <output id="glow-value">10.0×</output><input id="glow" type="range" min="1.8" max="27" step="0.9" value="18"></label>
       <p class="dimensions">3.1 m wide · 3.9 m long · 0.95 m tall</p>
-      <p class="footnote">Three original code-built candidates from one reference. These are design previews, awaiting your selection and recipe verification. The racing ship is unchanged.</p>
+      <details class="reference"><summary>Compare with the reference picture</summary><a href="./assets/ships/orbital-reference.png" target="_blank" rel="noopener"><img src="./assets/ships/orbital-reference.png" loading="lazy" alt="Original ivory racing ship reference with a framed cockpit, twin octagonal nacelles and a cyan rear core"></a></details><p class="footnote">An image-led reconstruction alongside the three earlier interpretations. These are design previews, awaiting your selection and recipe verification. The racing ship is unchanged.</p>
     </aside>
   </main>
   <script type="module" src="/src/shipyard/main.js"></script>

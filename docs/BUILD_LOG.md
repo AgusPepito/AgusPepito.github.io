@@ -260,3 +260,7 @@ Created an original image reference and three independent code-built ship interp
 ### 2026-09-24 — Detailed ship V2 and stronger phase energy
 Added three detailed candidate revisions while keeping V1 for comparison. Corrected buried energy-strip placement, added prominent energy surfaces, and introduced adjustable tenfold emissive output plus bloom in the shipyard. No gameplay integration or automatic visual tests. Production build only.
 
+
+### 2026-09-24 — Ship reconstructed from reference
+Created an independent image-led ship rather than adding detail to the previous candidates. Added candidate D as shipyard default and an expandable source-picture comparison. Kept existing candidates and the gameplay ship. Production build only; no tests or visual gameplay inspection.
+
