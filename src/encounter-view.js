@@ -1,10 +1,27 @@
 import * as THREE from 'three';
 import { roadPoint, lerp, clamp } from './track.js';
-import { ENCOUNTER_RULES } from './encounters.js';
+import { ENCOUNTER_RULES, ATTACK_COLORS } from './encounters.js';
 
 export class EncounterView {
   constructor(view) {
     this.view = view;
+    const chargeGeometry = new THREE.RingGeometry(1.6, 1.85, 48);
+    chargeGeometry.rotateX(-Math.PI / 2);
+    this.dartChargeBase = new THREE.Mesh(chargeGeometry, new THREE.MeshBasicMaterial({ color: 0x18242e, side: THREE.DoubleSide, depthWrite: false }));
+    this.dartChargeBase.visible = false; view.scene.add(this.dartChargeBase);
+    this.dartCharge = view.batch(40, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
+    this.dartCharge.geometry = new THREE.RingGeometry(1.6, 1.85, 2, 1, 0, Math.PI * 2 / 40 * 0.9);
+    this.dartCharge.geometry.rotateX(-Math.PI / 2);
+    this.dartColors = Object.fromEntries(Object.entries(ATTACK_COLORS).map(([role, color]) => [role, new THREE.Color(color)]));
+    const cueCanvas = document.createElement('canvas'); cueCanvas.width = 128; cueCanvas.height = 80;
+    const cue = cueCanvas.getContext('2d');
+    cue.lineCap = 'round'; cue.lineJoin = 'round';
+    for (const [color, width] of [['#10181e', 22], ['#ffffff', 10]]) {
+      cue.strokeStyle = color; cue.lineWidth = width;
+      cue.beginPath(); cue.moveTo(30, 24); cue.lineTo(64, 55); cue.lineTo(98, 24); cue.stroke();
+    }
+    this.dartNext = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(cueCanvas), depthTest: true, depthWrite: false, fog: false }));
+    this.dartNext.scale.set(2.9, 1.8, 1); this.dartNext.visible = false; view.scene.add(this.dartNext);
     this.mineBodies = view.batch(ENCOUNTER_RULES.mineLimit, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
     this.mineBodies.geometry = new THREE.IcosahedronGeometry(0.65, 0);
     this.rings = view.batch(ENCOUNTER_RULES.mineLimit * 32, new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthWrite: false }));
@@ -34,8 +51,23 @@ export class EncounterView {
   update(sim) {
     const v = this.view, encounter = sim.encounter;
     let mines = 0, rings = 0, blasts = 0, paths = 0, pickups = 0, orbits = 0, arrows = 0;
+    let chargeSegments = 0;
+    this.dartNext.visible = false; this.dartChargeBase.visible = false;
     for (const label of this.labels) label.visible = false;
     if (encounter) {
+      const next = encounter.members.find(e => e.id === encounter.dartNextId);
+      if (next && encounter.dartReady(next)) {
+        this.dartNext.visible = true;
+        this.dartNext.position.set(next.x, 4.8, next.z);
+      }
+      const attack = encounter.dartAttack;
+      if (attack && encounter.dartReady(attack.enemy)) {
+        const e = attack.enemy, progress = clamp(attack.age / ENCOUNTER_RULES.dartWindup, 0, 1);
+        this.dartChargeBase.visible = true; this.dartChargeBase.position.set(e.x, 0.07, e.z);
+        chargeSegments = Math.floor(progress * 40);
+        for (let i = 0; i < chargeSegments; i++) v.put(this.dartCharge, i, e.x, 0.085, e.z, 1, 1, 1,
+          -Math.PI / 2 + i * Math.PI * 2 / 40, this.dartColors[e.role]);
+      }
       for (const c of encounter.clusters.slice(0, ENCOUNTER_RULES.mineLimit)) {
         const center = roadPoint(c.s, c.lateral);
         v.put(this.orbits, orbits++, center.x, 0.04, center.z, c.radius, 1, c.radius);
@@ -81,6 +113,6 @@ export class EncounterView {
         v.put(this.pickups, pickups++, x, 1.3 + Math.sin(t * Math.PI) * 3, z, 1, 1, 1, sim.time * 2);
       }
     }
-    for (const [mesh, count] of [[this.mineBodies, mines], [this.rings, rings], [this.orbits, orbits], [this.arrows, arrows], [this.blasts, blasts], [this.paths, paths], [this.pickups, pickups]]) v.finish(mesh, count);
+    for (const [mesh, count] of [[this.dartCharge, chargeSegments], [this.mineBodies, mines], [this.rings, rings], [this.orbits, orbits], [this.arrows, arrows], [this.blasts, blasts], [this.paths, paths], [this.pickups, pickups]]) v.finish(mesh, count);
   }
 }

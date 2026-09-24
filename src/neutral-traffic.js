@@ -13,9 +13,9 @@ export function createVehicle(seed, id) {
   v.oldX = v.x; v.oldZ = v.z;
   return v;
 }
-export function moveVehicle(v, dt) {
+export function moveVehicle(v, dt, speed = NEUTRAL.speed) {
   v.oldX = v.x; v.oldZ = v.z;
-  v.s = advanceOnRoad(v.s, NEUTRAL.speed * dt);
+  v.s = advanceOnRoad(v.s, speed * dt);
   v.lateral = v.lane * (trackAt(v.s).width / 2 - v.halfWidth - 0.5);
   Object.assign(v, roadPoint(v.s, v.lateral));
   v.yaw = roadLineYaw(v.s, v.lane / 2, -v.lane * (v.halfWidth + 0.5));

@@ -15,12 +15,42 @@ export function encounterModels(THREE) {
     for (const side of [-1, 1]) for (const end of [-1, 1]) box(g, 0.3, 0.7, 0.8, side * w / 2, 0.3, end * d * 0.28, dark);
     return g;
   }
-  const dart = new THREE.Group();
-  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.4, 3), purple);
-  nose.rotation.x = Math.PI / 2; nose.position.y = 0.55; dart.add(nose);
-  box(dart, 1.6, 0.2, 0.55, 0, 0.6, -0.4, purple);
-  box(dart, 0.45, 0.2, 0.6, 0, 1, 0, orange, 'signal');
-  box(dart, 0.5, 0.15, 1.4, 0, 0.8, 0, orange, 'role');
+  function makeDart(role, color) {
+    const g = new THREE.Group(), hull = material(color);
+    if (role === 'direct') {
+      box(g, 0.85, 0.6, 2.35, 0, 0.5, 0, hull);
+      for (const side of [-1, 1]) box(g, 0.22, 0.25, 1.5, side * 0.6, 0.45, -0.15, dark);
+    } else {
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(role === 'predict' ? 0.72 : 0.55, 2.35, 3), hull);
+      nose.rotation.x = Math.PI / 2; nose.position.y = 0.55; g.add(nose);
+      if (role === 'spread') for (const side of [-1, 1]) {
+        const wing = box(g, 0.65, 0.23, 1.55, side * 0.48, 0.55, -0.15, hull);
+        wing.rotation.y = side * 0.2;
+      }
+    }
+    box(g, role === 'direct' ? 0.7 : 1.1, 0.12, 1.65, 0, 1.12, 0, dark);
+    const glyphs = new THREE.Group(); glyphs.name = 'glyphs'; g.add(glyphs);
+    if (role === 'direct') for (let i = 0; i < 3; i++) {
+      const dot = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.06, 12), orange);
+      dot.position.set(0, 1.22, -0.5 + i * 0.5); glyphs.add(dot);
+    }
+    if (role === 'predict') {
+      const diamond = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.48, 4), orange);
+      diamond.rotation.x = -Math.PI / 2; diamond.position.y = 1.22; glyphs.add(diamond);
+      box(glyphs, 0.12, 0.06, 1.35, 0, 1.23, 0, orange);
+      box(glyphs, 0.8, 0.06, 0.12, 0, 1.23, 0, orange);
+    }
+    if (role === 'spread') for (const side of [-1, 0, 1]) {
+      const ray = box(glyphs, 0.14, 0.06, 1.12, side * 0.23, 1.22, -0.05, orange);
+      ray.rotation.y = -side * 0.45;
+    }
+    box(g, 0.5, 0.22, 0.4, 0, 0.55, -1, dark);
+    box(g, 0.42, 0.24, 0.18, 0, 0.57, -1.22, orange, 'signal');
+    const flash = box(g, 0.65, 0.12, 0.8, 0, 0.6, -1.65, new THREE.MeshBasicMaterial({ color: 0xfff5cf }), 'muzzle-flash');
+    flash.visible = false;
+    return g;
+  }
+  const dartDirect = makeDart('direct', 0xcb4a58), dartPredict = makeDart('predict', 0x42b9cf), dartSpread = makeDart('spread', 0xd5a443);
   const interceptor = vehicle(2.5, 4, red);
   box(interceptor, 1.25, 0.8, 0.15, 0, 0.65, -2.05, cyan, 'engine');
   box(interceptor, 0.6, 0.2, 0.6, 0, 1.9, 0, orange, 'signal');
@@ -45,5 +75,5 @@ export function encounterModels(THREE) {
   box(aim, 0.35, 0.35, 1.6, 0, 1.4, -0.8, dark);
   box(turret, 0.6, 0.15, 0.6, 0, 2, 0, orange, 'signal');
   box(turret, 1.2, 0.15, 0.35, 0, 1.85, 0, orange, 'role');
-  return { dart, interceptor, minelayer, hauler, lock, turret };
+  return { dart: dartDirect, 'dart-direct': dartDirect, 'dart-predict': dartPredict, 'dart-spread': dartSpread, interceptor, minelayer, hauler, lock, turret };
 }

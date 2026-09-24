@@ -2,13 +2,14 @@ import { clamp, lerp, smooth, trackAt, roadPoint, roadFrame, advanceOnRoad, road
 import { SCOUT_FIRE } from './scout-fire.js';
 
 export const ENCOUNTERS = {
-  darts: { name: 'Dart squadron', hint: 'RED: direct burst · CYAN: prediction · GOLD: spread. Move, stop, reverse.' },
+  darts: { name: 'Dart squadron', hint: 'RED dots: burst · CYAN diamond: prediction · GOLD fan: spread. White chevron = next; filling ring = firing soon.' },
   interceptors: { name: 'Interceptors', hint: 'Bait the orange path. Dodge after it locks. Hit the exposed engine.' },
   mines: { name: 'Orbit mine layers', hint: 'Shoot a rotating gap. Cyan mines are unarmed; orange mines are live.' },
   convoy: { name: 'Armed convoy', hint: 'Destroy rear turrets for safety, or raid the three locks for salvage.' },
 };
 export const ENCOUNTER_RULES = {
-  dartHold: 2.2, dartWarning: 0.7, dartChange: 1, dartAttackGap: 0.25, dartLead: 6,
+  dartHold: 2.2, dartWarning: 0.7, dartWindup: 1.2, dartChange: 1, dartAttackGap: 0.25, dartLead: 6,
+  dartEntryDistance: 300, dartEntrySeconds: 2.4, dartEntryStagger: 0.1,
   interceptorAim: 0.55, interceptorLock: 0.65, interceptorCharge: 0.75, interceptorRecovery: 1.6,
   dashWarning: 0.65, dashDuration: 1.05, dashDistance: 14,
   dartWaves: 3, dartWaveInterval: 7, visibleWarning: 0.7, supportInterval: 4.8,
@@ -35,7 +36,7 @@ export class Encounter {
     this.anchor = sim.distance + 30;
     this.supportTimer = 0.9; this.supportWave = 0;
     if (type === 'darts') {
-      this.waves = []; this.dartAttack = null; this.dartLastId = 0; this.dartDelay = 0.2;
+      this.waves = []; this.dartAttack = null; this.dartNextId = null; this.dartLastId = 0; this.dartDelay = 0.2;
       this.spawnDartWave();
     }
     if (type === 'interceptors') {
@@ -99,7 +100,7 @@ export class Encounter {
       this.supportWave++; this.supportTimer = ENCOUNTER_RULES.supportInterval;
     }
     for (const e of this.members) if (e.support && e.hp > 0 && !e.passed) {
-      const s = advanceOnRoad(e.s, 22 * dt), edge = Math.min(9, trackAt(s).width / 2 - 2);
+      const s = advanceOnRoad(e.s, this.sim.trafficSpeed(22) * dt), edge = Math.min(9, trackAt(s).width / 2 - 2);
       const lane = e.side * edge * 0.65 + Math.sin(e.age * 1.6 + e.slot) * 2;
       locate(e, s, lerp(e.entryLane, lane, smooth(e.age / 1.2)));
       e.fire -= dt; e.charge = e.fire < 0.7 ? 1 : 0;
@@ -121,8 +122,8 @@ export class Encounter {
     const wave = { index: this.waves.length, age: 0, anchor: this.sim.distance + 24 };
     this.waves.push(wave);
     for (let slot = 0; slot < 6; slot++) {
-      const e = this.add('dart', slot, wave.anchor + Math.abs(slot - 2.5) * 5, (slot - 2.5) * 5, 6, 0.8, 1.2);
-      e.wave = wave.index; e.role = ['direct', 'predict', 'spread'][slot % 3];
+      const e = this.add('dart', slot, wave.anchor + ENCOUNTER_RULES.dartEntryDistance + Math.abs(slot - 2.5) * 5, (slot - 2.5) * 5, 6, 0.8, 1.2);
+      e.wave = wave.index; e.role = ['direct', 'predict', 'spread'][slot % 3]; e.entering = true;
     }
   }
   update(dt) {
@@ -137,12 +138,16 @@ export class Encounter {
     if (this.waves.length < ENCOUNTER_RULES.dartWaves && this.age >= this.waves.length * ENCOUNTER_RULES.dartWaveInterval) this.spawnDartWave();
     for (const wave of this.waves) this.updateDartWave(wave, dt);
     this.updateDartFire(dt);
+    this.dartNextId = this.nextDartShooter()?.id ?? null;
     this.hint = `WAVE ${this.waves.length}/3 · ${ENCOUNTERS.darts.hint}`;
   }
   updateDartWave(wave, dt) {
     const duration = ENCOUNTER_RULES.dartHold + ENCOUNTER_RULES.dartWarning + ENCOUNTER_RULES.dartChange;
-    wave.age += dt; wave.anchor = advanceOnRoad(wave.anchor, 24 * dt);
-    const cycle = Math.floor(wave.age / duration), phase = wave.age % duration;
+    wave.age += dt; wave.anchor = advanceOnRoad(wave.anchor, this.sim.trafficSpeed(24) * dt);
+    // Start beyond the far view/fog, then glide into the V rather than appear in place.
+    // Delay formation changes until even the last staggered ship has arrived.
+    const formationAge = Math.max(0, wave.age - ENCOUNTER_RULES.dartEntrySeconds - 5 * ENCOUNTER_RULES.dartEntryStagger);
+    const cycle = Math.floor(formationAge / duration), phase = formationAge % duration;
     const blend = smooth((phase - ENCOUNTER_RULES.dartHold - ENCOUNTER_RULES.dartWarning) / ENCOUNTER_RULES.dartChange);
     const column = cycle % 2 ? 1 - blend : blend;
     const warning = phase >= ENCOUNTER_RULES.dartHold && phase < ENCOUNTER_RULES.dartHold + ENCOUNTER_RULES.dartWarning;
@@ -151,15 +156,25 @@ export class Encounter {
       const span = Math.min(5, (trackAt(wave.anchor).width / 2 - 2) / 2.5);
       const vX = (e.slot - 2.5) * span, colX = (e.slot % 2 ? 1 : -1) * span;
       const vS = Math.abs(e.slot - 2.5) * 5, colS = e.slot * 4;
-      locate(e, wave.anchor + lerp(vS, colS, column), lerp(vX, colX, column));
+      const arrival = clamp((wave.age - e.slot * ENCOUNTER_RULES.dartEntryStagger) / ENCOUNTER_RULES.dartEntrySeconds, 0, 1);
+      const approach = ENCOUNTER_RULES.dartEntryDistance * (1 - smooth(arrival));
+      e.entering = arrival < 1;
+      locate(e, wave.anchor + lerp(vS, colS, column) + approach, lerp(vX, colX, column));
       e.formationWarning = warning;
     }
   }
-  updateDartFire(dt) {
-    const ready = e => e.hp > 0 && !e.passed && e.s >= this.sim.s + 8 &&
+  dartReady(e) {
+    return e.hp > 0 && !e.passed && !e.entering && e.s >= this.sim.s + 8 &&
       this.isVisible(e) && e.visibleFor >= ENCOUNTER_RULES.visibleWarning;
+  }
+  nextDartShooter() {
+    const candidates = this.members.filter(e => e.kind === 'dart' && e !== this.dartAttack?.enemy && this.dartReady(e));
+    // Reserve the advertised next shooter so newly arriving ships cannot steal its turn.
+    return candidates.find(e => e.id === this.dartNextId) || candidates.find(e => e.id > this.dartLastId) || candidates[0];
+  }
+  updateDartFire(dt) {
     // One firing turn across ALL waves. No overdue volleys accumulate offscreen.
-    if (this.dartAttack && !ready(this.dartAttack.enemy)) {
+    if (this.dartAttack && !this.dartReady(this.dartAttack.enemy)) {
       this.dartAttack.enemy.charge = 0;
       this.dartAttack = null; this.dartDelay = ENCOUNTER_RULES.dartAttackGap;
       return;
@@ -167,11 +182,11 @@ export class Encounter {
     if (!this.dartAttack) {
       this.dartDelay -= dt;
       if (this.dartDelay > 0) return;
-      const candidates = this.members.filter(e => e.kind === 'dart' && ready(e));
-      const e = candidates.find(e => e.id > this.dartLastId) || candidates[0];
+      const e = this.nextDartShooter();
       if (!e) return;
       this.dartLastId = e.id;
-      const delay = ENCOUNTER_RULES.dartWarning;
+      this.dartNextId = null; e.dartShots = 0;
+      const delay = ENCOUNTER_RULES.dartWindup;
       const travel = Math.max(0, e.s - this.sim.s) / (32 + this.sim.speed);
       const lead = e.role === 'predict' ? clamp(this.sim.vx * (delay + travel), -ENCOUNTER_RULES.dartLead, ENCOUNTER_RULES.dartLead) : 0;
       const targetS = e.role === 'direct' ? this.sim.s : Math.min(e.s - 8, this.sim.s + this.sim.speed * (delay + travel));
@@ -182,11 +197,12 @@ export class Encounter {
       e.charge = 1; return;
     }
     const attack = this.dartAttack, e = attack.enemy;
-    attack.age += dt; e.charge = attack.age < ENCOUNTER_RULES.dartWarning ? 1 : 0;
-    if (attack.age < ENCOUNTER_RULES.dartWarning + attack.shot * 0.16) return;
+    attack.age += dt; e.charge = attack.age < ENCOUNTER_RULES.dartWindup ? 1 : 0;
+    if (attack.age < ENCOUNTER_RULES.dartWindup + attack.shot * 0.16) return;
     if (e.role === 'spread') for (const spread of [-0.18, 0, 0.18]) this.shoot(e, 'dart-spread', 28, e.aimTarget, spread);
     else this.shoot(e, `dart-${e.role}`, e.role === 'predict' ? 36 : 30, e.aimTarget);
     attack.shot++;
+    e.dartShots = attack.shot; e.dartFlashUntil = this.age + 0.09;
     if (attack.shot >= (e.role === 'direct' ? 3 : 1)) {
       this.dartAttack = null; this.dartDelay = ENCOUNTER_RULES.dartAttackGap;
     }
@@ -249,7 +265,7 @@ export class Encounter {
         }
       } else if (e.phase === 'recovery') {
         // A brief forward escape opens the rear engine ahead of the player.
-        const speed = e.phaseAge < 0.35 ? sim.speed + 48 : e.contact ? sim.speed : 22;
+        const speed = e.phaseAge < 0.35 ? sim.speed + 48 : e.contact ? sim.speed : sim.trafficSpeed(22);
         locate(e, advanceOnRoad(e.s, speed * dt), e.lateral);
         this.hint = e.contact ? 'INTERCEPTOR RECOVERING — prepare to bait its next charge.' : 'ENGINE EXPOSED — line up behind it, or race past for a bonus.';
         if (e.phaseAge >= rules.interceptorRecovery) {
@@ -296,7 +312,7 @@ export class Encounter {
     }
     for (const e of this.layers) {
       if (e.hp <= 0 || e.passed) continue;
-      const s = advanceOnRoad(e.s, 24 * dt), edge = Math.min(14, trackAt(s).width / 2 - 3);
+      const s = advanceOnRoad(e.s, this.sim.trafficSpeed(24) * dt), edge = Math.min(14, trackAt(s).width / 2 - 3);
       const lane = (e.slot ? 1 : -1) * edge * (0.55 + Math.sin(this.age * 1.5 + e.slot * 1.8) * 0.4);
       locate(e, s, lane); e.dropTimer -= dt;
       e.charge = this.wallTimer < 0.8 ? 1 : 0;
@@ -324,7 +340,7 @@ export class Encounter {
   }
   updateConvoy(dt) {
     const speedPhase = this.age % 7;
-    this.convoySpeed = speedPhase < 3.5 ? 30 : 18;
+    this.convoySpeed = this.sim.trafficSpeed(speedPhase < 3.5 ? 30 : 18);
     this.hauler.followSpeed = this.convoySpeed;
     this.anchor = advanceOnRoad(this.anchor, this.convoySpeed * dt);
     const cycle = Math.floor(this.age / 7), phase = this.age % 7;
@@ -435,9 +451,10 @@ export class Encounter {
     this.pickups = this.pickups.filter(p => !p.collected && p.s > this.sim.s - 15 && p.age < 25);
   }
   finish(dt) {
+    if (this.outcome) return;
     if (this.type === 'darts' && this.waves.length < ENCOUNTER_RULES.dartWaves) return;
     const primary = this.members.filter(e => !e.support);
-    const unfinished = primary.some(e => e.hp > 0 && !e.passed && e.s < this.sim.s + 230 && e.kind !== 'lock');
+    const unfinished = primary.some(e => e.hp > 0 && !e.passed && (e.entering || e.s < this.sim.s + 230) && e.kind !== 'lock');
     const cleared = this.type === 'convoy' ? this.locksOpened === 3 : primary.every(e => e.hp <= 0);
     const hazardsAhead = this.mines.some(m => m.s > this.sim.s - 4 && m.s < this.sim.s + 200) || this.pickups.length > 0;
     if ((!unfinished || cleared) && !hazardsAhead) {
@@ -448,7 +465,7 @@ export class Encounter {
         const title = cleared ? 'Encounter cleared' : this.outcome === 'partial' ? 'Partial raid' : 'Escaped — objective incomplete';
         const bonus = cleared ? ` · +${ENCOUNTER_RULES.clearBonus} clear bonus` : '';
         this.result = (this.type === 'convoy' ? `${title} · ${this.locksOpened}/3 locks · ${this.collected} salvage collected` : title) + bonus;
-        this.sim.status = 'complete';
+        if (!this.sim.level) this.sim.status = 'complete';
       }
     } else this.finishTimer = 0;
   }

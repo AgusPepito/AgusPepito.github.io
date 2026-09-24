@@ -2,6 +2,7 @@ import './style.css';
 import './overdrive.css';
 import './effects.css';
 import './encounters.css';
+import './route-map.css';
 import { Simulation, SPEED } from './simulation.js';
 import { HoldAction } from './hold-action.js';
 import { DriveStick } from './drive-stick.js';
@@ -11,10 +12,12 @@ import { COURSE_LENGTH, clamp, trackAt } from './track.js';
 import { EFFECT_DEFAULTS } from './speed-effects.js';
 import { ENCOUNTERS } from './encounters.js';
 import { threatVisible } from './threat-visibility.js';
+import { RouteMap } from './route-map.js';
 
 const $ = id => document.getElementById(id);
-const settings = { encounter: 'darts', cameraShift: true, speedShift: true, invincible: false, sound: false, ...EFFECT_DEFAULTS };
+const settings = { encounter: 'mixed', cameraShift: true, speedShift: true, invincible: false, sound: false, ...EFFECT_DEFAULTS };
 const sim = new Simulation(settings);
+const routeMap = new RouteMap($('route-map'));
 const canvas = $('world');
 const keys = new Set();
 const racing = new HoldAction();
@@ -47,6 +50,8 @@ function clearSteering() {
 }
 function clearInput() { keys.clear(); racing.clear(); braking.clear(); boosting.clear(); clearSteering(); }
 function syncScreens() {
+  document.body.classList.toggle('route-run', Boolean(sim.level) && sim.status !== 'ready');
+  routeMap.update(sim);
   $('intro').hidden = sim.status !== 'ready';
   $('hud').hidden = sim.status === 'ready';
   $('pause-screen').hidden = sim.status !== 'paused' || !$('tuning').hidden;
@@ -56,7 +61,7 @@ function syncScreens() {
   $('pause').textContent = sim.status === 'paused' ? '▷' : 'Ⅱ';
   $('pause').setAttribute('aria-label', sim.status === 'paused' ? 'Resume game' : 'Pause game');
   if (sim.status === 'over' || sim.status === 'complete') {
-    $('result-cause').textContent = sim.status === 'complete' ? sim.encounter.result : sim.deathReason || 'Shield depleted';
+    $('result-cause').textContent = sim.status === 'complete' ? sim.level?.result || sim.encounter?.result || 'Run complete' : sim.deathReason || 'Shield depleted';
     $('result-score').textContent = String(sim.score).padStart(6, '0');
     $('result-distance').textContent = Math.floor(sim.distance - 30).toLocaleString();
     $('result-kills').textContent = sim.kills;
@@ -89,7 +94,7 @@ $('encounter-options').addEventListener('change', event => {
   if (event.target.name !== 'encounter') return;
   settings.encounter = event.target.value; sim.options.encounter = settings.encounter;
   showEncounterMenu();
-  $('startb').innerHTML = settings.encounter === 'highway' ? 'Start highway run <span>↗</span>' : 'Start encounter <span>↗</span>';
+  $('startb').innerHTML = settings.encounter === 'mixed' ? 'Start main level <span>↗</span>' : settings.encounter === 'highway' ? 'Start highway run <span>↗</span>' : 'Start encounter <span>↗</span>';
 });
 for (const id of ['restart', 'restart-paused', 'restart-settings']) $(id).addEventListener('click', start);
 $('pause').addEventListener('click', () => { closeTuning(false); pause(); });
@@ -171,7 +176,9 @@ function input() {
   };
 }
 function updateUI() {
-  $('encounter-notice').textContent = sim.encounter && sim.encounter.age < sim.encounter.noticeUntil ? sim.encounter.notice : '';
+  routeMap.update(sim);
+  $('encounter-notice').textContent = sim.encounter && sim.encounter.age < sim.encounter.noticeUntil ? sim.encounter.notice :
+    sim.level && sim.time < sim.level.noticeUntil ? sim.level.notice : '';
   const road = trackAt(sim.s);
   $('sector-name').textContent = road.label; $('sector-hint').textContent = road.hint;
   if (sim.enemies.some(e => e.armored && e.active && e.s > sim.s && e.s < sim.s + 140)) {
@@ -181,7 +188,10 @@ function updateUI() {
   if (sim.encounter) {
     $('sector-name').textContent = ENCOUNTERS[sim.encounter.type].name.toUpperCase();
     $('sector-hint').textContent = sim.encounter.hint;
-    $('lap').textContent = 'ENCOUNTER TEST';
+    $('lap').textContent = sim.level ? `MAIN LEVEL · ENCOUNTER ${sim.level.index}` : 'ENCOUNTER TEST';
+  } else if (sim.level) {
+    $('lap').textContent = `MAIN LEVEL · LAP ${sim.lap}`;
+    $('sector-hint').textContent = 'Open stretch — dodge traffic and let your boost recharge.';
   }
   $('score').textContent = String(sim.score).padStart(6, '0');
   $('tally').textContent = `${sim.kills} destroyed / ${sim.passed} passed`;
@@ -189,7 +199,7 @@ function updateUI() {
   $('speed-fill').style.width = `${clamp(sim.speed / SPEED.boost * 100, 0, 100)}%`;
   $('health').textContent = sim.health; $('health-fill').style.width = `${sim.health}%`;
   $('health-fill').style.background = '#39f267';
-  const progress = (sim.distance % COURSE_LENGTH) / COURSE_LENGTH * 100;
+  const progress = sim.level ? sim.routeProgress * 100 : (sim.distance % COURSE_LENGTH) / COURSE_LENGTH * 100;
   $('course-marker').style.left = `${progress}%`; $('progress-label').textContent = `${Math.floor(progress)}%`;
   $('mode').textContent = sim.braking ? 'BRAKING' : sim.boostActive ? 'BOOST' : sim.racingHeld ? 'FAST MODE' : sim.raceBlend > 0.1 ? 'RETURNING TO CRUISE' : 'CRUISE / COMBAT';
   $('mode').style.color = sim.raceBlend > 0.3 ? '#ffb25c' : '#caff64';
@@ -251,7 +261,7 @@ try {
   view = new GameView(canvas);
   sim.threatVisible = entity => threatVisible(view.camera, entity);
   view.render(sim, 1 / 60, settings);
-  $('startb').disabled = false; $('startb').innerHTML = 'Start encounter <span aria-hidden="true">↗</span>';
+  $('startb').disabled = false; $('startb').innerHTML = 'Start main level <span aria-hidden="true">↗</span>';
   window.__READY__ = true; window.__START__ = start;
   window.addEventListener('resize', () => view.resize());
   canvas.addEventListener('webglcontextlost', event => { event.preventDefault(); if (sim.status === 'playing') pause(); $('error').hidden = false; $('error-message').textContent = 'The graphics connection was interrupted. Reload to start a fresh run.'; });

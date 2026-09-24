@@ -43,7 +43,7 @@ export function formationSlot(width, slot, age = 0) {
     halfWidth: (pitch - 0.5) / 2 };
 }
 
-export function placeEnemy(e, group) {
+export function placeEnemy(e, group, dt = 0, speed = FORMATION.speed) {
   const age = group.age - e.slot * 0.14;
   e.active = age >= 0; e.age = Math.max(0, age);
   if (!e.active) return;
@@ -54,7 +54,10 @@ export function placeEnemy(e, group) {
     e.halfWidth = 1.2; e.deployed = 0;
   } else {
     e.deployed = smooth((age - FORMATION.entrySeconds) / FORMATION.deploySeconds);
-    const ownS = advanceOnRoad(group.ramp.end, (e.armored ? FORMATION.speed : 22) * (age - FORMATION.entrySeconds));
+    // Integrate changing cruise speed; multiplying age by the latest speed would
+    // teleport the vehicle whenever the player switches modes.
+    if (dt > 0) e.travelS = advanceOnRoad(e.travelS ?? group.ramp.end, speed * Math.min(dt, age - FORMATION.entrySeconds));
+    const ownS = e.travelS ?? advanceOnRoad(group.ramp.end, speed * (age - FORMATION.entrySeconds));
     e.s = e.armored ? lerp(ownS, group.s, e.deployed) : ownS;
     const width = trackAt(e.s).width;
     const slot = e.armored ? formationSlot(width, e.slot, group.age) : {

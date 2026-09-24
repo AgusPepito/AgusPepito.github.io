@@ -13,9 +13,10 @@
 .highway-choice { grid-column: 1 / -1; min-height: 54px !important; }
 #choose-result { margin-top: 12px; }
 .sector p { max-width: min(460px, 66vw); }
-#encounter-notice { position: fixed; top: 28%; left: 50%; transform: translateX(-50%); color: #bffff0; background: #102a30e8; border: 1px solid #62ffdf; padding: 10px 16px; font: bold 14px monospace; white-space: nowrap; pointer-events: none; }
+#encounter-notice { position: fixed; top: 76px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); color: #bffff0; background: #102a30e8; border: 1px solid #62ffdf; padding: 6px 12px; font: bold 12px/1.35 monospace; text-align: center; white-space: normal; pointer-events: none; }
 #encounter-notice:empty { display: none; }
 @media(max-width:600px) {
+  #encounter-notice { top: calc(max(18px, env(safe-area-inset-top)) + 43px); font-size: 10px; padding: 4px 8px; }
   .intro { padding-top: 90px; padding-bottom: 25px; }
   #encounter-options { gap: 7px; }
   #encounter-options label { padding: 10px; }
@@ -25,4 +26,7 @@
   .header-actions { gap: 7px; }
   #encounter-menu { font-size: 10px; padding: 8px; }
   .sector h2 { font-size: 17px; }
+}
+@media(max-height:540px) {
+  #encounter-notice { top: 51px; font-size: 10px; padding: 3px 8px; }
 }

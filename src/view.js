@@ -8,15 +8,22 @@ import { cameraPose } from './camera.js';
 import { encounterModels } from './placeholders/encounter-models.js';
 import { EncounterView } from './encounter-view.js';
 import { ATTACK_COLORS } from './encounters.js';
+import { ForkView } from './fork-view.js';
+import { forkOpensRail } from './forks.js';
 
 const attackColors = Object.fromEntries(Object.values(ATTACK_COLORS).map(color => [color, new THREE.Color(color)]));
 const attackMaterials = Object.fromEntries(Object.entries(ATTACK_COLORS).map(([key, color]) => [key, new THREE.MeshBasicMaterial({ color })]));
+const dartIdleMaterials = Object.fromEntries(Object.entries(ATTACK_COLORS).map(([key, color]) => [key, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(0.65) })]));
+const dartBrightMaterials = Object.fromEntries(Object.entries(ATTACK_COLORS).map(([key, color]) => [key, new THREE.MeshBasicMaterial({ color: new THREE.Color(color).lerp(new THREE.Color(0xffffff), 0.65) })]));
+const dartSpentMaterial = new THREE.MeshBasicMaterial({ color: 0x65414b });
 
 // Everything in this file is temporary graybox presentation, including track geometry.
 // The simulation owns dimensions and collisions; render assets never determine hitboxes.
 const GREEN = new THREE.Color('#caff64');
 const ORANGE = new THREE.Color('#ffb25c');
 const PURPLE_SHOT = new THREE.Color('#cb9aff'), PINK_SHOT = new THREE.Color('#ff687d');
+const TRUCK_BODY = new THREE.Color(0xfab35e), TRUCK_CAB = new THREE.Color(0xffd986);
+const CIVILIAN_BODY = new THREE.Color(0x79afb8), CIVILIAN_CAB = new THREE.Color(0xc4dde0);
 
 export class GameView {
   constructor(canvas) {
@@ -51,13 +58,16 @@ export class GameView {
     this.postLights = this.batch(60, new THREE.MeshBasicMaterial({ color: 0xffb25c }));
     this.rampMeshes = new Map();
     this.rampMaterial = new THREE.MeshStandardMaterial({ color: 0x40535d, roughness: 0.95, side: THREE.DoubleSide });
+    this.tunnelMaterial = new THREE.MeshStandardMaterial({ color: 0x4b5c65, roughness: 0.95 });
+    this.tunnelDark = new THREE.MeshBasicMaterial({ color: 0x080e12 });
+    this.tunnelLight = new THREE.MeshBasicMaterial({ color: 0xffbd68 });
     this.rampRails = this.batch(256, new THREE.MeshStandardMaterial({ color: 0x71818a, roughness: 0.7 }));
     this.rampTicks = this.batch(128, new THREE.MeshBasicMaterial({ color: 0xa985ed }));
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    this.obstacles = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xfab35e, roughness: 0.6 }));
-    this.obstacleMarks = this.batch(20, new THREE.MeshBasicMaterial({ color: 0x2b2825 }));
-    this.vehicleCabs = this.batch(20, new THREE.MeshStandardMaterial({ color: 0xffd986, roughness: 0.6 }));
-    this.vehicleWheels = this.batch(80, new THREE.MeshStandardMaterial({ color: 0x192129 }));
+    this.obstacles = this.batch(40, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
+    this.obstacleMarks = this.batch(40, new THREE.MeshBasicMaterial({ color: 0x2b2825 }));
+    this.vehicleCabs = this.batch(40, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6 }));
+    this.vehicleWheels = this.batch(160, new THREE.MeshStandardMaterial({ color: 0x192129 }));
     this.healthLayers = [0x101010, 0xe52e36, 0x39f267].map((color, i) => {
       const mesh = this.batch(80, new THREE.MeshBasicMaterial({ color, depthTest: false, depthWrite: false, fog: false, toneMapped: false }));
       mesh.geometry = new THREE.PlaneGeometry(1, 1); mesh.renderOrder = 100 + i;
@@ -76,6 +86,7 @@ export class GameView {
     this.enemyTemplate = makeEnemy(THREE);
     this.armoredTemplate = makeArmored(THREE);
     this.encounterTemplates = encounterModels(THREE); this.encounterView = new EncounterView(this);
+    this.forkView = new ForkView(this);
     this.enemyMeshes = new Map(); this.particles = [];
     this.lastRoadBase = null; this.cameraInitialized = false;
     this.resize();
@@ -105,10 +116,11 @@ export class GameView {
     this.camera.aspect = w / h; this.camera.updateProjectionMatrix();
     this.cameraInitialized = false;
   }
-  updateRoad(s) {
+  updateRoad(s, forks = []) {
     const base = Math.floor((s - 55) / 2) * 2;
-    if (base === this.lastRoadBase) return;
-    this.lastRoadBase = base;
+    const key = `${base}:${forks.map(fork => fork.start).join(',')}`;
+    if (key === this.lastRoadBase) return;
+    this.lastRoadBase = key;
     const ramps = rampsNear(s, 55, 245);
     this.updateRamps(ramps);
     const positions = this.roadGeometry.attributes.position;
@@ -122,7 +134,7 @@ export class GameView {
       const next = trackAt(at + 2);
       const color = this.color.copy(GREEN).lerp(ORANGE, t.tight);
       for (const sign of [-1, 1]) {
-        if (ramps.some(r => rampOpensRail(r, at + 1, sign))) continue;
+        if (ramps.some(r => rampOpensRail(r, at + 1, sign)) || forks.some(fork => forkOpensRail(fork, at + 1, sign))) continue;
         const a = roadPoint(at, sign * (t.width / 2 + 0.32));
         const b = roadPoint(at + 2, sign * (next.width / 2 + 0.32));
         const rotation = Math.atan2(a.x - b.x, a.z - b.z);
@@ -137,7 +149,7 @@ export class GameView {
       }
       if (Math.round(at) % 12 === 0) {
         for (const sign of [-1, 1]) {
-          if (ramps.some(r => rampOpensRail(r, at, sign))) continue;
+          if (ramps.some(r => rampOpensRail(r, at, sign)) || forks.some(fork => forkOpensRail(fork, at, sign))) continue;
           const lateral = sign * (t.width / 2 + 1.1), p = roadPoint(at, lateral), f = roadFrame(at);
           this.putRoad(this.posts, posts, at, lateral, 2, 0.5, 4, 0.6);
           this.put(this.postLights, posts++, p.x - f.fx * 0.32, 3.2, p.z - f.fz * 0.32, 0.4, 1.2, 0.06, f.yaw);
@@ -155,12 +167,13 @@ export class GameView {
       if (o.s < sim.s - 45 || o.s > sim.s + 220) continue;
       const f = { fx: -Math.sin(o.yaw), fz: -Math.cos(o.yaw), rx: Math.cos(o.yaw), rz: -Math.sin(o.yaw) };
       const frontX = o.x + f.fx * o.d * 0.27, frontZ = o.z + f.fz * o.d * 0.27;
-      this.put(this.obstacles, count, o.x, 0.95, o.z, o.w, 1.9, o.d, o.yaw);
-      this.put(this.vehicleCabs, count, frontX, 1.93, frontZ, o.w * 0.82, 0.65, o.d * 0.32, o.yaw);
-      this.put(this.obstacleMarks, count, frontX, 2.27, frontZ, o.w * 0.7, 0.025, 0.55, o.yaw);
+      const height = o.civilian ? 0.6 : 1;
+      this.put(this.obstacles, count, o.x, 0.95 * height, o.z, o.w, 1.9 * height, o.d, o.yaw, o.civilian ? CIVILIAN_BODY : TRUCK_BODY);
+      this.put(this.vehicleCabs, count, frontX, 1.93 * height, frontZ, o.w * 0.82, 0.65 * height, o.d * 0.32, o.yaw, o.civilian ? CIVILIAN_CAB : TRUCK_CAB);
+      this.put(this.obstacleMarks, count, frontX, 2.27 * height, frontZ, o.w * 0.7, 0.025, 0.55, o.yaw);
       for (const side of [-1, 1]) for (const end of [-1, 1]) {
         this.put(this.vehicleWheels, wheels++, o.x + f.rx * side * (o.halfWidth - 0.05) + f.fx * end * o.d * 0.3,
-          0.45, o.z + f.rz * side * (o.halfWidth - 0.05) + f.fz * end * o.d * 0.3, 0.3, 0.85, 0.9, o.yaw);
+          0.45 * height, o.z + f.rz * side * (o.halfWidth - 0.05) + f.fz * end * o.d * 0.3, 0.3, 0.85 * height, 0.9 * height, o.yaw);
       }
       count++;
     }
@@ -175,7 +188,7 @@ export class GameView {
     const pixelScale = 2 * Math.tan(this.camera.fov * Math.PI / 360) / window.innerHeight;
     for (const e of [...sim.enemies, ...sim.vehicles]) {
       if (!e.active || e.hideHealth || e.hp <= 0 || e.s < sim.s - 35 || e.s > sim.s + 140 || count >= 80) continue;
-      this.healthPoint.set(e.x, e.neutral ? 3.2 : 2.7, e.z);
+      this.healthPoint.set(e.x, e.civilian ? 2 : e.neutral ? 3.2 : 2.7, e.z);
       this.healthLocal.copy(this.healthPoint).sub(this.camera.position).applyQuaternion(this.healthRotation);
       const depth = -this.healthLocal.z;
       if (depth <= 0) continue;
@@ -210,11 +223,13 @@ export class GameView {
           const s = ramp.start + i * RAMP_LENGTH / 32, sample = rampSample(ramp, s);
           for (const [j, side] of [-1, 1].entries()) {
             const p = roadPoint(s, sample.lateral + side * RAMP_WIDTH / 2);
-            positions.setXYZ(i * 2 + j, p.x, 0.006, p.z);
+            // Keep the ramp and its markings beneath the highway at the merge.
+            positions.setXYZ(i * 2 + j, p.x, -0.08, p.z);
           }
         }
         geometry.computeVertexNormals();
         const mesh = new THREE.Mesh(geometry, this.rampMaterial);
+        mesh.add(this.makeTunnelExit(ramp));
         mesh.frustumCulled = false; this.scene.add(mesh); this.rampMeshes.set(ramp.key, mesh);
       }
       for (let i = 0; i < 32; i++) {
@@ -226,13 +241,35 @@ export class GameView {
           const q = roadPoint(next, b.lateral + side * (RAMP_WIDTH / 2 + 0.32));
           this.put(this.rampRails, rails++, (p.x + q.x) / 2, 0.6, (p.z + q.z) / 2, 0.62, 1.2, Math.hypot(p.x - q.x, p.z - q.z) + 0.05, Math.atan2(p.x - q.x, p.z - q.z));
         }
-        if (i % 2 === 0) this.put(this.rampTicks, ticks++, a.x, 0.025, a.z, 0.18, 0.025, 2.2, Math.atan2(a.x - b.x, a.z - b.z));
+        if (i % 2 === 0 && i > 0) this.put(this.rampTicks, ticks++, a.x, -0.055, a.z, 0.18, 0.025, 2.2, Math.atan2(a.x - b.x, a.z - b.z));
       }
     }
     for (const [key, mesh] of this.rampMeshes) if (!active.has(key)) {
       this.scene.remove(mesh); mesh.geometry.dispose(); this.rampMeshes.delete(key);
     }
     this.finish(this.rampRails, rails); this.finish(this.rampTicks, ticks);
+  }
+  makeTunnelExit(ramp) {
+    const mouth = rampSample(ramp, ramp.start), next = rampSample(ramp, ramp.start + 0.5);
+    const tunnel = new THREE.Group();
+    tunnel.position.set(mouth.x, -0.08, mouth.z);
+    tunnel.rotation.y = Math.atan2(mouth.x - next.x, mouth.z - next.z);
+    const part = (material, x, y, z, w, h, d) => {
+      const mesh = new THREE.Mesh(this.box, material);
+      mesh.position.set(x, y, z); mesh.scale.set(w, h, d); tunnel.add(mesh);
+    };
+    // The covered approach sits behind the ramp start; its open mouth faces traffic flow.
+    part(this.rampMaterial, 0, -0.15, 7, 8, 0.3, 14);
+    part(this.tunnelDark, 0, 3, 13.8, 6, 6, 0.2);
+    for (const side of [-1, 1]) {
+      part(this.tunnelMaterial, side * 3.6, 3, 7, 1.2, 6, 14);
+      part(this.tunnelMaterial, side * 3.75, 3.2, 0, 1.5, 6.4, 1.5);
+      part(this.tunnelLight, side * 3.1, 3.2, -0.78, 0.16, 4.6, 0.08);
+    }
+    part(this.tunnelMaterial, 0, 6.2, 7, 8.7, 1.2, 14);
+    part(this.tunnelMaterial, 0, 6.1, 0, 9, 1.4, 1.5);
+    part(this.tunnelLight, 0, 5.55, -0.78, 5.8, 0.15, 0.08);
+    return tunnel;
   }
   event(event) {
     if (event.kind === 'lap') return;
@@ -251,7 +288,8 @@ export class GameView {
     this.enemyMeshes.clear();
   }
   render(sim, dt, settings) {
-    this.updateRoad(sim.s);
+    this.updateRoad(sim.s, sim.level?.forks || []);
+    this.forkView.update(sim);
     this.updateVehicles(sim);
     const pose = cameraPose(sim, this.camera.aspect, settings.cameraShift);
     this.tempPosition.fromArray(pose.position); this.tempAim.fromArray(pose.target);
@@ -276,7 +314,7 @@ export class GameView {
       active.add(e.id);
       let mesh = this.enemyMeshes.get(e.id);
       if (!mesh) {
-        mesh = (this.encounterTemplates[e.kind] || (e.armored ? this.armoredTemplate : this.enemyTemplate)).clone();
+        mesh = (this.encounterTemplates[e.kind === 'dart' ? `dart-${e.role}` : e.kind] || (e.armored ? this.armoredTemplate : this.enemyTemplate)).clone();
         if (e.role) for (const name of ['signal', 'role']) {
           const part = mesh.getObjectByName(name); if (part) part.material = attackMaterials[e.role];
         }
@@ -285,7 +323,17 @@ export class GameView {
       mesh.position.set(e.x, 0.6, e.z);
       mesh.rotation.set(0, Math.PI + e.yaw, e.armored || e.encounter ? 0 : Math.cos(e.age * 1.6 + e.slot) * 0.08, 'YXZ');
       const signal = mesh.getObjectByName('signal');
-      if (signal) signal.visible = e.formationWarning || (e.charge || 0) > 0;
+      if (signal) signal.visible = e.kind === 'dart' ? (e.charge || 0) > 0 : e.formationWarning || (e.charge || 0) > 0;
+      if (e.kind === 'dart') {
+        const attacking = sim.encounter?.dartAttack?.enemy === e;
+        const flash = (e.dartFlashUntil || 0) > (sim.encounter?.age || 0);
+        mesh.getObjectByName('muzzle-flash').visible = flash;
+        const glyphs = mesh.getObjectByName('glyphs');
+        for (let i = 0; i < glyphs.children.length; i++) {
+          const spent = e.role === 'direct' && i < (e.dartShots || 0);
+          glyphs.children[i].material = spent ? dartSpentMaterial : attacking || flash ? dartBrightMaterials[e.role] : dartIdleMaterials[e.role];
+        }
+      }
       if (e.kind === 'interceptor') mesh.getObjectByName('engine').visible = e.phase === 'recovery' && !e.contact;
       if (e.kind === 'hauler') for (let i = 0; i < 3; i++) mesh.getObjectByName(`open-${i}`).visible = sim.encounter.locks[i].hp <= 0;
       if (e.kind === 'hauler') for (const side of ['left', 'right']) {

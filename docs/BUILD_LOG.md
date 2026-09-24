@@ -1,5 +1,27 @@
 # Build receipts
 
+## 2026-09-24 — civilian traffic on shortcuts
+
+Each bypass now has five staggered pairs of small blue-gray civilian cars, with the open lane changing between groups and mirrored between routes. Cars follow the branch, never attack or change lanes, and travel at 8 m/s in cruise or up to 30 m/s in fast mode so the player must overtake. They are seeded ahead when the route is prepared and begin moving at the junction; survivors merge back onto the main highway. Cars have 100 HP to discourage clearing the path by holding still and firing. Contact costs 18 health in cruise, scales with speed, and briefly slows the player using the existing damage grace period. Yellow truck behavior is unchanged. Signs and route captions advertise slow traffic. Tuning is centralized in `src/bypass-traffic.js`. No tests created or run, and no visual gameplay inspection; the earlier test exception was limited to the steering bug.
+
+## 2026-09-24 — bypass steering fix
+
+Reproduced the sticking in focused simulation tests before changing movement: the bypass center moved across the main-road lateral coordinate, repeatedly clamping the car to the inner wall and damping steering velocity. Forward movement now carries the car with the bypass center; input changes its offset within the bypass. The same correction covers entry, fore/aft repositioning and the final rejoin step, preserving world continuity. Wall collision and damage still apply to genuine outward steering.
+
+The user explicitly authorized focused tests for this bug. All four tests in `tests/fork-steering.test.js` pass, covering both bypass directions, cruise/fast/boost, 60/120 Hz wall escape, lane-position drift, entry/rejoin, and steering reversal after wall contact. No full-suite run or visual playtest.
+
+## 2026-09-24 — lane-selected shortcut forks
+
+Added two optional main-level routes: a left Dart bypass and a right Mine-layer bypass. Advance signs follow the nearest entry lane, show remaining distance and turn green when aligned. Crossing the split in that lane commits to a distinct narrow winding road. Shared branch geometry supplies pavement, guardrail openings, collision boundaries, player heading and camera tracking; approach/rejoin preserve world position. The shortcut suppresses its encounter, records a bypass at rejoin without combat rewards, then resumes the finite route. The route map shows available and taken branches and follows the player's branch progress. No tests created or run and no visual inspection, per the standing user instruction.
+
+## 2026-09-24 — route strip and finite main run
+
+Added the requested subway-style highway strip: six stations from Start through the four encounters to a larger Finish node, distinct encounter icons, current/next labels, player triangle, and clear/bypass history. Progress follows the encounter schedule, holding during fights and moving through driving breaks. Replaced the mixed level's repeating cycle with a final driving stretch and completion result. Updated results handling for completing a main run without an active encounter. Mobile puts the route below the header and keeps live messages in its caption area; duplicate sector text and the mixed run's old distance strip are hidden. Future lane-selected narrow bypass forks and boss-node replacement are documented, not implemented. No tests created or run; no visual inspection.
+
+## 2026-09-24 — experiment 012: mixed main level and tunnel exits
+
+Lowered merge-road pavement and its markings below the main highway to avoid overlap flicker. Added road-aligned primitive tunnel exits with covered approaches, dark interiors and lit mouth frames. Added a default continuous main-level selection rotating through Darts, Interceptors, miners and convoys, with driving breaks and persistent health/boost/score. Existing individual tests and the original highway remain selectable. Normal red-car encounter reinforcements remain disabled. No new tests, existing test runs, browser checks or visual gameplay inspection, at the user's request.
+
 ## 2026-09-24 — experiment 011: soften scouts and separate Dart attacks
 
 Responding to the user's playtest: red cars now fire at 12 rather than 17 m/s, with neighboring bullets 0.3 rather than 0.15 radians apart. Individual reload increased to 2.8 seconds. A shared 0.9-second volley interval prevents multiple cars firing together, even across spawn groups; both encounter reinforcements and highway scouts use the same tuning. Darts share one rotating attack turn across all active waves, retaining direct bursts, prediction and fans. Each turn has 0.7 seconds of locked aim preparation; after firing, the next ship waits 0.25 seconds before preparing. Hidden/dead attackers cancel their turn without accumulating shots.

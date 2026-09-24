@@ -13,7 +13,7 @@
   <div id="hit-flash" aria-hidden="true"></div>
   <div id="rush-vignette" aria-hidden="true"></div>
   <header class="topbar">
-    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 011</span></div></div>
+    <div class="brand"><span class="brand-mark" aria-hidden="true">V</span><div>VECTOR SHIFT<span class="eyebrow">MECHANICS LAB <b> / </b> 012</span></div></div>
     <div class="header-actions">
       <span class="prototype-badge"><i></i> GRAYBOX BUILD</span>
       <button id="encounter-menu" class="quiet-button" hidden>Encounters</button>
@@ -27,9 +27,10 @@
       <div class="intro-content">
         <p class="eyebrow accent">SCROLLING SHOOTER × GROUND RACER</p>
         <h1>CHOOSE YOUR<br /><span>ENCOUNTER.</span></h1>
-        <p class="intro-description">Four encounters, with red enemies reinforcing each fight.</p>
+        <p class="intro-description">Follow the highway through four encounters to the finish, or pick a fight to practice.</p>
         <fieldset id="encounter-options"><legend>Select a test</legend>
-          <label><input type="radio" name="encounter" value="darts" checked /><span><b>01 · Mixed Darts</b><small>Three waves of six. Double armor, mixed aiming patterns.</small></span></label>
+          <label class="highway-choice"><input type="radio" name="encounter" value="mixed" checked /><span><b>Main level · Mixed highway</b><small>Four encounters and two narrow bypasses. Follow lane signs to choose your route.</small></span></label>
+          <label><input type="radio" name="encounter" value="darts" /><span><b>01 · Mixed Darts</b><small>Red burst, cyan prediction, gold spread. Chevron = next; ring = charging.</small></span></label>
           <label><input type="radio" name="encounter" value="interceptors" /><span><b>02 · Interceptors</b><small>Three visible rivals. Charge, then a longer sweeping side dash.</small></span></label>
           <label><input type="radio" name="encounter" value="mines" /><span><b>03 · Heavy mine layers</b><small>Tougher miners, frequent clusters and walls of rotating mines.</small></span></label>
           <label><input type="radio" name="encounter" value="convoy" /><span><b>04 · Armed convoy</b><small>Four rear turrets. Break the gun line or raid the cargo.</small></span></label>
@@ -43,6 +44,7 @@
     </section>
 
     <section id="hud" aria-label="Game information" hidden>
+      <nav id="route-map" aria-label="Highway route" hidden></nav>
       <div id="encounter-notice" role="status" aria-live="polite"></div>
       <div class="sector"><span class="eyebrow" id="lap">LAP 01</span><h2 id="sector-name">OPEN CIRCUIT</h2><p id="sector-hint">Find your target. Make room.</p></div>
       <div class="score-block"><span class="eyebrow">SCORE</span><strong id="score">000000</strong><span id="tally">0 destroyed / 0 passed</span></div>
