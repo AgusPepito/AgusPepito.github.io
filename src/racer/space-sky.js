@@ -1,19 +1,59 @@
 import * as THREE from 'three';
+import { SUN_DIRECTION, PLANET_DIRECTION } from './visual-settings.js';
 
-// Perspective artwork covers only the forward view instead of an entire globe.
+// Independent world-oriented layers across the existing backdrop surface.
 export function spaceSky() {
-  const material=new THREE.MeshBasicMaterial({depthTest:false,depthWrite:false,
-    fog:false,toneMapped:false});
-  const sky=new THREE.Mesh(new THREE.PlaneGeometry(2,2,32,24),material);
-  sky.name='planet-and-stars-curved-backdrop';sky.renderOrder=-1000;sky.frustumCulled=false;
-  sky.visible=false;sky.userData.imageAspect=1.5;
-  const texture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/space/planet-backdrop-r1.png`,
-    loaded=>{
-      sky.userData.imageAspect=loaded.image.width/loaded.image.height;
-      resizeSpaceSky(sky,sky.userData.viewAspect??1.5);sky.visible=true;
-    },undefined,error=>console.warn('Space backdrop could not load',error));
+  const texture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/space/planet-backdrop-r1.png`);
   texture.colorSpace=THREE.SRGBColorSpace;
-  material.map=texture;
+  const galaxyTexture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/space/planet-stars-r2.png`);
+  galaxyTexture.colorSpace=THREE.SRGBColorSpace;
+  const material=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,fog:false,
+    uniforms:{planetMap:{value:texture},galaxyMap:{value:galaxyTexture},sunDirection:{value:SUN_DIRECTION.clone()},planetDirection:{value:PLANET_DIRECTION.clone()}},
+    vertexShader:`varying vec3 vSkyRay;
+      void main(){vec4 world=modelMatrix*vec4(position,1.0);vSkyRay=world.xyz-cameraPosition;
+        gl_Position=projectionMatrix*viewMatrix*world;}`,
+    fragmentShader:`
+      uniform sampler2D planetMap,galaxyMap;
+      uniform vec3 sunDirection,planetDirection;
+      varying vec3 vSkyRay;
+      void main(){
+        vec3 ray=normalize(vSkyRay);
+        vec3 right=normalize(cross(planetDirection,vec3(0,1,0)));
+        vec3 up=normalize(cross(right,planetDirection));
+        float facing=dot(ray,planetDirection),horizontal=dot(ray,right);
+        float vertical=clamp(dot(ray,up),-1.0,1.0);
+        // Restore the authored galaxy, dust lanes and varied stars. Center its
+        // small baked planet behind the larger independent planet layer.
+        float longitude=length(vec2(horizontal,facing))>0.000001?atan(horizontal,facing):0.0;
+        vec2 galaxyUv=vec2(.5+longitude/6.28318530718,.5+asin(vertical)/3.14159265359);
+        vec3 galaxy=texture2D(galaxyMap,galaxyUv).rgb;
+        // The source artwork is not seamless: soften its rear join and poles.
+        float seam=.5*(1.0-smoothstep(0.0,.04,min(galaxyUv.x,1.0-galaxyUv.x)));
+        galaxy=mix(galaxy,texture2D(galaxyMap,vec2(1.0-galaxyUv.x,galaxyUv.y)).rgb,seam);
+        float poles=smoothstep(0.0,.055,min(galaxyUv.y,1.0-galaxyUv.y));
+        vec3 color=vec3(.0015,.0025,.006)+galaxy*1.8*poles;
+        float solar=clamp(dot(ray,sunDirection),-1.0,1.0);
+        float halo=exp(-(1.0-solar)*650.0)*.22;
+        float disk=smoothstep(cos(.010),cos(.004),solar);
+        color+=vec3(1,.68,.36)*(halo+disk*5.0);
+        vec2 p=vec2(horizontal,vertical)/max(facing,.001)/tan(.43);
+        float radius=length(p),edge=max(fwidth(radius),.0015);
+        float planet=step(0.0,facing)*(1.0-smoothstep(1.0-edge,1.0+edge,radius));
+        // Reuse the planet pixels in the original 1536 x 1024 artwork.
+        vec2 uv=vec2(1158.0/1536.0,1.0-399.0/1024.0)+p*vec2(188.0/1536.0,188.0/1024.0);
+        if(planet>0.0)color=mix(color,texture2D(planetMap,uv).rgb*1.35,planet);
+        float sunSide=.35+.65*max(dot(normalize(vec3(p,.45)),normalize(vec3(-.8,.65,.4))),0.0);
+        float atmosphere=exp(-abs(radius-1.0)*85.0)*step(0.0,facing)*sunSide;
+        color+=vec3(.11,.46,1.1)*atmosphere*.7;
+        gl_FragColor=vec4(color,1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`});
+  material.userData.planetTexture=texture;
+  material.userData.galaxyTexture=galaxyTexture;
+  const sky=new THREE.Mesh(new THREE.PlaneGeometry(2,2,32,24),material);
+  sky.name='layered-orbital-backdrop';sky.renderOrder=-1000;sky.frustumCulled=false;
+  sky.userData.imageAspect=1.5;
   return sky;
 }
 

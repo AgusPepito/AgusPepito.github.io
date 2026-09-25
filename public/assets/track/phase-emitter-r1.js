@@ -1,5 +1,6 @@
 import {omitFaces,openBottomBox,topCylinder} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
+import {installPhaseField,phaseFieldHeight} from './phase-field-r1.js';
 
 // F1 cable manifold + F2 capacitor bank. Metres, +Y driving normal,
 // travel toward -Z, crossing at Z=0. The extended station spans Z=-9 to +15.
@@ -13,7 +14,7 @@ export function setEmitterColor(root,color){
   root.userData.phaseColor=color;
 }
 
-export default function generate(THREE,{width=36,color=0x4de1ff,projection=true,reuseModules=false,firstModuleOnly=false}={}){
+export default function generate(THREE,{width=36,color=0x4de1ff,projection=true,reuseModules=false,firstModuleOnly=false,curl=0,closed=false}={}){
   const root=new THREE.Group();root.name='recessed-phase-emitter-f1-f2-r1';
   const grain=surfaceMaps(THREE),mats={
     ivory:new THREE.MeshStandardMaterial({color:0xcec9b8,metalness:.32,roughness:.49,...grain,normalScale:new THREE.Vector2(.12,.12)}),
@@ -24,7 +25,7 @@ export default function generate(THREE,{width=36,color=0x4de1ff,projection=true,
     cable:new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.24,metalness:.28,roughness:.4}),
     energy:new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:2.5,metalness:.15,roughness:.22,toneMapped:false}),
     glass:new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.65,metalness:.55,roughness:.18}),
-    curtain:new THREE.MeshBasicMaterial({color,transparent:true,opacity:.24,depthWrite:false,side:THREE.DoubleSide,vertexColors:true,blending:THREE.AdditiveBlending,toneMapped:false}),
+    curtain:new THREE.MeshBasicMaterial({color,transparent:true,opacity:1,depthWrite:false,side:THREE.DoubleSide,forceSinglePass:true,blending:THREE.AdditiveBlending}),
   };
   for(const [key,m]of Object.entries(mats)){
     m.name='phase-emitter-r1-'+key;
@@ -190,13 +191,10 @@ export default function generate(THREE,{width=36,color=0x4de1ff,projection=true,
     for(const m of root.children.slice(first)){m.position.x=cx+m.position.x*scale;m.scale.x*=scale;}
   }
   if(projection){
-    const g=new THREE.PlaneGeometry(width,7,Math.ceil(width/.25),24);g.translate(0,3.51,0);
-    const p=g.attributes.position,colors=[];
-    for(let i=0;i<p.count;i++){
-      const h=p.getY(i),fade=Math.pow(Math.max(0,1-h/7.02),1.6),scan=.74+.26*Math.cos(h*13);
-      const v=fade*scan;colors.push(v,v,v);
-    }
-    g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+    const height=phaseFieldHeight(curl);
+    const g=new THREE.PlaneGeometry(width,height,Math.ceil(width/.25),24);g.translate(0,height/2+.01,0);
+    mats.curtain.userData.phaseField={width,height,curl,closed};
+    installPhaseField(THREE,mats.curtain);
     const m=mesh('phase-projection-curtain',g,'curtain');m.renderOrder=2;
   }
   // Discard only materials that were never used (e.g. hardware-only study).

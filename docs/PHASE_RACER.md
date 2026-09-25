@@ -1,5 +1,7 @@
 # Phase Racer 002 — separate racing pivot
 
+Historical implementation log. The active campaign was replaced on 2026-09-25 by the [six-area, 24-level campaign](CAMPAIGN_AREAS.md). Old mixed-course layouts, Overload progression and storage keys described below are no longer the playable campaign.
+
 The highway combat experiment is preserved at `90f2982` and remains playable at `index.html`. This version is a separate entry at `racer.html`; it does not load the highway combat simulation or camera.
 
 ## Intended loop

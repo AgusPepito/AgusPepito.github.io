@@ -10,13 +10,17 @@
   <style>
     body[data-state="loading"] { margin: 0; background: #080e19; }
     body[data-state="loading"] > :not(#page-loading):not(script) { visibility: hidden; }
-    #page-loading { position: fixed; inset: 0; display: grid; place-content: center; margin: 0; background: #080e19; color: #b4c4d9; font: 14px system-ui, sans-serif; }
+    #page-loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 18px; margin: 0; background: #080e19; color: #e6e1d2; font: 700 12px system-ui, sans-serif; letter-spacing: .15em; text-align: center; }
+    #page-loading strong { font-size: 28px; font-style: italic; letter-spacing: -.04em; }
+    #page-loading i { height: 4px; background: linear-gradient(90deg,#263744 25%,#4de1ff 50%,#263744 75%); background-size: 200% 100%; animation: boot-loading 1.2s ease-in-out infinite; }
+    @keyframes boot-loading { to { background-position: -200% 0; } }
+    @media(prefers-reduced-motion:reduce) { #page-loading i { animation: none; } }
     body:not([data-state="loading"]) #page-loading { display: none; }
   </style>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='8' fill='%23080e19'/%3E%3Cpath d='M9 30L20 8l11 22-11-6z' fill='%234de1ff'/%3E%3C/svg%3E" />
 </head>
 <body data-state="loading">
-  <p id="page-loading" role="status">Loading track…</p>
+  <div id="page-loading" role="status"><strong>VECTOR SHIFT</strong><i aria-hidden="true"></i><span>LOADING</span></div>
   <canvas id="race-world" aria-label="Phase racing course"></canvas>
   <div id="speed-wash" aria-hidden="true"></div>
   <header><button id="music-toggle" aria-label="Mute music" aria-pressed="true" title="Mute music">♫ ON</button><button id="fullscreen" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen">⛶</button><button id="pause" aria-label="Pause">Ⅱ</button></header>
@@ -28,25 +32,37 @@
     <div id="course-progress" role="progressbar" aria-label="Progress to checkpoint" aria-valuemin="0" aria-valuemax="100"><i></i></div>
     <div id="level-notice" hidden></div>
     <div id="jump-cue" hidden></div>
+    <div id="lesson-cue" role="status" hidden><strong id="lesson-title"></strong><span id="lesson-copy"></span></div>
   </div>
   <section id="menu" class="overlay"><div class="panel">
     <p class="eyebrow"><span class="section-number">01</span> ORBITAL ANTIGRAVITY RACER</p>
     <h1 class="wordmark"><span>VECTOR</span><span>SHIFT<span class="checkers" aria-hidden="true"></span></span></h1>
     <p class="review-copy" hidden></p><p class="subtle review-copy" hidden></p>
-    <div class="checkpoint-choice"><label for="level">STARTING CHECKPOINT</label><div class="checkpoint-row">
+    <div id="campaign-picker" hidden>
+      <div class="campaign-summary"><span>LEVELS CLEARED</span><strong id="campaign-completion"></strong></div>
+      <div class="area-carousel">
+        <div id="area-tabs" role="group" aria-label="Campaign area"></div>
+        <div id="area-carousel-nav">
+          <button id="area-prev" type="button" aria-label="Browse previous area" aria-controls="area-tabs">‹</button>
+          <button id="area-next" type="button" aria-label="Browse next area" aria-controls="area-tabs">›</button>
+        </div>
+      </div>
+    </div>
+    <div id="menu-loading-slot"></div>
+    <div id="construction-level-choice" class="checkpoint-choice"><label id="level-heading" for="level">SELECT LEVEL</label><div class="checkpoint-row">
       <button id="level-prev" aria-label="Previous checkpoint">‹</button>
-      <select id="level"><option value="0">01 / FIRST SHIFT</option><option value="1">02 / AROUND THE TUBE</option><option value="2">03 / TAKE FLIGHT</option><option value="3">04 / COMBINATIONS</option><option value="4">05 / OVERLOAD</option></select>
+      <select id="level"><option value="0">01.1 / CLEAR ROUTE</option></select>
       <button id="level-next" aria-label="Next checkpoint">›</button>
     </div></div>
-    <button id="start" class="primary" disabled data-loading="true" aria-busy="true"><span id="start-label">LOADING</span><span id="start-progress" aria-hidden="true">0%</span></button>
-    <button id="open-controls" class="secondary-action">CONTROLS <span aria-hidden="true">»</span></button>
+    <button id="start" class="primary" disabled data-loading="true" aria-busy="true"><span id="start-label">LOADING</span><span id="start-progress" aria-hidden="true"></span></button>
+    <div class="menu-tools"><button id="open-controls" class="secondary-action">CONTROLS <span aria-hidden="true">»</span></button><a id="campaign-mode" href="?practice=1" hidden>Practice</a></div>
     <p id="menu-status" role="status"></p><p id="loading-error" role="alert" hidden></p>
     <div class="menu-signature" aria-hidden="true">VECTOR SHIFT <span>ORBITAL RACING DIVISION</span></div>
   </div></section>
-  <div id="demo-shade" aria-hidden="true"></div>
   <dialog id="controls-dialog" aria-labelledby="controls-title">
     <div class="controls-top"><span class="eyebrow">02 / FLIGHT MANUAL</span><button id="close-controls" aria-label="Close controls">✕</button></div>
     <h2 id="controls-title">CONTROLS <span class="checkers" aria-hidden="true"></span></h2>
+    <div class="graphics-choice"><label for="graphics-quality">GRAPHICS</label><select id="graphics-quality"><option value="rich">Rich · luminous effects</option><option value="light">Light · lower graphics load</option></select></div>
     <div class="control-device" role="group" aria-label="Controls device"><button data-controls-device="pc" aria-pressed="true">PC</button><button data-controls-device="touch" aria-pressed="false">TOUCH</button></div>
     <div id="controls-pc">
       <div class="key-grid"><div><div class="key-pair"><kbd>A</kbd><kbd>D</kbd></div><strong>STEER</strong><small>or ← / →</small></div><div><kbd class="wide-key">SPACE</kbd><strong>JUMP</strong><small>or ↑ / J</small></div><div><kbd>W</kbd><strong>BOOST</strong><small>hold W or Shift</small></div><div><kbd>S</kbd><strong>BRAKE</strong><small>tap S or ↓</small></div></div>

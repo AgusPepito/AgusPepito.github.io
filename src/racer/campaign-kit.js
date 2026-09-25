@@ -18,6 +18,7 @@ import { inspectionBatches } from './inspection-batches.js';
 import { gateModulePlan, repeatGateModule } from './gate-modules.js';
 import {canDeformGate,deformGateModule} from './deformed-gate.js';
 import {fullyMasked} from './mask-coverage.js';
+import {mountEdgeLight,LIT_WALL_OFFSET} from './roadside-lighting.js';
 
 const PITCH = 12.5;
 const overlaps = (a, b, c, d) => a < d && b > c;
@@ -126,9 +127,11 @@ export function campaignChunk(THREE, start, decorations, {inspect=false,skipMask
     if (!bay) continue;
     const center=at+PITCH/2,half=section(center).halfWidth;
     const source = new THREE.Group();
-    // Authored inward foot extends 1.4 m from its pivot. Overlap the slab by
-    // 0.2 m and sink the base slightly into its nominal y=0 surface.
-    mountDetailedBay(THREE,source,bay.family,bay.kind,side,0,{lateral:half+1.2,height:-.03});
+    // The new one-metre shoulder seats between the road and the housing foot.
+    // It shares the bay layout, so encounters/gaps and exposed run ends stop
+    // both fixtures together. Only decoration moves; collision width stays fixed.
+    mountDetailedBay(THREE,source,bay.family,bay.kind,side,0,{lateral:half+LIT_WALL_OFFSET,height:-.03});
+    mountEdgeLight(THREE,source,side,{half});
     bayParts.add(mountCourseSurface(THREE, source, center, half));
   }
   if(inspect){
@@ -150,18 +153,19 @@ function finishStation(THREE, source, s, half, options) {
 }
 
 export function campaignGate(THREE, gate, timings = null, {inspect=false,modules=true,deform=true} = {}) {
-  const half = section(gate.s).halfWidth;
+  const road = section(gate.s), half = road.halfWidth;
+  const field = {curl:road.curl,closed:road.closed&&gate.width>=1};
   const began = timings ? performance.now() : 0;
   const plan=modules?gateModulePlan(gate):{mode:'baked',reason:'Module instancing disabled for comparison'};
   if(modules&&deform&&plan.mode==='baked'&&canDeformGate()){
-    const source=emitter(THREE,{width:gate.width*half*2,color:PHASES[gate.phase].hex,firstModuleOnly:true});
+    const source=emitter(THREE,{width:gate.width*half*2,color:PHASES[gate.phase].hex,firstModuleOnly:true,...field});
     const authored=performance.now();
     const result=deformGateModule(THREE,source,gate,{inspect,timings});
     if(timings)timings.sourceMs=authored-began;
     return result;
   }
   const repeated=plan.mode!=='baked';
-  const source = emitter(THREE, {width: gate.width * half * 2, color: PHASES[gate.phase].hex, reuseModules:true,firstModuleOnly:repeated});
+  const source = emitter(THREE, {width: gate.width * half * 2, color: PHASES[gate.phase].hex, reuseModules:true,firstModuleOnly:repeated,...field});
   const authored = timings ? performance.now() : 0;
   mountCourseSurface(THREE, source, gate.s, half, {center: () => gate.center, timings,cacheFrames:true,instanceRigid:true});
   const conformed = timings ? performance.now() : 0;

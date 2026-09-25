@@ -5,9 +5,9 @@ export const TRANSITION_COURSES={
   '10':{length:3000,runs:[{sign:1,enter:200,closed:600,open:1000,exit:1400},{sign:-1,enter:1700,closed:2050,open:2350,exit:2700}]},
 };
 const ease=t=>{t=Math.max(0,Math.min(1,t));return t*t*t*(t*(t*6-15)+10);};
-export function transitionSection(category,s){
+export function runSection(runs,s){
   let curl=0,name='FLAT CONNECTOR';
-  for(const run of TRANSITION_COURSES[category].runs){
+  for(const run of runs){
     if(s<run.enter||s>=run.exit)continue;
     const amount=s<run.closed?ease((s-run.enter)/(run.closed-run.enter)):s<=run.open?1:1-ease((s-run.open)/(run.exit-run.open));
     curl=run.sign*amount;
@@ -16,6 +16,7 @@ export function transitionSection(category,s){
   }
   return {curl,halfWidth:18+(Math.PI*TRANSITION_RADIUS-18)*Math.abs(curl),closed:Math.abs(curl)===1,name};
 }
+export function transitionSection(category,s){return runSection(TRANSITION_COURSES[category].runs,s);}
 export function transitionPoint(category,s,u){
   const {curl,halfWidth}=transitionSection(category,s),x=u*halfWidth,k=curl/TRANSITION_RADIUS;
   return Math.abs(k)<1e-8?[x,0,-s]:[Math.sin(k*x)/k,(1-Math.cos(k*x))/k,-s];

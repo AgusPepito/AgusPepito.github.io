@@ -27,7 +27,7 @@ export function passageAssembly(THREE,{shape='flat',opening=10,center=0,infill=f
     // the periodic seam, even when the passage itself crosses that seam.
     const runs=!closed?[[-half,center-reach],[center+reach,half]]:[[center+reach,center+2*half-reach]];
     for(const [a,b]of runs)if(b>a){
-      root.add(wallAssembly(THREE,{shape,width:b-a,center:(a+b)/2,startCap:!closed&&a===-half,endCap:!closed&&b===half}));
+      root.add(wallAssembly(THREE,{shape,width:b-a,center:(a+b)/2,startCap:!closed&&a===-half,endCap:!closed&&b===half,signals:false}));
     }
   }
   if(road)root.add(slabAssembly(THREE,{shape,length:35,courseEnd:35}));

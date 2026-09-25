@@ -33,6 +33,9 @@ export class SpaceScenery {
     // Small longitudinal batches keep culling useful; two shared meshes per field.
     for(let start=0;start<LENGTH;start+=300){
       const span=Math.min(300,LENGTH-start),center=start+span/2;
+      // Alternate open vistas and denser clouds. Existing prototype geometry and
+      // the 450 m course clearance stay unchanged; only instance placement varies.
+      const quiet=Math.floor(start/300)%6===1||Math.floor(start/300)%6===2;
       const field=new THREE.Group();field.name=`asteroid-field-${start}`;field.position.copy(point(center,0));
       // Uneven cloud centers leave empty pockets instead of two continuous ribbons.
       const clusters=Array.from({length:2+Math.floor(random()*3)},(_,index)=>{
@@ -43,7 +46,7 @@ export class SpaceScenery {
         return {s,x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,
           spread:70+random()*130,depth:60+random()*110};
       });
-      const counts=[12+Math.floor(random()*13),12+Math.floor(random()*13)];
+      const counts=Array.from({length:2},()=>quiet?5+Math.floor(random()*5):12+Math.floor(random()*13));
       for(let variant=0;variant<2;variant++){
         const count=counts[variant],batch=new THREE.InstancedMesh(rocks[variant].geometry,rocks[variant].material,count);
         batch.name=rocks[variant].name;
@@ -81,7 +84,7 @@ export class SpaceScenery {
       this.group.add(model);this.stations.push({s,group:model});
     }
     const layoutMs=performance.now()-began,reusedPrototypes=Boolean(this.stats);
-    this.stats={layout:'volumetric-clusters-v3',stationScaleMultiplier:2.5,asteroidPrototypes:2,asteroids:asteroidCount,stations:this.stations.length,
+    this.stats={layout:'orbital-vistas-v4',stationScaleMultiplier:2.5,asteroidPrototypes:2,asteroids:asteroidCount,stations:this.stations.length,
       fieldBatches:this.fields.length*2,stationMaterials:prototype.children.length,
       reusedPrototypes,prototypeGenerationMs:this.prototypeGenerationMs,layoutMs,
       generationMs:layoutMs+(reusedPrototypes?0:this.prototypeGenerationMs)};

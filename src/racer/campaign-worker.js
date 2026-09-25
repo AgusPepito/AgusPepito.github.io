@@ -12,7 +12,7 @@ self.onmessage = ({ data }) => {
       const config = data.config;
       modules=data.gateModules!==false;
       optimizations=data.optimizations!==false;deform=optimizations&&data.deformGates!==false;
-      setTrackProfile(config.length, config.shape);
+      setTrackProfile(config.length, config.shape, config.runs);
       for (const [target, source] of [[GATES, config.gates], [STRIPS, config.strips], [OBSTACLES, config.obstacles], [GAPS, config.gaps]]) {
         target.splice(0, target.length, ...source);
       }

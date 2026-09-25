@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { section, frame, wrap, clamp, GATES, PHASES } from './track.js';
-import { OBSTACLES, passageDirection } from './obstacles.js';
-import { GAPS, JUMP, gapAt, jumpPose, gapJumpCue } from './jumps.js';
+import { OBSTACLES } from './obstacles.js';
+import { GAPS, JUMP, gapAt, jumpPose, gapJumpCue, barrierJumpCue } from './jumps.js';
+import {wallBypassCue} from './obstacle-cues.js';
 
 // A Hermite curve in track coordinates: a world-space spline would cut through tubes.
 export class PassageGuide {
   constructor(scene) {
+    this.signal=null;this.bypass=null;this.lastRace=null;
     this.group = new THREE.Group(); scene.add(this.group);
     this.steps = 128; this.arrowCount = 22;
     this.positions = new Float32Array((this.steps + 1) * 6);
@@ -32,13 +34,17 @@ export class PassageGuide {
     this.bandPositions = new Float32Array(24 * 18);
     const bandGeometry = new THREE.BufferGeometry();
     bandGeometry.setAttribute('position', new THREE.BufferAttribute(this.bandPositions, 3));
-    this.takeoffBand = new THREE.Mesh(bandGeometry, new THREE.MeshBasicMaterial({ color: 0xffdf88,
+    this.takeoffBand = new THREE.Mesh(bandGeometry, new THREE.MeshBasicMaterial({ color: 0xf1fff4,
       transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false, fog: false }));
     this.takeoffBand.frustumCulled = false; this.takeoffBand.renderOrder = 7;
     this.group.add(this.takeoffBand);
     this.group.add(this.marker, this.landingMarker); this.group.visible = false;
   }
   update(race, reducedMotion) {
+    this.signal=null;
+    const last=this.lastRace;
+    if(!last||race.time<last.time||Math.abs(race.s-last.s)>90||race.mode!==last.mode||Boolean(race.demo)!==last.demo||race.state==='ready')this.bypass=null;
+    this.lastRace={time:race.time,s:race.s,mode:race.mode,demo:Boolean(race.demo)};
     const wall = OBSTACLES.find(o => o.s + o.depth + 2 > race.s && o.s - race.s < 650);
     const gap = GAPS.find(g => g.end + 4 > race.s && g.start - race.s < 650);
     const gate = GATES.find(g => g.s > race.s + 4 && g.s - race.s < 650);
@@ -46,12 +52,14 @@ export class PassageGuide {
     const leap = obstacle && (obstacle.kind === 'jump' || obstacle.kind === 'gap');
     this.group.visible = Boolean(obstacle && (leap || obstacle.s > race.s + 4) && race.mode === 'phase' && ['running', 'paused'].includes(race.state));
     if (!this.group.visible) return;
-    const cue = obstacle.kind === 'gap' ? gapJumpCue(race, obstacle) : null;
-    this.takeoffBand.visible = Boolean(cue && !race.airborne && race.s < cue.latest);
+    const cue = obstacle.kind === 'gap' ? gapJumpCue(race, obstacle) : obstacle.kind==='jump'?barrierJumpCue(race,obstacle):null;
+    this.signal={obstacle,cue,direction:0,active:clamp(1-(obstacle.s-race.s)/Math.max(1,race.speed*3),0,1)};
+    this.takeoffBand.visible = Boolean(cue && !race.airborne && race.s <= cue.latest &&
+      (obstacle.kind==='gap'||cue.enough&&cue.near));
     if (this.takeoffBand.visible) {
-      this.takeoffBand.material.color.setHex(cue.enough ? 0xffdf88 : 0xff945c);
-      this.takeoffBand.material.opacity = cue.ready ? 0.95 : 0.4;
-      const halfWidth = 5 / section(obstacle.start).halfWidth;
+      this.takeoffBand.material.color.setHex(cue.enough ? 0xf1fff4 : 0xff4938);
+      this.takeoffBand.material.opacity = cue.ready ? 0.8 : 0.25;
+      const halfWidth = 5 / section(obstacle.start??obstacle.s).halfWidth;
       for (let i = 0; i < 24; i++) {
         const a = race.u - halfWidth + halfWidth * 2 * i / 24;
         const b = a + halfWidth * 2 / 24;
@@ -73,23 +81,28 @@ export class PassageGuide {
     const destination = continuation || obstacle;
     const startS = race.s + 2;
     const landingS = obstacle.kind === 'gap' ? obstacle.end + 12 : null;
-    const endS = continuation ? continuation.s - 2 : obstacle.kind === 'gap' ? landingS : obstacle.kind === 'jump' ? obstacle.s + Math.max(35, race.speed * 0.55) : obstacle.s - 2;
+    const plannedTakeoff=cue?.enough?(cue.earliest+cue.latest)/2:obstacle.s-Math.max(25,race.speed*.3);
+    const endS = continuation ? continuation.s - 2 : obstacle.kind === 'gap' ? landingS : obstacle.kind === 'jump' ? plannedTakeoff+(cue?.range??race.speed*JUMP.duration) : obstacle.s - 2;
     const length = endS - startS;
     if (length <= 2) { this.group.visible = false; return; }
     const road = section(destination.s);
     let targetU = continuation ? continuation.center : leap || obstacle.kind === 'phase' ? race.u : obstacle.center;
+    let wallRoute=null;
     if (obstacle.kind === 'wall') {
-      const turn = passageDirection(obstacle, race.u);
-      targetU = turn === 0 ? race.u : obstacle.center + turn * (obstacle.width + 4 / road.halfWidth);
+      wallRoute=wallBypassCue(obstacle,race,this.bypass?.obstacle===obstacle?this.bypass:null);
+      this.bypass=wallRoute?{...wallRoute,obstacle}:null;
+      // No lit arrow or route is preferable to pointing into an unsafe exit.
+      if(!wallRoute){this.group.visible=false;return;}
+      targetU=wallRoute.targetU;this.signal.direction=wallRoute.direction;
     }
     // Wrap only when the entire approach is closed; crossing an open seam is not a route.
-    const closedApproach = Array.from({ length: 17 }, (_, i) => section(startS + length * i / 16).closed).every(Boolean);
-    targetU = road.closed ? wrap(targetU) : clamp(targetU, -0.9, 0.9);
+    const closedApproach = wallRoute?wallRoute.closed:Array.from({ length: 17 }, (_, i) => section(startS + length * i / 16).closed).every(Boolean);
+    if(!wallRoute)targetU = road.closed ? wrap(targetU) : clamp(targetU, -0.9, 0.9);
     const delta = closedApproach ? wrap(targetU - race.u) : targetU - race.u;
     const tangent = clamp(race.lateralSpeed / section(race.s).halfWidth * length / Math.max(1, race.speed), -0.3, 0.3);
     const jumpRoute = obstacle.kind === 'jump' || obstacle.kind === 'gap' && Boolean(gapAt(obstacle.start + 0.1, race.u));
-    const takeoff = obstacle.kind === 'gap' ? cue?.enough ? (cue.earliest + cue.latest) / 2 : obstacle.start - 2 : obstacle.s - Math.max(25, race.speed * 0.3);
-    const fallbackColor = new THREE.Color(jumpRoute ? 0xffdf88 : 0xf1fff4);
+    const takeoff = obstacle.kind === 'gap' ? cue?.enough ? (cue.earliest + cue.latest) / 2 : obstacle.start - 2 : plannedTakeoff;
+    const fallbackColor = new THREE.Color(0xf1fff4);
     const routeGates = GATES.filter(g => g.s > race.s && g.s <= endS + 3);
     const colorAt = s => {
       const next = routeGates.find(g => g.s >= s);
@@ -100,7 +113,7 @@ export class PassageGuide {
       const eased = t * t * (3 - 2 * t);
       let u = race.u + delta * eased + tangent * t * (1 - t) ** 2;
       const s = startS + length * t, local = section(s);
-      if (!closedApproach) u = clamp(u, -1 + 1.8 / local.halfWidth, 1 - 1.8 / local.halfWidth);
+      if (!closedApproach&&!wallRoute) u = clamp(u, -1 + 1.8 / local.halfWidth, 1 - 1.8 / local.halfWidth);
       const f = frame(s, u);
       const flight = clamp((s - takeoff) / Math.max(1, (landingS ?? endS) - takeoff), 0, 1);
       const arc = jumpRoute ? Math.max(0, jumpPose(flight * JUMP.duration).height) : 0;

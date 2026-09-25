@@ -5,11 +5,14 @@ import { setupMenuUI } from './menu-ui.js';
 import { RaceMusic } from './music.js';
 import { Race } from './simulation.js';
 import { RaceView } from './view.js';
+import { graphicsSetting, saveGraphics } from './visual-settings.js';
 import { PerformancePanel } from './performance-panel.js';
 import { CampaignStream, PREFETCH_BYTES } from './campaign-stream.js';
-import { CampaignCache } from './campaign-cache.js';
 import { levelAssetConfig } from './levels.js';
-import { PHASES, GATES, LENGTH } from './track.js';
+import {CAMPAIGN_LEVELS,CAMPAIGN_LAYOUT_REVISION,CampaignProgress,campaignArea,campaignLabel} from './campaign.js';
+import {CampaignMenu} from './campaign-menu.js';
+import {CourseLoading} from './loading-ui.js';
+import { PHASES, GATES, LENGTH, section, profileSection } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
 import {constructionWalls,constructionWallShape,constructionPassages,constructionEmitters,constructionObstacles,constructionCheckpoints,constructionSurfaceCycle,emitterShapeFor} from './levels.js';
@@ -22,10 +25,20 @@ const actionPad = { pointer: null, zone: null, boost: false };
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
 const profiler = new PerformancePanel();
 setupMenuUI();
+const graphicsSelect=$('graphics-quality');
+graphicsSelect.value=graphicsSetting();
+graphicsSelect.addEventListener('change',()=>{
+  const quality=graphicsSelect.value;
+  saveGraphics(quality);
+  const url=new URL(location.href);url.searchParams.set('graphics',quality);
+  history.replaceState(null,'',url);
+  view?.setGraphics(quality);
+  if(view)graphicsSelect.value=view.pipeline.quality;
+});
 const music=new RaceMusic($('music-toggle'));
-const cacheAll = !constructionReview && new URLSearchParams(location.search).get('preload') === 'all';
-let campaignCache = null, cacheMemoryRequested = false;
-const progressKey = 'vector-shift-campaign-001-checkpoint';
+const campaignParams=new URLSearchParams(location.search);
+const campaignPractice=!constructionReview&&campaignParams.get('practice')==='1';
+const campaignProgress=new CampaignProgress();
 let currentLevel = 0, storageKey;
 let view, best = null, last = performance.now(), accumulator = 0, shown = '', resultSaved = false, jumpQueued = false, brakeQueued = false;
 let checkpointNotice = '';
@@ -33,8 +46,9 @@ let checkpointNoticeAt=0,reviewCheckpointPassed=false;
 let reviewTimeScale = 1, reviewSpeedButton;
 let buffering = false, bufferBegan = null;
 let preparedLevel = null;
+let finishedBest=false;
+const campaignMenu=constructionReview?null:new CampaignMenu(campaignProgress,campaignPractice,selectFromMenu);
 function takePreparedLevel(index) {
-  if(campaignCache){const cached=campaignCache.streamFor(index);if(cached)return cached;}
   const prepared = preparedLevel; preparedLevel = null;
   if (prepared?.index === index && prepared.stream && !prepared.stream.error) {
     profiler.event('prefetch-adopted', {level:index, assets:prepared.stream.generated, bytes:prepared.stream.cacheBytes});
@@ -43,8 +57,7 @@ function takePreparedLevel(index) {
   prepared?.stream?.dispose(); return null;
 }
 function prepareNextLevel() {
-  if(campaignCache)return;
-  if (constructionReview || !view?.assetsReady(race.s)) return;
+  if (constructionReview || currentLevel>=CAMPAIGN_LEVELS.length-1 || !view?.assetsReady(race.s)) return;
   if (!preparedLevel) {
     try {
       preparedLevel = {index:currentLevel+1, stream:new CampaignStream(levelAssetConfig(currentLevel+1), {background:true})};
@@ -65,12 +78,11 @@ function prepareNextLevel() {
     }
   }
 }
-const assetNotice = document.createElement('div'); assetNotice.id = 'asset-notice'; assetNotice.hidden = true;
-assetNotice.setAttribute('role', 'status'); document.body.append(assetNotice);
+const courseLoading=new CourseLoading(),assetNotice=courseLoading.element;
 function updateAssetReadiness() {
-  const error = campaignCache?.error || view?.assetStream?.error || view?.shaderWarmup.error;
-  const allWaiting = campaignCache && !campaignCache.ready();
-  const waiting = Boolean(allWaiting || (view && !view.assetsReady(race.s)));
+  graphicsSelect.disabled=!view||view.shaderWarmup.state==='compiling';
+  const error = view?.assetStream?.error || view?.shaderWarmup.error;
+  const waiting = Boolean(view && !view.assetsReady(race.s));
   const next = race.state === 'running' && waiting;
   if (next !== buffering) {
     if (next) {
@@ -82,29 +94,26 @@ function updateAssetReadiness() {
     }
   }
   buffering = next; document.body.dataset.buffering = String(buffering);
-  assetNotice.hidden = race.state==='ready'||(!error && !buffering && !allWaiting);
-  $('start').disabled=Boolean(error||waiting||!view);
+  const browsingOtherArea=campaignMenu&&campaignMenu.browsedArea!==campaignArea(currentLevel).id;
+  const browsedLocked=browsingOtherArea&&!campaignPractice&&!campaignProgress.unlocked(campaignMenu.browsedArea);
+  $('start').disabled=Boolean(error||waiting||!view||browsingOtherArea);
   const stream = view?.assetStream;
-  const loaded=campaignCache?.levels.reduce((n,l)=>n+(l.stream?.generated??0),0),total=campaignCache?.levels.reduce((n,l)=>n+l.total,0);
-  const message = error ? `Track could not load. Reload to retry. ${error}`
-    : allWaiting ? `Preparing all 4 levels… ${Math.floor(loaded/total*100)}% (${loaded}/${total})`
-    : view?.shaderWarmup.state==='compiling' ? 'Preparing graphics…'
-    : `Preparing level ${currentLevel + 1}… ${stream ? Math.floor(stream.completed / stream.total * 100) : 0}%`;
-  if (assetNotice.textContent !== message) assetNotice.textContent = message;
-  const rawProgress=allWaiting?(total?loaded/total:0):(stream?.total?stream.completed/stream.total:0);
-  const percent=waiting?Math.min(99,Math.max(0,Math.floor(rawProgress*100))):100;
-  const status=error?'COULD NOT LOAD COURSE':waiting?`Loading ${percent}%`:'READY TO RACE';
+  const rawProgress=stream?.total?stream.completed/stream.total:0;
+  const percent=waiting?Math.min(100,Math.max(0,Math.floor(rawProgress*100))):100;
+  const finalizing=view?.shaderWarmup.state==='compiling'||Boolean(waiting&&stream?.ready());
+  courseLoading.update({visible:Boolean(error||buffering||race.state==='ready'&&waiting),inMenu:race.state==='ready',
+    name:levelInfo(currentLevel).name,percent,finalizing,error});
+  const status=error?'COULD NOT LOAD COURSE':waiting?'LOADING COURSE':browsingOtherArea?'SELECT A LEVEL':'READY TO RACE';
   if($('menu-status').textContent!==status)$('menu-status').textContent=status;
   if(!constructionReview){
-    const button=$('start'),label=error?'LOAD FAILED':waiting?'LOADING':'RACE';
-    const detail=error?'!':waiting?`${percent}%`:'»';
+    const button=$('start'),label=error?'LOAD FAILED':browsedLocked?'LOCKED':browsingOtherArea?'SELECT LEVEL':waiting?'LOADING':campaignPractice?'PRACTICE':'RACE';
+    const detail=error?'!':waiting||browsingOtherArea?'':'»';
     button.dataset.loading=String(waiting&&!error);
     button.setAttribute('aria-busy',String(waiting&&!error));
-    button.style.setProperty('--load-progress',`${percent}%`);
     if($('start-label').textContent!==label)$('start-label').textContent=label;
     if($('start-progress').textContent!==detail)$('start-progress').textContent=detail;
   }
-  if (error && !view.reportedAssetError) { profiler.event('asset-worker-error', { message: error }); view.reportedAssetError = true; }
+  if (error && view && !view.reportedAssetError) { profiler.event('asset-worker-error', { message: error }); view.reportedAssetError = true; }
 }
 function createView(renderer = null, preparedStream = null, shared = null) {
   const began = performance.now();
@@ -121,11 +130,11 @@ function toggleReviewSpeed() {
   reviewSpeedButton.textContent = reviewTimeScale === 1 ? 'Speed 1× · T' : 'Slow ¼× · T';
   reviewSpeedButton.setAttribute('aria-pressed', String(reviewTimeScale !== 1));
 }
-try {
-  const saved = Number(localStorage.getItem(progressKey));
-  if (Number.isSafeInteger(saved) && saved >= 0 && saved < 100000) currentLevel = saved;
-} catch { /* Storage is optional, including in private browsing. */ }
-if(cacheAll)currentLevel=0;
+if(!constructionReview){
+  currentLevel=campaignProgress.recommended();
+  const requested=CAMPAIGN_LEVELS.findIndex(level=>level.id===campaignParams.get('level'));
+  if(requested>=0&&(campaignPractice||campaignProgress.unlocked(CAMPAIGN_LEVELS[requested].area)))currentLevel=requested;
+}
 if (constructionReview) {
   document.body.classList.add('construction-review');
   document.querySelectorAll('.review-copy').forEach(copy=>{copy.hidden=false;});
@@ -305,14 +314,16 @@ if (constructionReview) {
   }
 }
 function loadBest() {
-  storageKey = `vector-shift-campaign-001-level-${currentLevel}`; best = null;
+  best = null;
   if (constructionReview) return;
+  storageKey = `vector-shift-areas-001-best-${CAMPAIGN_LEVELS[currentLevel].id}-${CAMPAIGN_LAYOUT_REVISION}`;
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey));
     if (saved && Number.isFinite(saved.time) && saved.time > 0 && Array.isArray(saved.splits) && saved.splits.length === 1 && saved.splits.every(Number.isFinite)) best = saved;
   } catch { /* Local records are optional. */ }
 }
 function updateLevelChoice() {
+  if(campaignMenu){campaignMenu.select(currentLevel);updateLesson(currentLevel);return;}
   if (![...$('level').options].some(o => Number(o.value) === currentLevel)) {
     const option = document.createElement('option'); option.value = currentLevel;
     option.textContent = `${currentLevel + 1} · ${levelInfo(currentLevel).name}`; $('level').append(option);
@@ -359,25 +370,39 @@ function clearInput() {
 }
 
 function phase(index) { if (race.state === 'running' || race.state === 'ready') race.phase = index; }
-function start(index = currentLevel, carry = null) {
-  if (!view) return;
-  const startBegan = performance.now();
+function changeLevel(index) {
+  if(!view||!Number.isInteger(index)||index<0)return false;
   if(constructionSurfaceCycle)index%=3;
+  if(!constructionReview&&(!CAMPAIGN_LEVELS[index]||!campaignPractice&&!campaignProgress.unlocked(CAMPAIGN_LEVELS[index].area)))return false;
   if (index !== currentLevel) {
     currentLevel = index; configureLevel(currentLevel);
     const renderer = view.renderer,shared=constructionReview?null:view.releaseSharedObjects();
     const disposeBegan=performance.now();view.dispose({ keepRenderer: true });
     profiler.event('previous-view-disposed',{level:currentLevel,durationMs:performance.now()-disposeBegan});
     try { view = createView(renderer, takePreparedLevel(index),shared); }
-    catch (error) { view = null; race.state = 'ready'; $('start').disabled = true; $('loading-error').hidden = false; $('loading-error').textContent = error.message; sync(); return; }
+    catch (error) { view = null; race.state = 'ready'; $('start').disabled = true; $('loading-error').hidden = false; $('loading-error').textContent = error.message; sync(); return false; }
     loadBest(); updateLevelChoice();
   }
+  return true;
+}
+function selectFromMenu(index){
+  if(!changeLevel(index))return;
+  clearInput();race.reset();view.snap=true;checkpointNotice='';
+  updateLevelChoice();updateAssetReadiness();sync();
+}
+function returnToMenu(){
+  clearInput();race.reset();if(view)view.snap=true;checkpointNotice='';
+  updateLevelChoice();sync();
+}
+function start(index = currentLevel, carry = null) {
+  const startBegan = performance.now();
+  if(!changeLevel(index))return;
   if (!carry) { clearInput(); checkpointNotice = ''; }
   race.reset(); race.mode = 'phase';
   $('controls-dialog').close();
   reviewCheckpointPassed=false;checkpointNoticeAt=0;
   if (carry) Object.assign(race, carry);
-  race.state = 'running'; resultSaved = false; accumulator = 0; view.snap = true;
+  race.state = 'running'; resultSaved = false; finishedBest=false; accumulator = 0; view.snap = true;
   updateAssetReadiness();
   if (!carry) document.activeElement?.blur();
   // Prepare the reset camera and HUD before removing the menu. Otherwise the
@@ -391,23 +416,40 @@ function start(index = currentLevel, carry = null) {
   profiler.event('run-start', { level: currentLevel, mode: race.mode, checkpoint: Boolean(carry), durationMs: performance.now() - startBegan });
   profiler.previous = null;
 }
+function saveCompletion(){
+  if(constructionReview||resultSaved||race.mode!=='phase')return;
+  finishedBest=!best||race.time<best.time;
+  if(!campaignPractice){
+    campaignProgress.complete(currentLevel);
+    if(finishedBest){
+      best={time:race.time,splits:[...race.splits]};
+      try{localStorage.setItem(storageKey,JSON.stringify(best));}catch{/* Optional records. */}
+    }
+  }
+  resultSaved=true;campaignMenu.select(currentLevel);
+}
+function nextCampaignIndex(){
+  const next=currentLevel+1,level=CAMPAIGN_LEVELS[next];
+  return level&&(campaignPractice||campaignProgress.unlocked(level.area))?next:null;
+}
 function advanceCheckpoint() {
   if(constructionSurfaceCycle){start((currentLevel+1)%3);checkpointNotice=`${constructionCategory} · ${constructionWallShape.toUpperCase()} ${constructionCheckpoints?'CHECKPOINT':constructionObstacles?'OBSTACLES':'GATES'}`;return;}
   if (constructionReview) { start(); checkpointNotice = `${constructionCategory} · SAMPLE RESTARTED`; return; }
   const completed = currentLevel, completedTime = race.time;
-  if (race.mode === 'phase') {
-    try {
-      if (!best || completedTime < best.time) localStorage.setItem(storageKey, JSON.stringify({ time: completedTime, splits: [...race.splits] }));
-      const saved = Number(localStorage.getItem(progressKey));
-      const previous = Number.isSafeInteger(saved) && saved >= 0 && saved < 100000 ? saved : 0;
-      localStorage.setItem(progressKey, String(Math.max(previous, completed + 1)));
-    } catch { /* A full storage device must not interrupt the run. */ }
-  }
+  saveCompletion();
+  const next=nextCampaignIndex();
+  // Area boundaries reset surface/orientation safely on Continue. The final
+  // course stays on its result screen instead of generating another round.
+  if(next===null||campaignArea(next).id!==campaignArea(currentLevel).id){accumulator=0;sync();return;}
   const carry = {};
   for (const key of ['speed', 'u', 'lateralSpeed', 'phase', 'height', 'verticalSpeed', 'airborne', 'landing',
     'jumpTime', 'edgeGrace', 'jumpOriginHeight', 'boostBlend', 'thrustBlend', 'brakeTime', 'brakeCooldown', 'brakeTarget', 'brakeRate']) carry[key] = race[key];
-  start(completed + 1, carry);
-  checkpointNotice = `CHECKPOINT ${completed + 1} · ${format(completedTime)} · BOOST REFILLED\nLEVEL ${currentLevel + 1} / ${levelInfo(currentLevel).name}`;
+  const nextInfo=levelInfo(next),departure=section(LENGTH),arrival=profileSection(0,nextInfo.profile,nextInfo.runs);
+  // Relay Grid changes from flat to inside mid-area. Never carry a tube
+  // coordinate, bank or airborne pose onto an incompatible starting surface.
+  const sameSurface=departure.curl===arrival.curl&&departure.halfWidth===arrival.halfWidth;
+  start(next, sameSurface?carry:null);
+  checkpointNotice = `${campaignLabel(completed)} · ${format(completedTime)}\nNEXT / ${campaignLabel(currentLevel)}`;
 }
 function pause() {
   if (race.state === 'running') race.state = 'paused';
@@ -425,42 +467,41 @@ function sync() {
   if (race.state !== shown) {
     if (race.state === 'crashed' || race.state === 'checkpoint') {
       clearInput();
-      const finished = race.state === 'checkpoint', isBest = finished && race.mode === 'phase' && (!best || race.time < best.time);
+      const finished = race.state === 'checkpoint';
+      if(finished)saveCompletion();
+      const isBest=finished&&finishedBest&&!campaignPractice;
       const wallCrash = race.crashKind === 'wall';
       const gapCrash = race.crashKind === 'gap';
-      $('result-label').textContent = `CHECKPOINT ${String(currentLevel + 1).padStart(2,'0')}${isBest ? ' / BEST TIME' : ''}`;
-      $('result-title').textContent = finished ? 'LEVEL CLEAR.' : gapCrash ? 'MISSED LANDING.' : wallCrash ? 'WALL IMPACT.' : 'OUT OF PHASE.';
+      const area=constructionReview?null:campaignArea(currentLevel),next=constructionReview?null:nextCampaignIndex();
+      const complete=finished&&!campaignPractice&&area&&campaignProgress.areaComplete(area.id);
+      const allComplete=finished&&!campaignPractice&&CAMPAIGN_LEVELS.every(level=>campaignProgress.completed.has(level.id));
+      $('result-label').textContent = `${area?`${area.number} / ${area.name}`:`CHECKPOINT ${currentLevel+1}`}${campaignPractice?' / PRACTICE':isBest?' / BEST TIME':''}`;
+      $('result-title').textContent = finished ? allComplete?'CAMPAIGN CLEAR.':complete?'AREA CLEAR.':campaignPractice?'RUN COMPLETE.':'LEVEL CLEAR.' : gapCrash ? 'MISSED LANDING.' : wallCrash ? 'WALL IMPACT.' : 'OUT OF PHASE.';
       const gate = GATES.find(g => Math.abs(g.s - race.s) < 0.1);
-      $('result-copy').textContent = finished ? `NEXT / ${levelInfo(currentLevel + 1).name}` :
-        gapCrash ? 'JUMP LATER. BOOST ACROSS.' :
-        wallCrash ? 'STEER CLEAR OF SOLID WALLS.' :
+      const hitObstacle=OBSTACLES.find(o=>race.s>=o.s-4&&race.s<=o.s+o.depth+4);
+      $('result-copy').textContent = finished ? next!==null?`NEXT / ${campaignArea(next).name} · ${levelInfo(next).name}`:
+        allComplete?`All ${CAMPAIGN_LEVELS.length} levels cleared. Replay your favorites and improve your times.`:campaignPractice?'Practice run complete. Return to the area selector to choose another course.':currentLevel===CAMPAIGN_LEVELS.length-1?'Clear the remaining levels in Nexus to complete the campaign.':'Clear the remaining levels in this area to unlock the next.' :
+        gapCrash ? 'JUMP NEAR THE EDGE. FOLLOW THE TAKEOFF CUE.' :
+        wallCrash ? hitObstacle?.kind==='jump'?'JUMP OVER THE LOW BARRIER.':hitObstacle?.kind==='hole'?'LINE UP WITH THE WHITE OPENING. STAY LOW.':'STEER CLEAR OF SOLID WALLS.' :
         gate ? `${PHASES[gate.phase].name} REQUIRED / ${PHASES[race.phase].name} ACTIVE` : 'MATCH THE GATE’S PHASE.';
       $('result-distance').textContent=`${(race.s/1000).toFixed(2)} KM`;
       $('result-time').textContent=format(race.time);
-      $('retry-label').textContent=finished?'CONTINUE':'RETRY';
+      $('retry-label').textContent=finished?next===null?'CHOOSE LEVEL':'CONTINUE':'RETRY';
       $('retry-hint').textContent=touchLayout.matches||finished?'':'SPACE / R';
-      $('retry').setAttribute('aria-label',finished?'Continue to next level':'Retry checkpoint');
-      if (finished && race.mode === 'phase') {
-        try {
-          const saved = Number(localStorage.getItem(progressKey));
-          const previous = Number.isSafeInteger(saved) && saved >= 0 && saved < 100000 ? saved : 0;
-          localStorage.setItem(progressKey, String(Math.max(previous, currentLevel + 1)));
-        } catch { /* Continue without saved progress. */ }
-      }
-      if (isBest && !resultSaved) {
-        best = { time: race.time, splits: [...race.splits] }; resultSaved = true;
-        try { localStorage.setItem(storageKey, JSON.stringify(best)); } catch { /* Racing does not require storage. */ }
-      }
+      $('retry').setAttribute('aria-label',finished?next===null?'Choose a level':'Continue to next level':'Retry checkpoint');
     }
     shown = race.state;
   }
 }
 $('start').addEventListener('click', () => start(Number($('level').value)));
-$('retry').addEventListener('click', () => start(race.state === 'checkpoint' ? currentLevel + 1 : currentLevel));
+$('retry').addEventListener('click', () => {
+  if(race.state!=='checkpoint'){start();return;}
+  const next=nextCampaignIndex();if(next===null)returnToMenu();else start(next);
+});
 $('restart').addEventListener('click', () => start());
-$('level').addEventListener('change', () => updateLesson(Number($('level').value)));
+$('level').addEventListener('change', () => constructionReview?updateLesson(Number($('level').value)):selectFromMenu(Number($('level').value)));
 $('pause').addEventListener('click', pause); $('resume').addEventListener('click', pause);
-$('return-menu').addEventListener('click',()=>{clearInput();race.reset();view.snap=true;sync();});
+$('return-menu').addEventListener('click',returnToMenu);
 let fullscreenHintTimer;
 const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
 function syncFullscreen() {
@@ -496,7 +537,7 @@ $('fullscreen').addEventListener('click', async () => {
 });
 document.addEventListener('fullscreenchange', syncFullscreen);
 document.addEventListener('webkitfullscreenchange', syncFullscreen);
-$('back').addEventListener('click', () => { clearInput(); race.reset(); view.snap = true; sync(); });
+$('back').addEventListener('click',returnToMenu);
 for (const button of document.querySelectorAll('[data-phase]')) {
   const index = Number(button.dataset.phase); button.style.setProperty('--button-phase', PHASES[index].color);
   button.addEventListener('pointerdown', e => { e.preventDefault(); phase(index); });
@@ -613,13 +654,21 @@ $('race-world').addEventListener('webglcontextlost', e => { e.preventDefault(); 
 
 function updateHud() {
   const running = race.state === 'running', touch = touchLayout.matches;
+  const info=levelInfo(currentLevel);
+  const hint=!constructionReview&&running&&!buffering?info.hints.find(entry=>race.s>=entry.start&&race.s<entry.end):null;
+  $('lesson-cue').hidden=!hint;
+  if(hint){
+    if($('lesson-title').textContent!==hint.title)$('lesson-title').textContent=hint.title;
+    const copy=touch?hint.touch:hint.pc;
+    if($('lesson-copy').textContent!==copy)$('lesson-copy').textContent=copy;
+  }
   $('checkpoint-notice').hidden = !checkpointNotice || race.time-checkpointNoticeAt >= 3 || !running;
   $('checkpoint-notice').textContent = checkpointNotice;
   $('level-notice').hidden = constructionReview || !running || race.time >= 2.5 || Boolean(checkpointNotice);
-  $('level-notice').textContent = `L${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
+  $('level-notice').textContent = constructionReview?info.name:`${campaignArea(currentLevel).name} / ${campaignLabel(currentLevel)}`;
   const p = PHASES[race.phase]; document.documentElement.style.setProperty('--phase', p.color);
   $('speed').textContent = Math.round(race.speed * 3.6); $('time').textContent = format(race.time);
-  $('pause-level').textContent = constructionReview ? levelInfo(currentLevel).name : `Level ${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
+  $('pause-level').textContent = constructionReview ? info.name : `${campaignArea(currentLevel).name} / ${campaignLabel(currentLevel)}`;
   $('best').textContent = constructionReview ? 'Asset review · R retries this sample' : race.mode === 'drive' ? 'Driving only' : `Personal best · ${best ? format(best.time) : '—'}`;
   const progress = Math.min(100, Math.max(0, race.s / LENGTH * 100));
   $('course-progress').style.setProperty('--progress', `${progress}%`);
@@ -663,11 +712,7 @@ function loop(now) {
   const timing = profiling ? {} : null;
   const dt = Math.min((now - last) / 1000, 0.06) * (constructionReview ? reviewTimeScale : 1); last = now;
   if (view) {
-    campaignCache?.update();
     view.prepareAssets(race.s, timing);
-    if(campaignCache?.ready()&&!cacheMemoryRequested){
-      cacheMemoryRequested=true;profiler.measureMemory('all-levels-ready');
-    }
     prepareNextLevel();
     updateAssetReadiness();
     const assetsDone = profiling ? performance.now() : 0;
@@ -689,7 +734,6 @@ function loop(now) {
     const hudDone = profiling ? performance.now() : 0;
     const preview=race.state==='ready'&&view?.menuDemo&&view.assetsReady(0);
     const renderPose=preview?view.menuDemo.update(document.hidden?0:dt,view):race;
-    $('demo-shade').style.opacity=preview?view.menuDemo.fade:0;
     view?.render(renderPose, buffering ? 0 : dt, timing);
     if (profiling && view) {
       timing.simulationMs = simulated - assetsDone;
@@ -703,17 +747,16 @@ function loop(now) {
         cachedActiveBytes:view.assetStream?.source ? view.assetStream.attachedBytes : 0,
         expandedLevelBytes:view.assetStream?.expandedBytes ?? 0,
         shaderWarmupState:view.shaderWarmup.state,shaderWarmupMs:view.shaderWarmup.durationMs,
+        graphics:view.pipeline.quality,bloom:Boolean(view.pipeline.composer),
         distance: race.s, mode: race.mode, phase: race.phase, reviewTimeScale }, timing);
     }
   }
   requestAnimationFrame(loop);
 }
 try {
-  if(cacheAll){
-    campaignCache=new CampaignCache((type,data)=>profiler.event(type,data));
-    profiler.cacheProvider=()=>campaignCache.snapshot();
-  }
-  view = createView(null,campaignCache?.streamFor(currentLevel));
+  view = createView();
+  graphicsSelect.value=view.pipeline.quality;
+  graphicsSelect.querySelector('[value="rich"]').disabled=!view.pipeline.hdrSupported;
 }
 catch (error) { $('start').disabled = true; $('loading-error').hidden = false; $('loading-error').textContent = `Could not initialize the racer: ${error.message}`; }
 sync(); updateHud(); requestAnimationFrame(loop);

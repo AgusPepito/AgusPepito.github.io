@@ -1,11 +1,10 @@
 import { Vector3 } from 'three';
-import { PHASE_CHAINS } from './sequences.js';
-import {transitionSection,transitionPoint} from './transition-profile.js';
+import {transitionSection,transitionPoint,runSection} from './transition-profile.js';
 
-export let LENGTH = 6600;
-let profile = 'mixed';
-export function setTrackProfile(length, shape) { LENGTH = length; profile = shape; }
-export function trackProfileSnapshot() { return { length: LENGTH, shape: profile }; }
+export let LENGTH = 2400;
+let profile = 'flat',profileRuns=[];
+export function setTrackProfile(length, shape, runs=[]) { LENGTH = length; profile = shape; profileRuns=runs; }
+export function trackProfileSnapshot() { return { length: LENGTH, shape: profile, runs:profileRuns }; }
 export const RADIUS = 18;
 export const PHASES = [
   { name: 'ION', symbol: '●', color: '#4de1ff', hex: 0x4de1ff },
@@ -18,10 +17,11 @@ export const wrap = u => ((u + 1) % 2 + 2) % 2 - 1;
 
 // Signed curvature: negative rolls away into an exterior, positive curls into an interior.
 // The same parameterization supplies geometry, collision, driving and the camera frame.
-export function section(s) {
-  if(profile==='transition-09'||profile==='transition-10')return transitionSection(profile.slice(-2),s);
-  if (profile === 'flat'||profile==='gap-flat') return { curl: 0, halfWidth: 18, closed: false, name: 'OPEN ROAD' };
-  if (profile === 'outside' || profile === 'inside') return { curl: profile === 'inside' ? 1 : -1, halfWidth: Math.PI * RADIUS, closed: true, name: profile === 'inside' ? 'INSIDE TUBE' : 'OUTSIDE TUBE' };
+export function profileSection(s,shape,runs=[]) {
+  if(shape==='authored')return runSection(runs,s);
+  if(shape==='transition-09'||shape==='transition-10')return transitionSection(shape.slice(-2),s);
+  if (shape === 'flat'||shape==='gap-flat') return { curl: 0, halfWidth: 18, closed: false, name: 'OPEN ROAD' };
+  if (shape === 'outside' || shape === 'inside') return { curl: shape === 'inside' ? 1 : -1, halfWidth: Math.PI * RADIUS, closed: true, name: shape === 'inside' ? 'INSIDE TUBE' : 'OUTSIDE TUBE' };
   let curl = 0, name = 'LAUNCH STRAIGHT';
   if (s >= 850 && s < 1300) { curl = -smooth((s - 850) / 450); name = 'ROLLING OUTWARD'; }
   else if (s >= 1300 && s < 2500) { curl = -1; name = 'OUTSIDE / ORBIT'; }
@@ -34,6 +34,7 @@ export function section(s) {
   const halfWidth = 18 + (Math.PI * RADIUS - 18) * Math.abs(curl);
   return { curl, halfWidth, closed: Math.abs(curl) === 1, name };
 }
+export function section(s) {return profileSection(s,profile,profileRuns);}
 
 export function point(s, u, target = new Vector3()) {
   if(profile==='gap-flat')return target.set(u*18,0,-s);
@@ -42,7 +43,7 @@ export function point(s, u, target = new Vector3()) {
   const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k * lateral) / k;
   const y = Math.abs(k) < 1e-7 ? 0 : (1 - Math.cos(k * lateral)) / k;
   // Authored bends have truly straight approaches and exits; z remains monotonic.
-  const tubeReview = profile === 'outside' || profile === 'inside';
+  const tubeReview = profile === 'outside' || profile === 'inside' || profile === 'authored';
   const centerX = tubeReview ? 0 : profile === 'flat' ? 18 * smooth((s / LENGTH - 0.15) / 0.2) - 36 * smooth((s / LENGTH - 0.4) / 0.2) + 18 * smooth((s / LENGTH - 0.7) / 0.2) : 95 * smooth((s - 300) / 550) - 170 * smooth((s - 1450) / 750)
     + 210 * smooth((s - 2950) / 500) - 180 * smooth((s - 4050) / 900)
     + 45 * smooth((s - 5900) / 450);
@@ -92,27 +93,9 @@ export function frame(s, u) {
   return { p, forward, right, normal, metric: along.length() };
 }
 
-export const STRIPS = [
-  { start: 140, end: 630, phase: 0, from: -0.4, to: -0.4, width: 0.24 },
-  { start: 340, end: 630, phase: 1, from: 0.4, to: 0.4, width: 0.24 },
-  { start: 900, end: 1190, phase: 1, from: 0, to: 0, width: 0.19 },
-  { start: 1380, end: 2260, phase: 0, from: 0, to: 1.5, width: 0.12 },
-  { start: 1500, end: 2130, phase: 2, from: -0.4, to: -0.4, width: 0.12 },
-  { start: 2700, end: 3370, phase: 2, from: 0, to: -0.38, width: 0.22 },
-  { start: 3650, end: 3910, phase: 0, from: 0, to: 0, width: 0.18 },
-  { start: 4050, end: 4930, phase: 2, from: 0.1, to: -1.35, width: 0.12 },
-  { start: 4130, end: 4870, phase: 0, from: 0.48, to: 0.48, width: 0.12 },
-  { start: 5550, end: 6080, phase: 1, from: 0, to: 0.4, width: 0.22 },
-  { start: 6100, end: 6500, phase: 2, from: -0.4, to: -0.4, width: 0.24 },
-];
-export const GATES = [
-  { s: 730, phase: 0, center: 0, width: 1, full: true },
-  { s: 1240, phase: 1, center: 0, width: 0.38 },
-  { s: 3300, phase: 2, center: -0.38, width: 0.35 },
-  { s: 5180, phase: 1, center: 0, width: 1, full: true },
-  { s: 6350, phase: 2, center: 0, width: 1, full: true },
-  ...PHASE_CHAINS.flatMap(chain => chain.gates.map(gate => ({ ...gate, center: 0, width: 1, full: true, chainId: chain.id }))),
-].sort((a, b) => a.s - b.s);
+// Runtime arrays keep their identities; configureLevel supplies authored data.
+export const STRIPS = [];
+export const GATES = [];
 export function stripCenter(strip, s) {
   return strip.from + (strip.to - strip.from) * clamp((s - strip.start) / (strip.end - strip.start), 0, 1);
 }

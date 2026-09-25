@@ -1,5 +1,6 @@
 import {omitFaces,openBottomBox} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
+import {obstacleLightKit} from './obstacle-lights-r1.js';
 
 // Author in surface coordinates. Travel is -Z; all solids stay within
 // Y=0..height and Z=0..-5. All details conform with the collision envelope.
@@ -40,7 +41,8 @@ function builder(THREE,prefix){
 }
 
 export default function generate(THREE,{width=18,height=2.4,startCap=true,endCap=true,firstModuleOnly=false}={}){
-  const b=builder(THREE,'j3-louver-r1'),{root,box,plate,topPlate,bolt,pipe,chevron}=b;
+  const b=builder(THREE,'j3-louver-r1'),{root,box,plate,topPlate,bolt,pipe}=b;
+  const signals=obstacleLightKit(THREE,'jump');
   root.name='j3-repeatable-louver-barrier';
   const count=Math.max(1,Math.round(width/4.5)),pitch=width/count;
   for(let i=0;i<(firstModuleOnly?1:count);i++){
@@ -71,7 +73,7 @@ export default function generate(THREE,{width=18,height=2.4,startCap=true,endCap
       for(const y of [.24,height-.24])for(const dx of [-.65,.65])bolt(x+dx,y,-.15);
     }
     plate('jump-light-service-cassette',0,height/2,-.29,.43,height-.76,'graphite');
-    for(const y of [height/2-.27,height/2+.27])chevron(0,y,-.24);
+    signals.jump(root,height);
     for(const y of [.33,height-.33])plate('cassette-lock-tab',0,y,-.14,.30,.15,'brass');
     // Visible rear uses quiet armor, a real vent and protected service latches.
     const rear=plate('rear-service-panel',0,height/2,-4.95,4.32,height-.23,'graphite',[[0,0,2.7,.40]]);rear.rotation.y=Math.PI;

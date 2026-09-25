@@ -3,7 +3,7 @@ const FRAME_LIMIT = 18000, SAMPLE_LIMIT = 900, EVENT_LIMIT = 500;
 const LOG_KEY = 'vector-shift-performance-log-v1';
 const LOG_LIMIT = 100;
 const settings=new URLSearchParams(location.search);
-const OPTIMIZATION_VERSION = `shared-assets-v8-side-kit15-walls-dense-v1-space-scenery-v3-handoff-reuse-v1-shader-warmup-v1${settings.get('assetOptimizations')==='off'?'-v7-baseline':''}${settings.get('gateModules')==='off'?'-gates-baked':''}${settings.get('gateDeform')==='off'?'-cpu-gates':''}`;
+const OPTIMIZATION_VERSION = `orbital-render-v1-shared-assets-v8-side-kit15-walls-dense-v1-space-scenery-v3-handoff-reuse-v1-shader-warmup-v1${settings.get('assetOptimizations')==='off'?'-v7-baseline':''}${settings.get('gateModules')==='off'?'-gates-baked':''}${settings.get('gateDeform')==='off'?'-cpu-gates':''}`;
 const number = value => Math.round(value).toLocaleString();
 const ms = value => `${value.toFixed(1)} ms`;
 const mib = value => `${(value / 1048576).toFixed(1)} MiB`;
@@ -302,11 +302,11 @@ export class PerformancePanel {
         hardwareConcurrency: navigator.hardwareConcurrency, deviceMemoryGiB: navigator.deviceMemory ?? null,
         touchPoints: navigator.maxTouchPoints, devicePixelRatio, viewport: [innerWidth, innerHeight] },
       notes: ['Full selected-level generation precedes driving; the next level has a bounded runtime prefetch cache. Indexed geometry preserves triangles and attributes.',
-        'preload=all instead retains all four authored campaign levels with one generation worker at a time and no prefetch memory cap. Overload rounds are outside that cache.',
+        'The retired all-level cache is disabled. Only the active level and a bounded next-level prefetch are retained; no prefetch is created after the final course.',
         'Cached and active level geometry share backing buffers: do not add their byte counts. Inactive levels remain CPU packets; GPU upload still follows rendering.',
         'Browser memory snapshots are browser-reported estimates, may trigger garbage collection, and are not GPU/VRAM or total OS-process memory. Main heap peaks are sampled and exclude worker heaps.',
         'Geometry bytes include instance matrices. Expanded bytes estimate a separate nonindexed copy per instance. Instanced counts cover the attached scene, including hidden assets.',
-        'Decorative asteroid and station prototypes, the ship and sky are retained across level changes, separately from the 251 campaign jobs. Only scenery placements are rebuilt. Scene inventory and browser memory include them; allLevelCache bytes and worker timings exclude them. view-created events include reusedSharedAssets, scenery generationMs, layoutMs and reusedPrototypes. previous-view-disposed and start-first-render isolate other transition work.',
+        'Decorative asteroid and station prototypes, the ship and sky are retained across level changes, separately from campaign jobs. Only scenery placements are rebuilt. Scene inventory and browser memory include them; worker timings exclude them. view-created events include reusedSharedAssets, scenery generationMs, layoutMs and reusedPrototypes. previous-view-disposed and start-first-render isolate other transition work.',
         'Gate surfaceTotals cover baked parts only; rigid grouping, placement and batching are separate fields inside the total conformMs.',
         'v8 skips fully masked slab tiles, instances compatible closed jump barriers, and uses shader-deformed shared gate strips where rigid v7 transforms cannot match the track. Gate profiles include modulePlan and stored/placed triangle counts; asset events include skipped tile counts and barrier module plans.',
         'assetOptimizations=off restores v7 generation. gateDeform=off disables only shader gate deformation. gateModules=off disables all gate module instancing. Shader deformation adds per-frame vertex work; worker timings do not measure this GPU cost.',

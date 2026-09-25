@@ -19,14 +19,14 @@ export class MenuDemo {
   update(dt,view){
     const shot=this.shots[this.index],duration=(shot[1]-shot[0])/48;
     if(!view.reduced){this.elapsed+=dt;this.time+=dt;}
+    // Cut directly between prepared shots without a black interval that can
+    // resemble dropped frames against the already-dark interior tubes.
     if(this.elapsed>=duration){this.elapsed=0;this.index=(this.index+1)%this.shots.length;view.snap=true;}
     const [start,end]=this.shots[this.index];
     this.pose.s=Math.min(end,start+this.elapsed*48);this.pose.time=this.time;
     this.pose.u=0;this.pose.speed=48;this.pose.state='ready';
     this.pose.phase=STRIPS.find(strip=>onStrip(strip,this.pose.s,0))?.phase??this.index%3;
     this.pose.stripBoost=false;
-    const remaining=(end-this.pose.s)/48;
-    this.fade=view.reduced?0:Math.max(0,1-Math.min(this.elapsed,remaining)/.7);
     return this.pose;
   }
 }

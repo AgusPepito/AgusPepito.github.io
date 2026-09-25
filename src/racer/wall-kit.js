@@ -10,8 +10,8 @@ export function wallReviewObstacles(shape='flat'){
   const half=wallHalfWidth(shape);
   return [[350,0,9],[800,.42,18],[1250,shape==='flat'?-.35:.96,22.5]].map(([s,center,width])=>({s,center,width:width/2/half,kind:'wall',height:7,depth:5}));
 }
-export function wallAssembly(THREE,{shape='flat',width=18,center=0,startCap=true,endCap=true}={}){
-  const root=wall(THREE,{width,startCap,endCap});
+export function wallAssembly(THREE,{shape='flat',width=18,center=0,startCap=true,endCap=true,signals=true}={}){
+  const root=wall(THREE,{width,startCap,endCap,signals});
   conformWallParts(THREE,root,{shape,center});root.name=`${shape}-repeatable-wall-r2`;root.userData.shape=shape;return root;
 }
 export function conformWallParts(THREE,root,{shape='flat',center=0}={}){

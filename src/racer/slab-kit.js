@@ -4,6 +4,8 @@ import tubeSurface,{wrapTubeSurface} from '../../public/assets/track/tube-surfac
 import lane from '../../public/assets/track/phase-lane-r1.js';
 import {PHASES,RADIUS,point,stripCenter} from './track.js';
 import {subtractRectangles} from './gap-geometry.js';
+import {SUN_DIRECTION, PLANET_DIRECTION} from './visual-settings.js';
+import {finishMaterial} from './surface-finish.js';
 
 export function slabReviewStrips(tube){
   const half=tube?Math.PI*RADIUS:18;
@@ -68,20 +70,30 @@ export function disposeSlabEnvironment(renderer){
 export function applySlabEnvironment(THREE,renderer,root){
   let target=environments.get(renderer);
   if(!target){
-    // Static softbox reflection capture, shared by slab materials only.
-    // Broad neutral sources yield a brushed sheen on every tube orientation.
-    const studio=new THREE.Scene();studio.background=new THREE.Color(0x252c34);
-    for(let i=0;i<6;i++){
-      const angle=i*Math.PI/3,mat=new THREE.MeshBasicMaterial({color:new THREE.Color(i%2?0xc1d2df:0xffe9ce).multiplyScalar(2.2),side:THREE.DoubleSide});
-      const panel=new THREE.Mesh(new THREE.PlaneGeometry(5,36),mat);
-      panel.position.set(Math.sin(angle)*14,Math.cos(angle)*14,0);panel.lookAt(0,0,0);studio.add(panel);
+    // Static orbital capture shared by all PBR finishes, without live cube captures.
+    const studio=new THREE.Scene();studio.background=new THREE.Color(0x131c2b);
+    const sources=[
+      [SUN_DIRECTION,0xffe4c5,2.4,4,6],
+      [PLANET_DIRECTION,0x84b8ec,.7,16,16],
+      [new THREE.Vector3(-1,-.3,.4).normalize(),0x8398b3,.65,10,26],
+    ];
+    for(const [direction,color,strength,width,height] of sources){
+      const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(color).multiplyScalar(strength),side:THREE.DoubleSide});
+      const panel=new THREE.Mesh(new THREE.PlaneGeometry(width,height),mat);
+      panel.position.copy(direction).multiplyScalar(16);panel.lookAt(0,0,0);studio.add(panel);
     }
     const pmrem=new THREE.PMREMGenerator(renderer);target=pmrem.fromScene(studio,.08,.1,100);pmrem.dispose();
     studio.traverse(n=>{n.geometry?.dispose();n.material?.dispose();});environments.set(renderer,target);
   }
   root.traverse(mesh=>{
-    if(!mesh.isMesh||!mesh.material.userData.slabFinish)return;
-    mesh.material.envMap=target.texture;mesh.material.needsUpdate=true;
-    for(const map of [mesh.material.normalMap,mesh.material.roughnessMap])if(map)map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+    if(!mesh.isMesh)return;
+    for(const material of Array.isArray(mesh.material)?mesh.material:[mesh.material]){
+      if(!material.isMeshStandardMaterial)continue;
+      finishMaterial(material);
+      if(material.envMap!==target.texture){material.envMap=target.texture;material.needsUpdate=true;}
+      const road=/^slab-r1-(graphite|worn|replacement|edge|fastener)$/.test(material.name);
+      material.envMapIntensity=road ? .3 : .5;
+      for(const map of [material.normalMap,material.roughnessMap])if(map)map.anisotropy=Math.min(8,renderer.capabilities.getMaxAnisotropy());
+    }
   });
 }

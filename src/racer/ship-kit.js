@@ -7,6 +7,8 @@ export function racingShip() {
   const source=generateShip(THREE), model=new THREE.Group(), ship=new THREE.Group();
   const buckets=new Map(), phaseMaterials=new Set();
   source.updateMatrixWorld(true);
+  const finishes=new Map([[0xe6e1d2,'ship-ivory'],[0x232832,'ship-graphite'],[0x56616b,'ship-alloy'],
+    [0x101b24,'ship-canopy'],[0xf87922,'ship-accent']]);
   // Split multi-material hull faces too; batch all fixed parts into six materials.
   source.traverse(mesh=>{
     if(!mesh.isMesh)return;
@@ -16,6 +18,7 @@ export function racingShip() {
     const ranges=materials.length>1?geometry.groups:[{start:0,count:geometry.attributes.position.count,materialIndex:0}];
     for(const range of ranges){
       const material=materials[range.materialIndex], part=new THREE.BufferGeometry();
+      if(!material.name)material.name=finishes.get(material.color.getHex())||'ship-hull';
       // This asset uses untextured materials; retain its authored face normals.
       for(const name of ['position','normal']){
         const attribute=geometry.attributes[name];
@@ -36,7 +39,22 @@ export function racingShip() {
   // Center its 0.95 m height on the existing hover/collision anchor.
   model.rotation.y=Math.PI;model.position.y=-.475;ship.add(model);
   ship.name='reference-reconstruction-racer';
-  const exhaustMaterial=new THREE.MeshBasicMaterial({color:0x4de1ff});
+  const exhaustMaterial=new THREE.ShaderMaterial({
+    transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+    uniforms:{phaseColor:{value:new THREE.Color(0x4de1ff)},clock:{value:0},thrust:{value:0}},
+    vertexShader:`varying vec2 vPlumeUv;void main(){vPlumeUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+    fragmentShader:`uniform vec3 phaseColor;uniform float clock,thrust;varying vec2 vPlumeUv;
+      void main(){
+        float tail=clamp(1.0-vPlumeUv.y,0.0,1.0);
+        float flow=.9+.1*sin(vPlumeUv.y*38.0-clock*24.0);
+        float core=pow(tail,3.0);
+        vec3 light=mix(phaseColor*1.8,vec3(2.7,2.9,3.0),core*.65);
+        gl_FragColor=vec4(light*(1.0+thrust*.55),pow(tail,.65)*flow*.72);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  });
+  exhaustMaterial.color=exhaustMaterial.uniforms.phaseColor.value;
   const exhaustGeometry=new THREE.ConeGeometry(.16,1,8);
   // Unit cone starts at its nozzle and extends backwards; scaling keeps it attached.
   exhaustGeometry.rotateX(Math.PI/2);exhaustGeometry.translate(0,0,.5);

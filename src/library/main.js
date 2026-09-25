@@ -12,6 +12,8 @@ import { slabAssembly, applySlabEnvironment } from '../racer/slab-kit.js';
 import slabs from '../../public/assets/track/slab-surface-r1.js';
 import {setEmitterColor} from '../racer/phase-emitter-kit.js';
 import {PHASES} from '../racer/track.js';
+import {updatePhaseField} from '../../public/assets/track/phase-field-r1.js';
+import {updateObstacleLight} from '../../public/assets/track/obstacle-lights-r1.js';
 
 const $ = id => document.getElementById(id);
 const catalog = {
@@ -91,7 +93,8 @@ try {
   const camera = new THREE.PerspectiveCamera(40, 1, 0.01, 2000);
   const controls = new OrbitControls(camera, $('viewer')); controls.enableDamping = true;
   controls.maxPolarAngle = Math.PI * 0.49;
-  let asset, nodes = [], radius = 1, view = 'perspective';
+  let asset, nodes = [], fields = [], actionLights = [], radius = 1, view = 'perspective';
+  const motionPreference = matchMedia('(prefers-reduced-motion: reduce)');
   function fit() {
     if (!asset) return;
     asset.traverse(n => { if (n.isMesh) n.visible = true; });
@@ -116,8 +119,10 @@ try {
     const emitterAsset=$('category').value==='12'&&entry[0].includes('-gate');
     $('gate-controls').hidden=!emitterAsset;
     if(emitterAsset)setEmitterColor(asset,PHASES[Number($('gate-phase').value)].hex);
-    if(entry[0].startsWith('slab-')||['09','10','11','12','13'].includes($('category').value))applySlabEnvironment(THREE,renderer,asset);
+    if(entry[0].startsWith('slab-')||entry[0].startsWith('edge-light')||entry[0]==='lit-roadside'||['09','10','11','12','13'].includes($('category').value))applySlabEnvironment(THREE,renderer,asset);
     nodes = []; asset.traverse(n => { if (n.isMesh) nodes.push(n); });
+    fields = [...new Set(nodes.map(n=>n.material).filter(m=>m.userData.phaseField))];
+    actionLights = [...new Set(nodes.map(n=>n.material).filter(m=>m.userData.obstacleLight))];
     $('node').replaceChildren(new Option('Whole asset', 'all'));
     nodes.forEach((node, i) => $('node').add(new Option(`${i + 1} · ${node.name || 'mesh'}`, String(i))));
     $('description').textContent = { '01': 'Approved foundation R1. Parts extracted from the road asset.', '02': 'Approved pipe kit R1.', '03': 'Grille kit R1 — awaiting approval. Open lattice, louvers and reinforced panels.', '04': 'Covered-metal kit R1 — awaiting approval. Plain armor, segmented panels, hatches and vents.' }[$('category').value];
@@ -153,11 +158,11 @@ try {
     }
     if($('category').value==='12'){
       const shape=entry[0].split('-')[0];
-      $('description').textContent='W4 R2: solid beveled ivory armor over a setback shell, real vent/lock apertures, recessed louvers, washer-mounted fasteners, service doors, pipe couplings and optical wells. Shared surfaces replace the overlapping R1 plates. Start/middle/end bays, four-bay runs and tube ring joins use the same construction. Drive samples retain steering bypasses.';
-      $('status').textContent='12 · W4 walls R2 · approved';
+      $('description').textContent='W4 blocking walls with red corner lights marking solid space and large white steering chevrons. This asset preview displays a right turn; the game selects a clear exit shared with its road guide. The ivory armor, service doors, louvers and pipework retain their existing shape.';
+      $('status').textContent='12 · W4 action lighting · awaiting review';
       $('drive').href=`./racer.html?review=12&shape=${shape}`;
       if(entry[0].includes('-barrier-')||entry[0].includes('-obstacle-')){
-        $('description').textContent='J3 louver banks with ivory frames, deep cooling fins, protected pipes, recessed white jump chevrons, top service trays and armored end caps. Assemblies include tall opening-only passages, a compact 4.2 m jump-or-opening frame with 3.5 m clearance, and full-width 2.4 m jump barriers. All obstacles remain 5 m deep.';
+        $('description').textContent='J3 barriers now use large white upward chevrons, a lit clearance rail and red foot markers. During play, the active barrier sequences upward and brightens with its takeoff window. Assemblies retain full-width 2.4 m barriers and 4.2 m jump-or-opening alternatives. All obstacles remain 5 m deep.';
         $('status').textContent='12 · J3 barriers and obstacle assemblies R1 · awaiting review';
         $('drive').href=`./racer.html?review=12&element=obstacles&shape=${shape}`;
       }
@@ -167,7 +172,9 @@ try {
         $('drive').href=`./racer.html?review=12&element=passages&shape=${shape}`;
       }
       if(emitterAsset){
-        $('description').textContent='F1 + F2: deep capacitor wells, charging cables with ribbed sleeves and brass couplings, machined ivory frames, inset service hatches and segmented projector lenses. Extended to 24 metres along travel, with extra machinery at both ends. Hardware stays below the driving surface. Switch phase below to recolor this same model live.';
+        $('description').textContent=fields.length
+          ? 'Recessed F1/F2 power station with a tall translucent phase field and upward projector streams that fade softly at the top. The field stands 11 metres high on road and exterior tubes, or 9 metres inside tubes. Switch phase below to change its colour and energy rhythm.'
+          : 'Recessed F1/F2 power station: capacitor wells, charging cables, machined frames and segmented projector lenses. This hardware study hides the projection. Switch phase below to recolour the lenses and cables.';
         $('status').textContent='12 · Recessed phase gates R1 · awaiting review';
         $('drive').href=`./racer.html?review=12&element=gates&shape=${shape}`;
       }
@@ -214,7 +221,12 @@ try {
   if (catalog[params.get('category')]) $('category').value = params.get('category');
   resize(); category(params.get('asset'));
   new ResizeObserver(resize).observe($('viewer').parentElement);
-  renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
+  renderer.setAnimationLoop(time => {
+    for (const material of fields) updatePhaseField(material, {time:time/1000,
+      phase:Number($('gate-phase').value), reduced:motionPreference.matches});
+    for(const material of actionLights)updateObstacleLight(material,{time:time/1000,direction:1,active:.65,reduced:motionPreference.matches});
+    controls.update(); renderer.render(scene, camera);
+  });
 } catch (error) { $('error').hidden = false; $('error').textContent = `Could not load viewer: ${error.message}`; }
 
 

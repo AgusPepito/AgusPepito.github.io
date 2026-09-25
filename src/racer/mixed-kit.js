@@ -1,4 +1,5 @@
 import { detailedBayFactory } from './detailed-kit.js';
+import {mountEdgeLight,LIT_WALL_OFFSET} from './roadside-lighting.js';
 
 export const BAY_PITCH = 12.5;
 // Authored in whole bays, independent of the renderer's 100 m chunks.
@@ -29,7 +30,7 @@ export function mixedBayAt(layout, index) {
   return { family, kind };
 }
 
-export function mountDetailedBay(THREE, parent, family, kind, side, z, {lateral=20,height=.6}={}) {
+export function mountDetailedBay(THREE, parent, family, kind, side, z, {lateral=18+LIT_WALL_OFFSET,height=.6}={}) {
   // Mirroring the mounting direction must also reverse the source cap names.
   const sourceKind = side > 0 ? kind.replace('start','TEMP').replace('end','start').replace('TEMP','end') : kind;
   const module = detailedBayFactory(family,sourceKind)(THREE);
@@ -44,7 +45,11 @@ export function addMixedBays(THREE, foundation, chunkIndex = 0, layouts = MIXED_
   for (const [sideIndex, side] of [-1, 1].entries()) {
     for (let i = 0; i < 8; i++) {
       const bay = mixedBayAt(layouts[sideIndex], chunkIndex * 8 + i);
-      if (bay) mountDetailedBay(THREE, foundation, bay.family, bay.kind, side, 43.75 - i * BAY_PITCH);
+      if (bay) {
+        const z=43.75-i*BAY_PITCH;
+        mountDetailedBay(THREE,foundation,bay.family,bay.kind,side,z);
+        mountEdgeLight(THREE,foundation,side,{height:.6,z});
+      }
     }
   }
 }

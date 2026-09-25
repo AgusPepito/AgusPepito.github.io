@@ -21,6 +21,11 @@ import { CampaignStream } from './campaign-stream.js';
 import { racingShip } from './ship-kit.js';
 import { spaceSky, resizeSpaceSky } from './space-sky.js';
 import { SpaceScenery } from './space-scenery.js';
+import { RacePipeline } from './render-pipeline.js';
+import { RaceVfx, softenHoverShadow } from './race-vfx.js';
+import { PhaseWallVfx } from './phase-wall-vfx.js';
+import { ObstacleLighting } from './obstacle-lighting.js';
+import { SUN_DIRECTION, PLANET_DIRECTION, graphicsSetting } from './visual-settings.js';
 
 // Lightweight ribbons remain for review baselines, guides and driving-mode gap fills.
 function surface(s, u, height = 0) {
@@ -90,9 +95,9 @@ function wallVolume(obstacle, left, right, bottom, top) {
 export class RaceView {
   constructor(canvas, renderer = null, preparedStream = null, shared = null) {
     this.shaderWarmup={state:constructionReview?'ready':'waiting',durationMs:0};
+    this.shaderPreparation=0;
     this.disposed=false;
     this.renderer = renderer || new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x080e19);
     this.scene.fog = new THREE.Fog(0x080e19, 210, 710);
@@ -101,11 +106,11 @@ export class RaceView {
     this.scene.add(this.camera);
     this.speedEffects = new SpeedEffects(this.camera);
     this.cameraBase = new THREE.Quaternion();
-    this.scene.add(new THREE.HemisphereLight(0xb5d8ff, 0x465578, 2.4));
-    const sun = new THREE.DirectionalLight(0xd6eeff, 2.4); sun.position.set(120, 180, 40); this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0x6a9bdf, 1.5); fill.position.set(-70, -100, -60); this.scene.add(fill);
-    if((constructionWalls||constructionCheckpoints)&&constructionWallShape==='inside')this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
-    if (constructionCategory === '08'||constructionTransition||(constructionGap&&constructionGapShape==='inside')) this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
+    this.scene.add(new THREE.HemisphereLight(0xaacbff, 0x263244, .65));
+    const sun = new THREE.DirectionalLight(0xffe4c5, 2.1); sun.position.copy(SUN_DIRECTION).multiplyScalar(150); this.scene.add(sun);
+    const fill = new THREE.DirectionalLight(0x81b8ff, .45); fill.position.copy(PLANET_DIRECTION).multiplyScalar(150); this.scene.add(fill);
+    // Broad bounce keeps the tube interior readable without flattening recesses.
+    this.scene.add(new THREE.AmbientLight(0x9bacce,.2));
     this.chunks = []; this.gates = []; this.energyGroups = []; this.walls = []; this.gapMarkers = [];
     this.pendingAssets = [];
     if(!constructionReview){
@@ -118,7 +123,6 @@ export class RaceView {
       this.assetStream.activate();
       this.pendingAssets = this.assetStream.pending;
     }
-    if (!constructionReview) this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
     this.gapFills = new THREE.Group(); this.scene.add(this.gapFills);
     const asphalt = new THREE.MeshStandardMaterial({ color: 0x263649, roughness: 0.8, side: THREE.DoubleSide });
     const lane = new THREE.MeshBasicMaterial({ color: 0x678298, side: THREE.DoubleSide });
@@ -198,7 +202,9 @@ export class RaceView {
       if (!constructionReview) {
         const group = new THREE.Group();
         const entry = { gate, group, displayedPhase: null };
-        this.assetStream.add(group, { kind: 'gate', entity: gate }, gate.s - 15, gate.s + 9, () => { entry.displayedPhase = null; });
+        this.assetStream.add(group, { kind: 'gate', entity: gate }, gate.s - 15, gate.s + 9, () => {
+          entry.displayedPhase = null; this.phaseWalls.bind(entry);
+        });
         this.scene.add(group); this.gates.push(entry); continue;
       }
       if(constructionEmitters){
@@ -227,8 +233,10 @@ export class RaceView {
     for (const obstacle of OBSTACLES) {
       if (!constructionReview) {
         const group = new THREE.Group();
-        this.assetStream.add(group, { kind: 'obstacle', entity: obstacle }, obstacle.s - 24, obstacle.s + obstacle.depth);
-        this.scene.add(group); this.walls.push({obstacle, group}); continue;
+        const entry={obstacle,group};
+        this.assetStream.add(group, { kind: 'obstacle', entity: obstacle }, obstacle.s - 24, obstacle.s + obstacle.depth,
+          ()=>this.obstacleLighting.bind(entry));
+        this.scene.add(group); this.walls.push(entry); continue;
       }
       if(constructionWalls){
         const group=constructionObstacles?modeledObstacle(THREE,obstacle,constructionWallShape):obstacle.kind==='hole'?passageObstacle(THREE,obstacle,constructionWallShape):wallObstacle(THREE,obstacle,constructionWallShape);
@@ -261,14 +269,31 @@ export class RaceView {
     this.scene.add(this.ship);
     this.shadow = new THREE.Mesh(new THREE.CircleGeometry(1.6, 24), new THREE.MeshBasicMaterial({ color: 0x050912,
       transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
+    softenHoverShadow(this.shadow);
     this.scene.add(this.shadow);
     this.finish = new THREE.Group();
     if (!constructionReview) this.assetStream.add(this.finish, { kind: 'checkpoint' }, LENGTH - 15, LENGTH + 15);
     this.scene.add(this.finish);
-    if (!constructionReview) applySlabEnvironment(THREE,this.renderer,this.scene);
+    applySlabEnvironment(THREE,this.renderer,this.scene);
     this.passageGuide = new PassageGuide(this.scene);
-    this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.motionPreference=matchMedia('(prefers-reduced-motion: reduce)');
+    this.reduced=this.motionPreference.matches;
+    this.onMotionPreference=event=>{this.reduced=event.matches;};
+    this.motionPreference.addEventListener('change',this.onMotionPreference);
+    this.pipeline=shared?.pipeline||new RacePipeline(this.renderer,this.scene,this.camera,graphicsSetting());
+    this.pipeline.setScene(this.scene,this.camera);
+    this.vfx=new RaceVfx(this.scene,this.ship,this.exhausts,this.pipeline.quality);
+    this.phaseWalls=new PhaseWallVfx(this.gates);
+    this.obstacleLighting=new ObstacleLighting(this.walls);
     this.resize(); this.snap = true;
+    if(constructionReview)this.prepareShaders();
+  }
+  setGraphics(quality) {
+    this.shaderPreparation++;
+    this.pipeline.setQuality(quality);this.vfx.setQuality(this.pipeline.quality);
+    this.shaderWarmup={state:'waiting',durationMs:0};
+    this.resize();
+    if(!this.assetStream||this.assetStream.ready())this.prepareShaders();
   }
   prepareAssets(distance, timing = null) {
     const metric = this.assetStream?.update(distance, (group, root) => {
@@ -280,6 +305,7 @@ export class RaceView {
   }
   prepareShaders() {
     const began=performance.now(),warmup=this.shaderWarmup;
+    const generation=++this.shaderPreparation;
     warmup.state='compiling';
     const programsBefore=this.renderer.info.programs.length;
     this.onShaderWarmup?.('shader-warmup-start',{programsBefore,
@@ -288,13 +314,13 @@ export class RaceView {
     // so lighting, fog, environment maps and instancing match the race shaders.
     // Do not render these materials until the async compilation has completed.
     const fail=error=>{
-      if(this.disposed)return;
+      if(this.disposed||generation!==this.shaderPreparation)return;
       warmup.state='error';warmup.error=`Graphics preparation failed: ${error.message??error}`;
       this.onShaderWarmup?.('shader-warmup-error',{message:warmup.error});
     };
     try {
-      this.renderer.compileAsync(this.scene,this.camera).then(()=>{
-        if(this.disposed)return;
+      this.pipeline.prepare().then(()=>{
+        if(this.disposed||generation!==this.shaderPreparation)return;
         warmup.state='ready';warmup.durationMs=performance.now()-began;
         this.onShaderWarmup?.('shader-warmup-ready',{durationMs:warmup.durationMs,
           programsBefore,programsAfter:this.renderer.info.programs.length});
@@ -324,10 +350,13 @@ export class RaceView {
     const shipAssets=Object.fromEntries(['ship','phaseMaterials','exhaustMaterial','exhausts','shipGlowMaterial'].map(key=>[key,this[key]]));
     this.scene.remove(this.ship,this.sky);
     if(this.spaceScenery)this.scene.remove(this.spaceScenery.group);
-    return {shipAssets,sky:this.sky,spaceScenery:this.spaceScenery};
+    this.sharedPipeline=true;
+    return {shipAssets,sky:this.sky,spaceScenery:this.spaceScenery,pipeline:this.pipeline};
   }
   dispose({ keepRenderer = false } = {}) {
     this.disposed=true;
+    this.motionPreference.removeEventListener('change',this.onMotionPreference);
+    if(!this.sharedPipeline)this.pipeline.dispose();
     this.assetStream?.dispose();
     this.pendingAssets.length = 0;
     const geometries = new Set(), materials = new Set(), textures = new Set();
@@ -336,6 +365,8 @@ export class RaceView {
       if (object.geometry) geometries.add(object.geometry);
       for (const material of object.material ? Array.isArray(object.material) ? object.material : [object.material] : []) {
         materials.add(material);
+        if(material.userData.planetTexture)textures.add(material.userData.planetTexture);
+        if(material.userData.galaxyTexture)textures.add(material.userData.galaxyTexture);
         for (const [key, value] of Object.entries(material)) {
           if (value?.isTexture && !value.userData.sharedTrackResource && !(keepRenderer && key === 'envMap')) textures.add(value);
         }
@@ -346,7 +377,7 @@ export class RaceView {
     else this.renderer.renderLists.dispose();
   }
   resize() {
-    this.renderer.setSize(innerWidth, innerHeight, false); this.camera.aspect = innerWidth / innerHeight;
+    this.pipeline.resize(); this.camera.aspect = innerWidth / innerHeight;
     this.camera.updateProjectionMatrix();
     resizeSpaceSky(this.sky,this.camera.aspect);
   }
@@ -368,8 +399,11 @@ export class RaceView {
     this.shadow.visible = race.mode === 'drive' || !gapAt(race.s, race.u);
     this.shadow.position.copy(f.p).addScaledVector(f.normal, 0.025);
     this.shadow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.normal);
-    this.shadow.material.opacity = 0.5 / (1 + Math.max(0, race.height) * 0.15);
+    this.shadow.material.opacity = .38 / (1 + Math.max(0, race.height) * .45);
+    this.shadow.scale.setScalar(1+Math.max(0,race.height)*.06);
     this.exhaustMaterial.color.setHex(PHASES[race.phase].hex);
+    this.exhaustMaterial.uniforms.clock.value=this.reduced?0:race.time;
+    this.exhaustMaterial.uniforms.thrust.value=race.thrustBlend;
     this.shipGlowMaterial.color.setHex([0x00cfff,0xff9200,0xb800ff][race.phase]);
     this.shipGlowMaterial.opacity=.3+race.thrustBlend*.06;
     for(const material of this.phaseMaterials){
@@ -396,32 +430,35 @@ export class RaceView {
     for (const entry of this.gates){
       const {gate,group}=entry;
       group.visible=(!constructionReview||race.mode==='phase')&&gate.s+9>race.s-30&&gate.s-15<race.s+760;
-      if (!constructionReview) group.traverse(m => { if(m.isMesh&&m.material.name.endsWith('-curtain'))m.visible=race.mode==='phase'; });
       if((constructionEmitters||!constructionReview)&&entry.displayedPhase!==gate.phase){
         setEmitterColor(group,PHASES[gate.phase].hex);entry.displayedPhase=gate.phase;
       }
     }
+    this.phaseWalls.update(race,this.reduced,this.pipeline.quality);
     for (const { obstacle, group } of this.walls) group.visible = race.mode === 'phase' && obstacle.s > race.s - 40 && obstacle.s < race.s + 730;
     this.gapFills.visible = race.mode === 'drive';
     for (const { gap, group } of this.gapMarkers) group.visible = (!constructionReview || race.mode === 'phase') && gap.end + 12 > race.s - 50 && gap.start - 12 < race.s + 760;
     this.finish.visible = !constructionReview && race.s > LENGTH - 750;
     const guideBegan = timing ? performance.now() : 0;
     this.spaceScenery?.update(race.s);
-    if(constructionGap||race.demo)this.passageGuide.group.visible=false;
+    this.vfx.update(race,f,this.camera,this.reduced);
+    for(const material of this.phaseMaterials)material.emissiveIntensity=2.8+this.vfx.phasePulse*3;
+    if(constructionGap||race.demo){this.passageGuide.group.visible=false;this.passageGuide.signal=null;}
     else this.passageGuide.update(race, this.reduced);
+    this.obstacleLighting.update(race,this.passageGuide.signal,this.reduced);
     this.speedEffects.update({ speed: race.speed, time: race.time, distance: race.s,
       boostBlend: race.boostBlend, status: race.state }, {
       shake: EFFECT_DEFAULTS.shake + race.thrustBlend * 0.34,
       wind: EFFECT_DEFAULTS.wind + race.thrustBlend * 0.35,
     }, this.reduced);
     const renderBegan = timing ? performance.now() : 0;
-    // Follow the course-facing camera pose, excluding shake, to keep the cropped
-    // background ahead through turns and tube rolls without exposing panel edges.
+    // The backdrop surface covers the camera. Its shader samples world directions,
+    // so stars and the planet retain their orientation through turns and tube rolls.
     this.sky.position.copy(this.camera.position);
     this.sky.quaternion.copy(this.cameraBase);
     const skyZoom=Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2))/Math.tan(THREE.MathUtils.degToRad(102/2));
     this.sky.scale.set(skyZoom,skyZoom,1);
-    this.renderer.render(this.scene, this.camera);
+    this.pipeline.render();
     if (timing) {
       timing.guideEffectsMs = renderBegan - guideBegan;
       timing.renderSubmitMs = performance.now() - renderBegan;

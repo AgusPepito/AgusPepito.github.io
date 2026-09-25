@@ -31,6 +31,39 @@ export function gapJumpCue(race, gap) {
   };
 }
 
+// Barrier clearance includes the nose entering and tail leaving the full depth.
+// Estimate a launch window from the same piecewise jump curve used by Race.
+// Bound forward travel between coasting/current braking and continued boost;
+// recompute before launch as speed and braking change. No physics is modified.
+export function barrierJumpCue(race, obstacle) {
+  const required=(obstacle.height??2.4)+JUMP.bodyHalfHeight-JUMP.hover+.18;
+  if(required>=JUMP.peak)return null;
+  const ratio=Math.max(0,required/JUMP.peak);
+  const riseTime=JUMP.rise*(1-Math.sqrt(1-ratio))+.025;
+  const fallTime=JUMP.rise+JUMP.fall*(-.3+Math.sqrt(.09+2.8*(1-ratio)))/1.4-.04;
+  let minMetric=Infinity,maxMetric=1;
+  for(let i=0;i<=8;i++){
+    const s=race.s+(obstacle.s+obstacle.depth+3-race.s)*i/8;
+    const metric=frame(s,race.u).metric;minMetric=Math.min(minMetric,metric);maxMetric=Math.max(maxMetric,metric);
+  }
+  const speed=race.speed;
+  const fastTravel=t=>{
+    const accelerating=Math.min(t,Math.max(0,250-speed)/150);
+    return speed*accelerating+75*accelerating*accelerating+Math.max(speed,250)*(t-accelerating);
+  };
+  const slowTravel=t=>race.brakeTime>0
+    ? Math.min(speed,race.brakeTarget)*Math.min(t,race.brakeTime)+coastRange(Math.min(speed,race.brakeTarget),Math.max(0,t-race.brakeTime))
+    : coastRange(speed,t);
+  const latest=obstacle.s-1.95-fastTravel(riseTime)/minMetric;
+  const clearanceStart=obstacle.s+obstacle.depth+1.95-slowTravel(fallTime)/maxMetric;
+  const earliest=Math.max(clearanceStart,latest-Math.max(8,Math.min(18,speed*.12)));
+  const enough=earliest<=latest;
+  return {earliest,latest,enough,bandStart:enough?earliest:latest-5,
+    ready:enough&&!race.airborne&&race.s>=earliest&&race.s<=latest,
+    near:obstacle.s-race.s<speed/maxMetric*2.5,
+    range:slowTravel(JUMP.duration)/maxMetric,airborne:race.airborne&&race.jumpTime>=0};
+}
+
 export const JUMP = { peak: 4.9, rise: 0.32, fall: 0.98, duration: 1.3, edgeGrace: 0.1, gravity: 32, hover: 1.05, bodyHalfHeight: 0.65 };
 // Fast ease-out launch, then an accelerating descent with no stationary apex hold.
 // Continue below the road when a jump ends over a gap instead of snapping onto it.
@@ -46,13 +79,7 @@ export function jumpPose(time) {
   const t = time - JUMP.duration, velocity = -JUMP.peak * 1.7 / JUMP.fall;
   return { height: velocity * t - JUMP.gravity * t * t / 2, velocity: velocity - JUMP.gravity * t };
 }
-export const GAPS = [
-  { start: 540, end: 670, center: 0, width: 1, full: true },
-  { start: 1760, end: 1940, center: 0, width: 1, full: true },
-  { start: 3370, end: 3490, center: -0.4, width: 0.32 },
-  { start: 4260, end: 4360, center: -0.55, width: 0.24 },
-  { start: 4890, end: 5120, center: 0, width: 1, full: true },
-];
+export const GAPS = [];
 export function gapAt(s, u) {
   return GAPS.find(gap => s >= gap.start && s < gap.end && (gap.full ||
     Math.abs(section(s).closed ? wrap(u - gap.center) : u - gap.center) < gap.width));

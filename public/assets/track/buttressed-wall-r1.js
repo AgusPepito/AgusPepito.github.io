@@ -1,10 +1,12 @@
 import {omitFaces,openBottomBox} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
+import {obstacleLightKit} from './obstacle-lights-r1.js';
 
 // W4 R2: one measured buttress profile drives the armor and its recessed shell.
 // X repeats; Y is height; the approach face looks toward +Z. Nominal 7 x 5 m.
-export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
+export default function generate(THREE,{width=18,startCap=true,endCap=true,signals=true}={}){
   const root=new THREE.Group();root.name='w4-buttressed-wall-r2';
+  const lights=signals?obstacleLightKit(THREE,'wall'):null;
   const grain=surfaceMaps(THREE);
   const mats={
     graphite:new THREE.MeshStandardMaterial({color:0x4a5055,roughness:.45,metalness:.72,...grain,normalScale:new THREE.Vector2(.32,.32)}),
@@ -55,6 +57,7 @@ export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
     const left=-width/2+i*cell,ribX=left+ribWidth/2;
     const right=left+cell-(endCap&&i===bays-1?ribWidth:0);
     const a=left+ribWidth+.055,b=right-.055,pw=b-a,x=(a+b)/2;
+    if(lights&&pw>.7)lights.panel(root,x,3.55,-1.15,Math.min(2.05,pw-.16),2.45);
     // Bay skin has a genuine cooling aperture; dark core is 0.17 m behind it.
     plate('beveled-recessed-wall-armor',x,3.45,-1.47,pw,5.15,'graphite',[[0,1.55,pw*.72,.7]]);
     box('cooling-well-back',x,5,-1.64,pw*.75,.77,.035,'dark');
@@ -144,5 +147,6 @@ export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
     box('terminal-service-panel',side*(width/2-.018),3.42,-3.27,.035,4.8,2.05,'steel');
     for(const y of [1.16,5.67])box('terminal-panel-lock-rail',side*(width/2-.008),y,-3.27,.016,.12,1.8,'brass');
   }
+  lights?.wallEdges(root,width);
   root.userData={width,height:7,depth:5,bays,startCap,endCap,revision:'12-wall-r2',armorBackingRecess:.2};return root;
 }

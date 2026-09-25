@@ -19,6 +19,18 @@ import {passageAssembly} from '../racer/passage-kit.js';
 import {emitterAssembly} from '../racer/phase-emitter-kit.js';
 import {barrierAssembly,obstacleAssembly} from '../racer/obstacle-kit.js';
 import {checkpointAssembly} from '../racer/checkpoint-kit.js';
+import edgeLight from '../../public/assets/track/edge-light-r1.js';
+import slabs from '../../public/assets/track/slab-surface-r1.js';
+import {mountEdgeLight,LIT_WALL_OFFSET} from '../racer/roadside-lighting.js';
+
+function illuminatedRoadside(THREE) {
+  const root=slabs(THREE,{width:36,length:12.5,columns:6,index:0});
+  for(const side of [-1,1]){
+    mountDetailedBay(THREE,root,'cover','plain',side,0,{lateral:18+LIT_WALL_OFFSET,height:-.03});
+    mountEdgeLight(THREE,root,side);
+  }
+  return root;
+}
 
 function road(THREE, layouts, lanes = false) {
   const root = foundation(THREE);
@@ -119,6 +131,9 @@ export function reviewCatalog(THREE) {
       ]];
     })),
     '05': [
+      ['edge-light','Dashed shoulder light · illuminated',()=>edgeLight(THREE)],
+      ['edge-light-off','Dashed shoulder light · powered off',()=>edgeLight(THREE,{illuminated:false})],
+      ['lit-roadside','Road / dashed shoulder / illuminated walls',()=>illuminatedRoadside(THREE)],
       ['assembly','Mixed road · R1',() => road(THREE,mixed)],
       ['exposed','Ramps and bare-road interval',() => road(THREE,exposed)],
       ['pipe-grille','Pipe → grille full-height join',() => join(THREE,'pipe','grille')],

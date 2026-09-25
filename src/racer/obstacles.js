@@ -2,17 +2,7 @@ import { section, wrap } from './track.js';
 import { JUMP } from './jumps.js';
 
 // Widths are surface-coordinate half-widths. All walls are solid regardless of phase.
-export const OBSTACLES = [
-  { s: 240, kind: 'jump', center: 0, width: 1, depth: 5, height: 2.4 },
-  { s: 460, kind: 'wall', center: 0, width: 0.35, depth: 5 },
-  { s: 1690, kind: 'wall', center: 0.1, width: 0.28, depth: 5 },
-  { s: 2370, kind: 'hole', center: 0.72, width: 0.16, depth: 5, height: 9 },
-  { s: 3080, kind: 'hole', center: 0.35, width: 0.27, depth: 5, height: 4.2 },
-  { s: 3990, kind: 'jump', center: 0, width: 1, depth: 5, height: 2.4 },
-  { s: 4180, kind: 'wall', center: 0, width: 0.3, depth: 5 },
-  { s: 4780, kind: 'hole', center: -0.52, width: 0.16, depth: 5, height: 9 },
-  { s: 6040, kind: 'wall', center: -0.45, width: 0.55, depth: 5 },
-];
+export const OBSTACLES = [];
 export const WALL_HEIGHT = 7;
 export const HOLE_HEIGHT = 3.5;
 
