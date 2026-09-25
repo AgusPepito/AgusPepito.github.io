@@ -1,3 +1,4 @@
+import {exposedBacking} from './geometry-cleanup.js';
 // Shared unwrapped slab candidate. Metres; +Y is the driving normal.
 // All relief lies below the nominal road except the flush lane placed by callers.
 let maps;
@@ -54,8 +55,12 @@ export default function generate(THREE,{width=36,length=100,columns=6,index=0}={
     const mesh=new THREE.Mesh(g,mats[material]);mesh.name=name;root.add(mesh);
   }
   function face(name,x,z,w,l,y,mat){patch(name,[x-w/2,y,z-l/2],[x-w/2,y,z+l/2],[x+w/2,y,z+l/2],[x+w/2,y,z-l/2],mat);}
+  const covered=[];
   function plate(x,z,w,l,top,mat,bolts=false){
     const bevel=.065,base=-.085;
+    // Retain backing beneath bevels and a 2 cm overlap under the top skin.
+    const inset=bevel+.02;
+    covered.push([x-w/2+inset,x+w/2-inset,z-l/2+inset,z+l/2-inset]);
     face('brushed-metal-plate',x,z,w-bevel*2,l-bevel*2,top,mat);
     const outer=[[-w/2,-l/2],[-w/2,l/2],[w/2,l/2],[w/2,-l/2]];
     const inner=outer.map(([a,b])=>[a-Math.sign(a)*bevel,b-Math.sign(b)*bevel]);
@@ -70,7 +75,7 @@ export default function generate(THREE,{width=36,length=100,columns=6,index=0}={
       face('fastener-driver-slot',x+dx,z+dz,.065,.023,top+.004,'joint');
     }
   }
-  face('slab-recess-floor',0,0,width,length,-.09,'joint');
+
   const cell=width/columns;
   for(let col=0;col<columns;col++)for(let row=0,at=0;at<length;row++){
     // Absorb a short cut-end remainder into the preceding course so repair
@@ -90,6 +95,7 @@ export default function generate(THREE,{width=36,length=100,columns=6,index=0}={
     }else plate(x,z,w,l,kind===1?-.028:-.012,kind===2?'worn':'graphite',kind===4);
     at+=span;
   }
+  exposedBacking(width,length,covered,(x,z,w,l)=>face('slab-recess-floor',x,z,w,l,-.09,'joint'));
   if(columns===6)for(const side of [-1,1])face('flush-ivory-edge-trim',side*(width/2-.12),0,.24,length,.002,'ivory');
   root.userData={length,width,revision:'slab-candidate-r1',depth:.09};return root;
 }

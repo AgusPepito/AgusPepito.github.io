@@ -60,10 +60,10 @@ export default function generate(THREE,{inside=false,kind='takeoff',partial=fals
     if(family===0){
       // Pipe cartridge: paired radial conduits with stepped sleeves and straps.
       for(const da of [-.029,.029]){
-        const pipe=mesh('recessed-radial-conduit',new THREE.CylinderGeometry(.12,.12,high-low,12),'steel');
+        const pipe=mesh('recessed-radial-conduit',new THREE.CylinderGeometry(.12,.12,high-low,8),'steel');
         pipe.position.set(...point(mid,c+da,.83));pipe.rotation.z=inside?c+da+Math.PI:-(c+da);
         for(const r of [low+.22,high-.22]){
-          const sleeve=mesh('conduit-stepped-sleeve',new THREE.CylinderGeometry(.17,.17,.22,12),'brass');sleeve.position.set(...point(r,c+da,.83));sleeve.rotation.z=pipe.rotation.z;
+          const sleeve=mesh('conduit-stepped-sleeve',new THREE.CylinderGeometry(.17,.17,.22,8),'brass');sleeve.position.set(...point(r,c+da,.83));sleeve.rotation.z=pipe.rotation.z;
         }
       }
       block('pipe-retaining-strap',c,mid,.61,mid*cell*.68,.12,.1,'ivory');

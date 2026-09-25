@@ -1,0 +1,207 @@
+{
+  "source": "vector-shift-performance-2026-09-25T03-26-55-488Z.json",
+  "version": "all-level-cache-v6",
+  "exportedAt": "2026-09-25T03:26:55.465Z",
+  "items": [
+    {
+      "rank": 1,
+      "level": 3,
+      "kind": "gate",
+      "station": 4420,
+      "start": 4405,
+      "buildMs": 1194.5199999809265,
+      "packMs": 31.77500009536743,
+      "bytes": 61132860
+    },
+    {
+      "rank": 2,
+      "level": 3,
+      "kind": "gate",
+      "station": 4580,
+      "start": 4565,
+      "buildMs": 1193.695000052452,
+      "packMs": 26.5,
+      "bytes": 61200092
+    },
+    {
+      "rank": 3,
+      "level": 3,
+      "kind": "gate",
+      "station": 5180,
+      "start": 5165,
+      "buildMs": 1184.5249999761581,
+      "packMs": 20.360000014305115,
+      "bytes": 50031980
+    },
+    {
+      "rank": 4,
+      "level": 3,
+      "kind": "gate",
+      "station": 1500,
+      "start": 1485,
+      "buildMs": 1142.1650000810623,
+      "packMs": 25.914999961853027,
+      "bytes": 60975196
+    },
+    {
+      "rank": 5,
+      "level": 1,
+      "kind": "gate",
+      "station": 1300,
+      "start": 1285,
+      "buildMs": 1095.9650000333786,
+      "packMs": 15.100000023841858,
+      "bytes": 53345740
+    },
+    {
+      "rank": 6,
+      "level": 3,
+      "kind": "gate",
+      "station": 1340,
+      "start": 1325,
+      "buildMs": 1087.3500000238419,
+      "packMs": 22.449999928474426,
+      "bytes": 50351148
+    },
+    {
+      "rank": 7,
+      "level": 1,
+      "kind": "gate",
+      "station": 3900,
+      "start": 3885,
+      "buildMs": 1086.6399999856949,
+      "packMs": 16.170000076293945,
+      "bytes": 60026812
+    },
+    {
+      "rank": 8,
+      "level": 3,
+      "kind": "gate",
+      "station": 2710,
+      "start": 2695,
+      "buildMs": 779.1799999475479,
+      "packMs": 23.02500009536743,
+      "bytes": 41711340
+    },
+    {
+      "rank": 9,
+      "level": 3,
+      "kind": "gate",
+      "station": 5680,
+      "start": 5665,
+      "buildMs": 638.0899999141693,
+      "packMs": 12.585000038146973,
+      "bytes": 30391888
+    },
+    {
+      "rank": 10,
+      "level": 3,
+      "kind": "chunk",
+      "station": 1750,
+      "start": 1750,
+      "buildMs": 567.7900000810623,
+      "packMs": 0.31499993801116943,
+      "bytes": 0
+    },
+    {
+      "rank": 11,
+      "level": 3,
+      "kind": "chunk",
+      "station": 1850,
+      "start": 1850,
+      "buildMs": 560.3349999189377,
+      "packMs": 0.36000001430511475,
+      "bytes": 0
+    },
+    {
+      "rank": 12,
+      "level": 1,
+      "kind": "gate",
+      "station": 5700,
+      "start": 5685,
+      "buildMs": 532.8499999046326,
+      "packMs": 7.680000066757202,
+      "bytes": 27866544
+    },
+    {
+      "rank": 13,
+      "level": 3,
+      "kind": "chunk",
+      "station": 4950,
+      "start": 4950,
+      "buildMs": 531.5449999570847,
+      "packMs": 0.12999999523162842,
+      "bytes": 0
+    },
+    {
+      "rank": 14,
+      "level": 3,
+      "kind": "chunk",
+      "station": 5050,
+      "start": 5050,
+      "buildMs": 491.6999999284744,
+      "packMs": 0.6449999809265137,
+      "bytes": 1350826
+    },
+    {
+      "rank": 15,
+      "level": 3,
+      "kind": "chunk",
+      "station": 4850,
+      "start": 4850,
+      "buildMs": 472.0499999523163,
+      "packMs": 1.0750000476837158,
+      "bytes": 2265546
+    },
+    {
+      "rank": 16,
+      "level": 3,
+      "kind": "gate",
+      "station": 1240,
+      "start": 1225,
+      "buildMs": 409.6650000810623,
+      "packMs": 9.990000009536743,
+      "bytes": 22031428
+    },
+    {
+      "rank": 17,
+      "level": 3,
+      "kind": "chunk",
+      "station": 4350,
+      "start": 4350,
+      "buildMs": 391.375,
+      "packMs": 2.740000009536743,
+      "bytes": 6112904
+    },
+    {
+      "rank": 18,
+      "level": 3,
+      "kind": "chunk",
+      "station": 4250,
+      "start": 4250,
+      "buildMs": 391.3250000476837,
+      "packMs": 2.725000023841858,
+      "bytes": 6201988
+    },
+    {
+      "rank": 19,
+      "level": 3,
+      "kind": "obstacle",
+      "station": 3990,
+      "start": 3966,
+      "buildMs": 364.1100000143051,
+      "packMs": 6.139999985694885,
+      "bytes": 14503988
+    },
+    {
+      "rank": 20,
+      "level": 3,
+      "kind": "chunk",
+      "station": 4550,
+      "start": 4550,
+      "buildMs": 349.1999999284744,
+      "packMs": 3,
+      "bytes": 6230644
+    }
+  ]
+}

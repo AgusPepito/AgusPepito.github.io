@@ -1,3 +1,4 @@
+import {omitFaces,openBottomBox,raisedPanelBacks} from './geometry-cleanup.js';
 // Recipe route B: derived from the user-approved detailed 30-degree R3 candidate.
 // 12 m long, front +Z, 3.2 m structure; front/end profile leans 30 degrees from vertical.
 export default function generate(THREE) {
@@ -12,9 +13,13 @@ export default function generate(THREE) {
   function mesh(name, geometry, mat, x=0,y=0,z=0) {
     const m=new THREE.Mesh(geometry,mats[mat]);m.name=name;m.position.set(x,y,z);g.add(m);return m;
   }
-  function box(name,x,y,z,w,h,d,mat) {return mesh(name,new THREE.BoxGeometry(w,h,d),mat,x,y,z);}
+  function box(name,x,y,z,w,h,d,mat) {
+    const buried=y-h/2<=.0001||['roof-panel','roof-vent-well','roof-vent-rib','roof-fastener'].includes(name);
+    return mesh(name,buried?openBottomBox(THREE,w,h,d):new THREE.BoxGeometry(w,h,d),mat,x,y,z);
+  }
   function sloped(name,x,y,w,h,d,mat,offset=0) {
     const geometry=new THREE.BoxGeometry(w,h,d);
+    if(raisedPanelBacks.has(name))omitFaces(THREE,geometry,2,-1);
     const p=geometry.attributes.position;
     for(let i=0;i<p.count;i++) p.setZ(i,p.getZ(i)-p.getY(i)*lean);
     geometry.computeVertexNormals();return mesh(name,geometry,mat,x,y,face(y)+offset);
@@ -49,14 +54,14 @@ export default function generate(THREE) {
     const z=face(y)-.36;
     if(kind==='offset') {
       const path=new THREE.CatmullRomCurve3([-5.475,-3,-1,1,3,5.475].map(x=>new THREE.Vector3(x,y+(Math.abs(x)===1?.15:0),z-(Math.abs(x)===1?.16:0))));
-      const body=mesh('offset-pipe-dogleg',new THREE.TubeGeometry(path,32,.255,12,false),'pipe');body.material.side=THREE.DoubleSide;
+      const body=mesh('offset-pipe-dogleg',new THREE.TubeGeometry(path,24,.255,10,false),'pipe');body.material.side=THREE.DoubleSide;
     } else {
-      const pipe=mesh('main-pipe-barrel',new THREE.CylinderGeometry(.255,.255,10.95,16,1),'pipe',0,y,z);pipe.rotation.z=Math.PI/2;
+      const pipe=mesh('main-pipe-barrel',new THREE.CylinderGeometry(.255,.255,10.95,12,1),'pipe',0,y,z);pipe.rotation.z=Math.PI/2;
     }
     for(const x of (kind==='coupling'?[-4.7,-2.65,2.65,4.7]:[-4.7,4.7])) {
       const sleeve=mesh('wide-coupling-sleeve',new THREE.CylinderGeometry(.305,.305,.55,12),'inset',x,y,z);sleeve.rotation.z=Math.PI/2;
       for(const offset of [-.27,.27]) {
-        const ring=mesh('coupling-retaining-band',new THREE.CylinderGeometry(.325,.325,.085,16),'steel',x+offset,y,z);ring.rotation.z=Math.PI/2;
+        const ring=mesh('coupling-retaining-band',new THREE.CylinderGeometry(.325,.325,.085,12),'steel',x+offset,y,z);ring.rotation.z=Math.PI/2;
       }
       // Bolt heads only around the exposed front half of each coupling.
       for(const a of [-.9,0,.9]) {
@@ -65,7 +70,7 @@ export default function generate(THREE) {
       }
     }
     for(const x of [-1,1]) {
-      const cuff=mesh('central-seal-ring',new THREE.CylinderGeometry(.29,.29,.12,16),'brass',x,y,z);cuff.rotation.z=Math.PI/2;
+      const cuff=mesh('central-seal-ring',new THREE.CylinderGeometry(.29,.29,.12,10),'brass',x,y,z);cuff.rotation.z=Math.PI/2;
     }
     box('pipe-saddle',0,y,z-.22,.45,.58,.5,'inset');
     if(kind==='valve'||kind==='coupling') {

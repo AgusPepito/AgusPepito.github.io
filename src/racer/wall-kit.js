@@ -2,6 +2,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import wall from '../../public/assets/track/buttressed-wall-r1.js';
 import {subdivideAcross} from './gap-geometry.js';
 import {slabAssembly} from './slab-kit.js';
+import {indexGeometry,mergeIndexedGeometries} from './compact-geometry.js';
 
 export const WALL_REVIEW_LENGTH=1800;
 export const wallHalfWidth=shape=>shape==='flat'?18:Math.PI*18;
@@ -38,16 +39,33 @@ export function wallObstacle(THREE,obstacle,shape){
   const half=wallHalfWidth(shape),source=wallAssembly(THREE,{shape,width:obstacle.width*half*2,center:obstacle.center*half});
   const result=mergeWallParts(THREE,source);result.position.z=-obstacle.s;return result;
 }
-export function mergeWallParts(THREE,source){
-  const result=new THREE.Group(),groups=new Map(),materials=new Map(),discarded=new Set();
+export function mergeWallParts(THREE,source,{indexed=false,timings=null,worldBaked=false}={}){
+  const result=new THREE.Group(),groups=new Map(),materials=new Map(),discarded=new Set(),instances=[];
   source.updateMatrixWorld(true);
   source.traverse(m=>{
-    if(!m.isMesh)return;const key=m.material.name;
+    if(!m.isMesh)return;
+    // Instance matrices already place these rigid parts in world coordinates.
+    // Keep them separate from the material-batched, fully deformed geometry.
+    if(m.isInstancedMesh){instances.push(m);return;}
+    const key=m.material.name;
     if(!materials.has(key))materials.set(key,m.material);else if(materials.get(key)!==m.material)discarded.add(m.material);
-    const g=(m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone()).applyMatrix4(m.matrixWorld);
+    const began=timings?performance.now():0;
+    // worldBaked is only used for owned campaign meshes whose transforms were
+    // already applied/reset by mountCourseSurface. Consume them without cloning
+    // or transforming all positions/normals through the identity matrix again.
+    const g=indexed&&worldBaked?indexGeometry(THREE,m.geometry)
+      :(indexed?indexGeometry(THREE,m.geometry.clone()):m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone()).applyMatrix4(m.matrixWorld);
+    if(timings)timings.indexCopyMs=(timings.indexCopyMs??0)+performance.now()-began;
     if(!groups.has(key))groups.set(key,[]);groups.get(key).push(g);m.geometry.dispose();
   });
-  for(const [key,pieces]of groups){result.add(new THREE.Mesh(mergeGeometries(pieces),materials.get(key)));pieces.forEach(g=>g.dispose());}
+  const mergeBegan=timings?performance.now():0;
+  for(const [key,pieces]of groups){result.add(new THREE.Mesh(indexed?mergeIndexedGeometries(THREE,pieces):mergeGeometries(pieces),materials.get(key)));pieces.forEach(g=>g.dispose());}
+  for(const mesh of instances){
+    const shared=materials.get(mesh.material.name);
+    if(shared)mesh.material=shared;
+    result.add(mesh);
+  }
+  if(timings)timings.mergeBuffersMs=performance.now()-mergeBegan;
   discarded.forEach(m=>m.dispose());return result;
 }
 export function wallRoadStudy(THREE,{shape='flat'}={}){

@@ -1,3 +1,4 @@
+import {omitFaces,openBottomBox} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
 
 // W4 R2: one measured buttress profile drives the armor and its recessed shell.
@@ -16,7 +17,7 @@ export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
   };
   for(const [key,mat]of Object.entries(mats)){mat.name='wall-w4-r2-'+key;if(['steel','graphite','ivory','replacement'].includes(key))mat.userData.slabFinish=true;}
   function mesh(name,g,key,x=0,y=0,z=0,rigid=false){const m=new THREE.Mesh(g,mats[key]);m.name=name;m.position.set(x,y,z);m.userData.wallRigid=rigid;root.add(m);return m;}
-  function box(name,x,y,z,w,h,d,key){return mesh(name,new THREE.BoxGeometry(w,h,d),key,x,y,z);}
+  function box(name,x,y,z,w,h,d,key){return mesh(name,(y-h/2<=.0001?openBottomBox(THREE,w,h,d):new THREE.BoxGeometry(w,h,d)),key,x,y,z);}
   function outline(w,h,b=.1){
     b=Math.min(b,w*.15,h*.15);const s=new THREE.Shape();
     s.moveTo(-w/2+b,-h/2);s.lineTo(w/2-b,-h/2);s.lineTo(w/2,-h/2+b);s.lineTo(w/2,h/2-b);s.lineTo(w/2-b,h/2);s.lineTo(-w/2+b,h/2);s.lineTo(-w/2,h/2-b);s.lineTo(-w/2,-h/2+b);s.closePath();return s;
@@ -27,6 +28,7 @@ export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
     const shape=outline(w-.05,h-.05);
     for(const hole of holes)aperture(shape,...hole);
     const g=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:true,bevelSegments:1,bevelSize:bevel,bevelThickness:bevel,steps:1});
+    omitFaces(THREE,g,2,-1);
     const p=g.attributes.position;
     for(let i=0;i<p.count;i++){
       const px=p.getX(i)+x,py=p.getY(i)+y,pz=p.getZ(i)-depth-bevel+(profile?profile(py):z);
@@ -81,10 +83,10 @@ export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
     for(const dx of [-.15,0,.15])box('crown-neutral-identification-notch',x+dx,6.57,-1.079,.035,.13,.03,'dark');
     box('rear-crown-rail',crownCenter,6.59,-4.22,cell-.06,.82,1.0,'graphite');
     box('crown-pipe-tray-floor',crownCenter,6.27,-2.92,cell-.06,.13,1.85,'dark');
-    const pipe=mesh('exposed-crown-feed-pipe',new THREE.CylinderGeometry(.17,.17,cell-.065,16),'steel',crownCenter,6.68,-2.64);pipe.rotation.z=Math.PI/2;
+    const pipe=mesh('exposed-crown-feed-pipe',new THREE.CylinderGeometry(.17,.17,cell-.065,10),'steel',crownCenter,6.68,-2.64);pipe.rotation.z=Math.PI/2;
     for(const dx of [-cell/2+.29,cell/2-.29]){
-      const sleeve=mesh('stepped-crown-pipe-coupling',new THREE.CylinderGeometry(.235,.235,.28,12),'brass',crownCenter+dx,6.68,-2.64,true);sleeve.rotation.z=Math.PI/2;
-      for(const da of [-.17,.17]){const ring=mesh('pipe-coupling-retainer',new THREE.CylinderGeometry(.215,.215,.055,12),'dark',crownCenter+dx+da,6.68,-2.64,true);ring.rotation.z=Math.PI/2;}
+      const sleeve=mesh('stepped-crown-pipe-coupling',new THREE.CylinderGeometry(.235,.235,.28,10),'brass',crownCenter+dx,6.68,-2.64,true);sleeve.rotation.z=Math.PI/2;
+      for(const da of [-.17,.17]){const ring=mesh('pipe-coupling-retainer',new THREE.CylinderGeometry(.215,.215,.055,8),'dark',crownCenter+dx+da,6.68,-2.64,true);ring.rotation.z=Math.PI/2;}
     }
     buttress(ribX,i);
     // Pipe saddle sits behind the head, sharing no exposed face with it.
@@ -131,7 +133,7 @@ export default function generate(THREE,{width=18,startCap=true,endCap=true}={}){
     }
     for(const dx of [-.4,.4])for(const y of [6.32,6.82])bolt(x+dx,y,-1.105);
     // Extra protected power feed is visible alongside the base of each rib.
-    const tube=mesh('buttress-side-power-conduit',new THREE.CylinderGeometry(.07,.07,1.5,10),'steel',x+.48,3.85,-1.26);
+    const tube=mesh('buttress-side-power-conduit',new THREE.CylinderGeometry(.07,.07,1.5,8),'steel',x+.48,3.85,-1.26);
     for(const y of [3.18,4.5])box('side-conduit-retaining-clip',x+.48,y,-1.18,.19,.12,.12,'brass');
   }
   if(endCap)buttress(width/2-ribWidth/2,bays);

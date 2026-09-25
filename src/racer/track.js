@@ -5,6 +5,7 @@ import {transitionSection,transitionPoint} from './transition-profile.js';
 export let LENGTH = 6600;
 let profile = 'mixed';
 export function setTrackProfile(length, shape) { LENGTH = length; profile = shape; }
+export function trackProfileSnapshot() { return { length: LENGTH, shape: profile }; }
 export const RADIUS = 18;
 export const PHASES = [
   { name: 'ION', symbol: '●', color: '#4de1ff', hex: 0x4de1ff },
@@ -34,9 +35,9 @@ export function section(s) {
   return { curl, halfWidth, closed: Math.abs(curl) === 1, name };
 }
 
-export function point(s, u) {
-  if(profile==='gap-flat')return new Vector3(u*18,0,-s);
-  if(profile==='transition-09'||profile==='transition-10')return new Vector3(...transitionPoint(profile.slice(-2),s,u));
+export function point(s, u, target = new Vector3()) {
+  if(profile==='gap-flat')return target.set(u*18,0,-s);
+  if(profile==='transition-09'||profile==='transition-10')return target.set(...transitionPoint(profile.slice(-2),s,u));
   const { curl, halfWidth } = section(s), lateral = u * halfWidth, k = curl / RADIUS;
   const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k * lateral) / k;
   const y = Math.abs(k) < 1e-7 ? 0 : (1 - Math.cos(k * lateral)) / k;
@@ -46,7 +47,39 @@ export function point(s, u) {
     + 210 * smooth((s - 2950) / 500) - 180 * smooth((s - 4050) / 900)
     + 45 * smooth((s - 5900) / 450);
   const centerY = profile === 'flat' || tubeReview ? 0 : 24 * smooth((s - 1500) / 800) - 40 * smooth((s - 4150) / 900);
-  return new Vector3(x + centerX, y + centerY, -s);
+  return target.set(x + centerX, y + centerY, -s);
+}
+
+// Same finite-difference frame as gameplay, with reusable vectors for geometry
+// generation. The returned object is scratch storage and must not be retained.
+export function createFrameSampler() {
+  const p = new Vector3(), along = new Vector3(), forward = new Vector3(), right = new Vector3(), normal = new Vector3(), scratch = new Vector3();
+  const result = {p, along, forward, right, normal, metric: 0};
+  // Many gate vertices share a longitudinal station. Cache only the station's
+  // centerline/curvature, not a rounded position or interpolated frame.
+  const stations = new Map(), authoredTransition = profile.startsWith('transition-');
+  const samplePoint = (s, u, target) => {
+    if (authoredTransition) return point(s, u, target);
+    let data = stations.get(s);
+    if (!data) {
+      const road = section(s), origin = point(s, 0);
+      data = {k:road.curl/RADIUS,half:road.halfWidth,x:origin.x,y:origin.y};
+      if (stations.size >= 8192) stations.clear();
+      stations.set(s,data);
+    }
+    const lateral = u * data.half, k = data.k;
+    const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k*lateral)/k;
+    const y = Math.abs(k) < 1e-7 ? 0 : (1-Math.cos(k*lateral))/k;
+    return target.set(x+data.x,y+data.y,-s);
+  };
+  return (s, u) => {
+    samplePoint(s, u, p);
+    samplePoint(s + .1, u, along).sub(samplePoint(s - .1, u, scratch)).multiplyScalar(5);
+    forward.copy(along).normalize();
+    samplePoint(s, u + .0001, right).sub(samplePoint(s, u - .0001, scratch)).normalize();
+    normal.copy(right).cross(forward).normalize(); right.copy(forward).cross(normal).normalize();
+    result.metric = along.length(); return result;
+  };
 }
 
 export function frame(s, u) {

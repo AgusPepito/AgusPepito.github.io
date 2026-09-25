@@ -1,3 +1,4 @@
+import {omitFaces,openBottomBox,topCylinder} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
 
 // F1 cable manifold + F2 capacitor bank. Metres, +Y driving normal,
@@ -12,7 +13,7 @@ export function setEmitterColor(root,color){
   root.userData.phaseColor=color;
 }
 
-export default function generate(THREE,{width=36,color=0x4de1ff,projection=true}={}){
+export default function generate(THREE,{width=36,color=0x4de1ff,projection=true,reuseModules=false,firstModuleOnly=false}={}){
   const root=new THREE.Group();root.name='recessed-phase-emitter-f1-f2-r1';
   const grain=surfaceMaps(THREE),mats={
     ivory:new THREE.MeshStandardMaterial({color:0xcec9b8,metalness:.32,roughness:.49,...grain,normalScale:new THREE.Vector2(.12,.12)}),
@@ -31,7 +32,7 @@ export default function generate(THREE,{width=36,color=0x4de1ff,projection=true}
     if(['cable','energy','glass','curtain'].includes(key))m.userData.phaseTint=true;
   }
   function mesh(name,g,key,x=0,y=0,z=0){const m=new THREE.Mesh(g,mats[key]);m.name=name;m.position.set(x,y,z);root.add(m);return m;}
-  function box(name,x,y,z,w,h,d,key){return mesh(name,new THREE.BoxGeometry(w,h,d),key,x,y,z);}
+  function box(name,x,y,z,w,h,d,key){return mesh(name,openBottomBox(THREE,w,h,d),key,x,y,z);}
   // A horizontal beveled plate with real openings, not painted black overlays.
   function plate(name,x,z,w,d,key='ivory',holes=[],top=-.045){
     const b=Math.min(.10,w/8,d/8),s=new THREE.Shape();
@@ -45,23 +46,26 @@ export default function generate(THREE,{width=36,color=0x4de1ff,projection=true}
     for(let i=0;i<p.count;i+=3)for(const a of [p,n,uv])for(let k=0;k<a.itemSize;k++){
       const j=(i+1)*a.itemSize+k,l=(i+2)*a.itemSize+k,t=a.array[j];a.array[j]=a.array[l];a.array[l]=t;
     }
-    g.computeVertexNormals();return mesh(name,g,key,x,top-.118,z);
+    g.computeVertexNormals();omitFaces(THREE,g,1,-1);return mesh(name,g,key,x,top-.118,z);
   }
   function bolt(x,z,y=-.032){
-    mesh('captive-washer',new THREE.CylinderGeometry(.07,.07,.025,12),'dark',x,y-.025,z);
-    mesh('hex-fastener',new THREE.CylinderGeometry(.045,.045,.04,6),'steel',x,y,z);
+    mesh('captive-washer',topCylinder(THREE,.07,.025,8),'dark',x,y-.025,z);
+    mesh('hex-fastener',topCylinder(THREE,.045,.04,6),'steel',x,y,z);
     box('fastener-slot',x,y+.021,z,.038,.004,.009,'dark');
   }
-  function cylinder(name,x,y,z,r,length,key){const m=mesh(name,new THREE.CylinderGeometry(r,r,length,16),key,x,y,z);m.rotation.x=Math.PI/2;return m;}
+  function cylinder(name,x,y,z,r,length,key){const m=mesh(name,new THREE.CylinderGeometry(r,r,length,r>=.3?12:8,1,name==='capacitor-ceramic-body'),key,x,y,z);m.rotation.x=Math.PI/2;return m;}
   function cable(points,r,key='cable'){
     const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)));
-    return mesh('routed-charging-cable',new THREE.TubeGeometry(curve,28,r,8,false),key);
+    return mesh('routed-charging-cable',new THREE.TubeGeometry(curve,Math.max(12,(points.length-1)*5),r,6,false),key);
   }
   function well(x,z,w,d){
     box('deep-machined-well-floor',x,-1.22,z,w,.14,d,'dark');
     for(const side of [-1,1]){
-      box('well-long-wall',x+side*(w/2-.05),-.65,z,.10,1.08,d,'graphite');
-      box('well-end-wall',x,-.65,z+side*(d/2-.05),w,1.08,.10,'graphite');
+      const longWall=box('well-long-wall',x+side*(w/2-.05),-.65,z,.10,1.08,d,'graphite');
+      const endWall=box('well-end-wall',x,-.65,z+side*(d/2-.05),w,1.08,.10,'graphite');
+      // Only the cavity-facing walls are exposed; their outer faces sit under armor.
+      omitFaces(THREE,longWall.geometry,0,side);
+      omitFaces(THREE,endWall.geometry,2,side);
     }
   }
   function capacitor(x,z,length){
@@ -81,8 +85,12 @@ export default function generate(THREE,{width=36,color=0x4de1ff,projection=true}
     for(const dz of [-.12,0,.12])box('capacitor-tab-engraving',x,-.218,z+dz,.13,.003,.022,'dark');
   }
   const count=Math.max(1,Math.round(width/6)),pitch=width/count,scale=pitch/6;
-  for(let i=0;i<count;i++){
+  let moduleParts;
+  for(let i=0;i<(firstModuleOnly?1:count);i++){
     const first=root.children.length,cx=-width/2+(i+.5)*pitch;
+    if(reuseModules&&moduleParts){
+      for(const part of moduleParts){const m=part.clone();m.geometry=part.geometry.clone();root.add(m);}
+    }else{
     box('sealed-station-undertray',0,-1.39,3,5.98,.18,11.98,'graphite');
     plate('perforated-ivory-station-frame',0,3,5.94,11.94,'ivory',[
       [-.77,1.65,3.32,6.60],[1.94,1.65,1.24,6.60],[-.77,-4.68,3.32,1.78],[1.94,-4.68,1.24,1.78],[0,-3,5.18,.86],
@@ -174,6 +182,8 @@ export default function generate(THREE,{width=36,color=0x4de1ff,projection=true}
         for(const dz of [-2.65,-1.3,1.3,2.65])bolt(x,z+dz);
       }
       for(const dz of [-2.94,2.94])box('extension-end-seal',0,-.17,z+dz,5.94,.23,.09,'dark');
+    }
+    if(reuseModules)moduleParts=root.children.slice(first).map(m=>m.clone());
     }
     // Every detail follows the road's curvature. No tangent-mounted parts can
     // poke above the outside-tube skin. Scale pitch to close the ring exactly.

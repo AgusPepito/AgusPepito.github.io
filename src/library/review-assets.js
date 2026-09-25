@@ -1,7 +1,6 @@
 import foundation from '../../public/assets/track/flat-foundation-r1.js';
 import lane from '../../public/assets/track/phase-lane-r1.js';
 import marker from '../../public/assets/track/neutral-edge-marker-r1.js';
-import { detailedKit } from '../racer/detailed-kit.js';
 import { addMixedBays, expandRuns, mountDetailedBay } from '../racer/mixed-kit.js';
 import { addPhaseLanes } from '../racer/lane-kit.js';
 import { PHASES } from '../racer/track.js';
@@ -31,16 +30,17 @@ function road(THREE, layouts, lanes = false) {
   return root;
 }
 const mixed = [
-  [['pipe',2],['grille',2],['cover',2],['frame',2]],
-  [['cover',3],['frame',2],['pipe',3]],
+  [['cover',1],['pipe',2],['grille',2],['cover',3]],
+  [['cover',3],['grille',2],['pipe',2],['cover',1]],
 ];
 const exposed = [
   [['pipe',3],[null,2],['cover',3]],
-  [['grille',3],[null,2],['frame',3]],
+  [['grille',3],[null,2],['cover',3]],
 ];
 function join(THREE, a, b) {
   const root = new THREE.Group(); root.name = `${a}-to-${b}-interface`;
-  for (const [i,[family,kind]] of [[a,'end'],[b,'start']].entries()) {
+  const central={pipe:'straight',grille:'lattice',cover:'plain'};
+  for (const [i,[family,kind]] of [[a,central[a]],[b,central[b]]].entries()) {
     const bay = mountDetailedBay(THREE,root,family,kind,-1,6.25-i*12.5);
     bay.position.x=0; bay.position.y=0;
   }
@@ -124,7 +124,6 @@ export function reviewCatalog(THREE) {
       ['pipe-grille','Pipe → grille full-height join',() => join(THREE,'pipe','grille')],
       ['grille-cover','Grille → cover full-height join',() => join(THREE,'grille','cover')],
       ['cover-pipe','Cover → pipe full-height join',() => join(THREE,'cover','pipe')],
-      ['empty','Empty housing · reused R3 frame',() => detailedKit.frame.middle(THREE)],
     ],
     '06': [
       ['assembly','Three phase lanes in mixed road · R1',() => road(THREE,mixed,true)],

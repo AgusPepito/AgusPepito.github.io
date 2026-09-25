@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ring station — isolated model study</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080e17;color:#d8ddd9;font:14px system-ui,sans-serif}canvas{display:block;width:100vw;height:100vh}aside{position:fixed;top:20px;left:20px;width:300px;background:#0b121be8;border:1px solid #ffffff21;border-radius:12px;padding:18px}h1{font-size:18px;margin:0 0 8px}p{font-size:12px;line-height:1.5;color:#aeb9c4;margin:8px 0 14px}button{background:#202c38;border:1px solid #55616d;border-radius:5px;color:#e4e6df;padding:8px 10px;cursor:pointer}button[aria-pressed=true]{background:#dddace;color:#121b23}nav{display:flex;gap:6px;margin-bottom:14px}label{display:block;font-size:12px;margin:12px 0}input[type=range]{width:100%;margin-top:10px;accent-color:#dddace}footer{position:fixed;bottom:16px;left:20px;color:#8e9cae;font-size:12px}#error{color:#ffbb99} @media(max-width:650px){aside{top:10px;left:10px;width:250px;padding:12px}h1{font-size:16px}footer{max-width:90vw;font-size:10px}}
+</style></head><body>
+<aside><h1>Orbital ring station</h1><p>Isolated geometry study · 185 m diameter.<br>Thin ring, open spokes, stepped hub and antenna spine. Drag to orbit; scroll to change distance.</p>
+<nav aria-label="Viewing distance"><button data-distance="380">Structure</button><button data-distance="950" aria-pressed="true">Background</button><button data-distance="1800">Far</button></nav>
+<label>Viewing distance <output id="distanceLabel">950 m</output><input id="distance" type="range" min="280" max="2400" value="950" step="10"></label>
+<label><input type="checkbox" id="rotate"> Slowly rotate station</label>
+<button id="reset">Reference angle</button><p id="stats"></p><p id="error" role="alert"></p></aside>
+<footer>Standalone art preview. No track, collision, gameplay hooks or changes to the active game.</footer>
+<script type="module" src="./preview.js"></script></body></html>

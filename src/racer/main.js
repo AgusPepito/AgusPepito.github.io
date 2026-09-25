@@ -1,6 +1,14 @@
 import './style.css';
+import './menu.css';
+import { MenuDemo } from './menu-demo.js';
+import { setupMenuUI } from './menu-ui.js';
+import { RaceMusic } from './music.js';
 import { Race } from './simulation.js';
 import { RaceView } from './view.js';
+import { PerformancePanel } from './performance-panel.js';
+import { CampaignStream, PREFETCH_BYTES } from './campaign-stream.js';
+import { CampaignCache } from './campaign-cache.js';
+import { levelAssetConfig } from './levels.js';
 import { PHASES, GATES, LENGTH } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
@@ -12,12 +20,101 @@ const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
 const actionPad = { pointer: null, zone: null, boost: false };
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
+const profiler = new PerformancePanel();
+setupMenuUI();
+const music=new RaceMusic($('music-toggle'));
+const cacheAll = !constructionReview && new URLSearchParams(location.search).get('preload') === 'all';
+let campaignCache = null, cacheMemoryRequested = false;
 const progressKey = 'vector-shift-campaign-001-checkpoint';
 let currentLevel = 0, storageKey;
 let view, best = null, last = performance.now(), accumulator = 0, shown = '', resultSaved = false, jumpQueued = false, brakeQueued = false;
 let checkpointNotice = '';
 let checkpointNoticeAt=0,reviewCheckpointPassed=false;
 let reviewTimeScale = 1, reviewSpeedButton;
+let buffering = false, bufferBegan = null;
+let preparedLevel = null;
+function takePreparedLevel(index) {
+  if(campaignCache){const cached=campaignCache.streamFor(index);if(cached)return cached;}
+  const prepared = preparedLevel; preparedLevel = null;
+  if (prepared?.index === index && prepared.stream && !prepared.stream.error) {
+    profiler.event('prefetch-adopted', {level:index, assets:prepared.stream.generated, bytes:prepared.stream.cacheBytes});
+    return prepared.stream;
+  }
+  prepared?.stream?.dispose(); return null;
+}
+function prepareNextLevel() {
+  if(campaignCache)return;
+  if (constructionReview || !view?.assetsReady(race.s)) return;
+  if (!preparedLevel) {
+    try {
+      preparedLevel = {index:currentLevel+1, stream:new CampaignStream(levelAssetConfig(currentLevel+1), {background:true})};
+      profiler.event('prefetch-start', {level:currentLevel+1, budgetBytes:PREFETCH_BYTES});
+    } catch (error) {
+      // Cache failure must not affect the playable current level.
+      preparedLevel = {index:currentLevel+1, disabled:true};
+      profiler.event('prefetch-error', {level:currentLevel+1,message:error.message});
+    }
+  }
+  const stream = preparedLevel.stream;
+  if (stream) {
+    const metric = stream.update(0);
+    if (metric) profiler.event('prefetch-asset', {level:preparedLevel.index,...metric});
+    if (stream.error && !preparedLevel.reportedError) {
+      preparedLevel.reportedError = true;
+      profiler.event('prefetch-error', {level:preparedLevel.index,message:stream.error});
+    }
+  }
+}
+const assetNotice = document.createElement('div'); assetNotice.id = 'asset-notice'; assetNotice.hidden = true;
+assetNotice.setAttribute('role', 'status'); document.body.append(assetNotice);
+function updateAssetReadiness() {
+  const error = campaignCache?.error || view?.assetStream?.error || view?.shaderWarmup.error;
+  const allWaiting = campaignCache && !campaignCache.ready();
+  const waiting = Boolean(allWaiting || (view && !view.assetsReady(race.s)));
+  const next = race.state === 'running' && waiting;
+  if (next !== buffering) {
+    if (next) {
+      bufferBegan = performance.now(); clearInput(); accumulator = 0;
+      profiler.event('asset-wait-start', { level: currentLevel, distance: race.s });
+    } else {
+      profiler.event('asset-wait-end', { level: currentLevel, distance: race.s, durationMs: performance.now() - bufferBegan });
+      bufferBegan = null;
+    }
+  }
+  buffering = next; document.body.dataset.buffering = String(buffering);
+  assetNotice.hidden = race.state==='ready'||(!error && !buffering && !allWaiting);
+  $('start').disabled=Boolean(error||waiting||!view);
+  const stream = view?.assetStream;
+  const loaded=campaignCache?.levels.reduce((n,l)=>n+(l.stream?.generated??0),0),total=campaignCache?.levels.reduce((n,l)=>n+l.total,0);
+  const message = error ? `Track could not load. Reload to retry. ${error}`
+    : allWaiting ? `Preparing all 4 levels… ${Math.floor(loaded/total*100)}% (${loaded}/${total})`
+    : view?.shaderWarmup.state==='compiling' ? 'Preparing graphics…'
+    : `Preparing level ${currentLevel + 1}… ${stream ? Math.floor(stream.completed / stream.total * 100) : 0}%`;
+  if (assetNotice.textContent !== message) assetNotice.textContent = message;
+  const rawProgress=allWaiting?(total?loaded/total:0):(stream?.total?stream.completed/stream.total:0);
+  const percent=waiting?Math.min(99,Math.max(0,Math.floor(rawProgress*100))):100;
+  const status=error?'COULD NOT LOAD COURSE':waiting?`Loading ${percent}%`:'READY TO RACE';
+  if($('menu-status').textContent!==status)$('menu-status').textContent=status;
+  if(!constructionReview){
+    const button=$('start'),label=error?'LOAD FAILED':waiting?'LOADING':'RACE';
+    const detail=error?'!':waiting?`${percent}%`:'»';
+    button.dataset.loading=String(waiting&&!error);
+    button.setAttribute('aria-busy',String(waiting&&!error));
+    button.style.setProperty('--load-progress',`${percent}%`);
+    if($('start-label').textContent!==label)$('start-label').textContent=label;
+    if($('start-progress').textContent!==detail)$('start-progress').textContent=detail;
+  }
+  if (error && !view.reportedAssetError) { profiler.event('asset-worker-error', { message: error }); view.reportedAssetError = true; }
+}
+function createView(renderer = null, preparedStream = null, shared = null) {
+  const began = performance.now();
+  const nextView = new RaceView($('race-world'), renderer, preparedStream, shared);
+  const viewLevel=currentLevel;
+  nextView.onShaderWarmup=(type,data)=>profiler.event(type,{level:viewLevel,...data});
+  if(!constructionReview)nextView.menuDemo=new MenuDemo();
+  profiler.event('view-created', { level: currentLevel, durationMs: performance.now() - began,reusedSharedAssets:Boolean(shared),scenery:nextView.spaceScenery?.stats });
+  return nextView;
+}
 function toggleReviewSpeed() {
   if (!constructionReview) return;
   reviewTimeScale = reviewTimeScale === 1 ? .25 : 1;
@@ -28,7 +125,10 @@ try {
   const saved = Number(localStorage.getItem(progressKey));
   if (Number.isSafeInteger(saved) && saved >= 0 && saved < 100000) currentLevel = saved;
 } catch { /* Storage is optional, including in private browsing. */ }
+if(cacheAll)currentLevel=0;
 if (constructionReview) {
+  document.body.classList.add('construction-review');
+  document.querySelectorAll('.review-copy').forEach(copy=>{copy.hidden=false;});
   currentLevel = 0;
   const pipes = constructionCategory === '02';
   const title = { '01': 'FLAT FOUNDATION', '02': 'PIPE BAYS', '03': 'GRILLE BAYS', '04': 'COVERED METAL', '05': 'MIXED HOUSINGS', '06': 'PHASE LANES', '07': 'OUTSIDE TUBE', '08': 'INSIDE TUBE', '09':'OUTSIDE TRANSITIONS','10':'INSIDE TRANSITIONS','11':'FLAT GAP STUDY','12':'BUTTRESSED WALLS','13':'CHECKERED CHECKPOINTS' }[constructionCategory];
@@ -41,8 +141,9 @@ if (constructionReview) {
   if (constructionCategory === '04') $('menu').querySelector('h1 + p').textContent = 'Quiet metal covers, segmented armor, service hatches and vents. Tapered start/end panels and occasional grille sections for comparison.';
   $('menu').querySelector('p.subtle').textContent = 'Check width, frame depth, joins and readability at cruise and turbo.';
   $('level').innerHTML = `<option value="0">${constructionCategory} · ${title} · ${constructionRevision}</option>`;
-  $('mode').closest('label').hidden = true;
   $('start').textContent = 'Drive review segment ↗';
+  $('start').removeAttribute('data-loading');
+  $('start').removeAttribute('aria-busy');
   const compare = document.createElement('a'); compare.className = 'original-link';
   compare.href = constructionBaseline ? `?review=${constructionCategory}` : pipes ? '?review=01' : '?review=01&surface=original';
   compare.textContent = constructionBaseline ? 'View construction R1 ↗' : pipes ? 'Compare approved foundation ↗' : 'Compare original road ↗';
@@ -56,7 +157,6 @@ if (constructionReview) {
     }
   }
   if (['05','06'].includes(constructionCategory)) {
-    $('mode').value = 'phase';
     $('menu').querySelector('h1 + p').textContent = constructionCategory === '05'
       ? 'Pipes, grilles, quiet armor and empty frames in unequal runs. Continuous family joins and ramp caps at exposed ends. Different arrangements on each side.'
       : 'Flush cyan, amber and violet lane inserts through the mixed housings. Match your ship phase to the colored lane for turbo; neutral road intervals separate the runs.';
@@ -68,7 +168,6 @@ if (constructionReview) {
   }
   $('start').after(compare);
   if (['07','08'].includes(constructionCategory)) {
-    $('mode').value='phase';
     $('menu').querySelector('h1 + p').textContent=constructionCategory==='08'
       ? 'Drive the complete inner circumference. Curved graphite panels, flush ivory bands, protected service recesses and a violet lane winding around the tunnel.'
       : 'Drive the complete outer circumference. Curved graphite panels, flush ivory bands, protected service recesses and phase lanes leading around the tube.';
@@ -98,7 +197,6 @@ if (constructionReview) {
   }
   if(constructionSlabDetail){
     document.title=`Track ${constructionCategory} · brushed metal slab candidate`;
-    $('mode').value='phase';
     $('menu').querySelector('h1').textContent='BRUSHED METAL SLABS.';
     $('menu').querySelector('h1 + p').textContent='Shallow bevels, inset joints, repair plates and brushed metal highlights across a 600 m sample. A violet lane crosses the slab layouts from 75 m.';
     $('menu').querySelector('p.subtle').textContent='Compare the plate depth, sheen and readability at speed. Press 3 to match the violet lane; W boosts and R retries.';
@@ -107,7 +205,6 @@ if (constructionReview) {
     library.href=`./library.html?category=${constructionCategory}&revision=r1&asset=slab-candidate`;
   }
   if(constructionTransition){
-    $('mode').value='phase';
     $('menu').querySelector('h1 + p').textContent=constructionCategory==='09'
       ?'Flat road rolls into an outside tube and opens back out. Approved brushed metal slabs, ivory service sections and a continuous cyan lane follow the changing surface.'
       :'Flat road curls into an inside tube, opens into a flat connector, then rolls into a short outside tube. Brushed metal slabs, changing service panels and a continuous violet lane.';
@@ -117,7 +214,6 @@ if (constructionReview) {
     library.href=`./library.html?category=${constructionCategory}&revision=r1&asset=closing`;
   }
   if(constructionGap){
-    $('mode').value='phase';
     $('level').options[0].textContent=`11 · ${constructionGapShape.toUpperCase()} GAPS`;
     $('menu').querySelector('h1').textContent=`${constructionGapShape.toUpperCase()} GAPS`;
     $('menu').querySelector('h1 + p').textContent='Illuminated takeoff arrows, receiving brackets and bright landing strips. The partial opening has recessed border lights and exposed metal cut faces. Both gaps are 75 m long, with twelve-metre illuminated ends.';
@@ -136,7 +232,6 @@ if (constructionReview) {
     $('menu').querySelector('p.subtle').after(shapes);
   }
   if(constructionWalls){
-    $('mode').value='phase';
     $('level').options[0].textContent=`12 · ${constructionWallShape.toUpperCase()} WALLS`;
     $('menu').querySelector('h1').textContent=`${constructionWallShape.toUpperCase()} WALLS`;
     $('menu').querySelector('h1 + p').textContent='W4 walls R2: beveled ivory armor, recessed vent and lock pockets, detailed service doors, crown pipe couplings and pearl-white optical wells. Rebuilt surface layers replace the overlapping first-pass plates.';
@@ -178,7 +273,6 @@ if (constructionReview) {
     }
   }
   if(constructionCheckpoints){
-    $('mode').value='phase';
     $('level').replaceChildren(...[0,1,2].map(i=>new Option(`13 · ${emitterShapeFor(i).toUpperCase()} CHECKPOINT`,String(i))));
     $('menu').querySelector('h1 + p').textContent='Thirty metres of ivory-and-graphite checkers, recessed circular timing instruments and pearl-white lamp cassettes. A dedicated optical row projects the white checkpoint curtain.';
     $('menu').querySelector('p.subtle').textContent='Checkpoint at 350 m. Every phase can pass. Boost refills without stopping the ship; clear road continues beyond it. T slows, R retries, Next surface switches between flat and both tubes.';
@@ -267,25 +361,35 @@ function clearInput() {
 function phase(index) { if (race.state === 'running' || race.state === 'ready') race.phase = index; }
 function start(index = currentLevel, carry = null) {
   if (!view) return;
+  const startBegan = performance.now();
   if(constructionSurfaceCycle)index%=3;
   if (index !== currentLevel) {
-    currentLevel = index; configureLevel(currentLevel); view.dispose();
-    try { view = new RaceView($('race-world')); }
+    currentLevel = index; configureLevel(currentLevel);
+    const renderer = view.renderer,shared=constructionReview?null:view.releaseSharedObjects();
+    const disposeBegan=performance.now();view.dispose({ keepRenderer: true });
+    profiler.event('previous-view-disposed',{level:currentLevel,durationMs:performance.now()-disposeBegan});
+    try { view = createView(renderer, takePreparedLevel(index),shared); }
     catch (error) { view = null; race.state = 'ready'; $('start').disabled = true; $('loading-error').hidden = false; $('loading-error').textContent = error.message; sync(); return; }
     loadBest(); updateLevelChoice();
   }
   if (!carry) { clearInput(); checkpointNotice = ''; }
-  race.reset(); race.mode = $('mode').value;
+  race.reset(); race.mode = 'phase';
+  $('controls-dialog').close();
   reviewCheckpointPassed=false;checkpointNoticeAt=0;
   if (carry) Object.assign(race, carry);
   race.state = 'running'; resultSaved = false; accumulator = 0; view.snap = true;
+  updateAssetReadiness();
   if (!carry) document.activeElement?.blur();
   // Prepare the reset camera and HUD before removing the menu. Otherwise the
   // browser can expose the previous frame/telemetry during the Play handoff.
   updateHud();
+  const renderBegan=performance.now();
   view.render(race, 0);
+  profiler.event('start-first-render',{level:currentLevel,durationMs:performance.now()-renderBegan});
   last = performance.now();
   sync();
+  profiler.event('run-start', { level: currentLevel, mode: race.mode, checkpoint: Boolean(carry), durationMs: performance.now() - startBegan });
+  profiler.previous = null;
 }
 function advanceCheckpoint() {
   if(constructionSurfaceCycle){start((currentLevel+1)%3);checkpointNotice=`${constructionCategory} · ${constructionWallShape.toUpperCase()} ${constructionCheckpoints?'CHECKPOINT':constructionObstacles?'OBSTACLES':'GATES'}`;return;}
@@ -311,6 +415,7 @@ function pause() {
   clearInput(); accumulator = 0; sync();
 }
 function sync() {
+  music.setState(race.state);
   document.body.dataset.state = race.state;
   $('menu').hidden = race.state !== 'ready'; $('paused').hidden = race.state !== 'paused';
   $('result').hidden = !['crashed', 'checkpoint'].includes(race.state);
@@ -323,15 +428,18 @@ function sync() {
       const finished = race.state === 'checkpoint', isBest = finished && race.mode === 'phase' && (!best || race.time < best.time);
       const wallCrash = race.crashKind === 'wall';
       const gapCrash = race.crashKind === 'gap';
-      $('result-label').textContent = finished ? `CHECKPOINT ${currentLevel + 1} REACHED${isBest ? ' · BEST TIME' : ''}` : gapCrash ? 'TRACK GAP' : wallCrash ? 'SOLID OBSTACLE' : 'PHASE MISMATCH';
+      $('result-label').textContent = `CHECKPOINT ${String(currentLevel + 1).padStart(2,'0')}${isBest ? ' / BEST TIME' : ''}`;
       $('result-title').textContent = finished ? 'LEVEL CLEAR.' : gapCrash ? 'MISSED LANDING.' : wallCrash ? 'WALL IMPACT.' : 'OUT OF PHASE.';
       const gate = GATES.find(g => Math.abs(g.s - race.s) < 0.1);
-      $('result-copy').textContent = finished ? `${levelInfo(currentLevel).name} · ${format(race.time)}. Next: ${levelInfo(currentLevel + 1).name}. Boost refills at the checkpoint.` :
-        gapCrash ? `${race.cause}. ${touchLayout.matches ? 'Tap ↻ to retry instantly.' : 'Press Space or R to retry instantly.'}` :
-        wallCrash ? `${race.cause} at ${(race.s / 1000).toFixed(2)} km. Solid walls cannot be phased through. ${touchLayout.matches ? 'Tap ↻ to retry instantly.' : 'Press Space or R to retry instantly.'}` :
-        `${gate ? `${PHASES[gate.phase].symbol} ${PHASES[gate.phase].name} was required` : race.cause}. You were in ${PHASES[race.phase].name} at ${(race.s / 1000).toFixed(2)} km. ${touchLayout.matches ? 'Tap ↻ to retry instantly.' : 'Press Space or R to retry instantly.'}`;
-      $('sector-results').textContent = finished ? levelInfo(currentLevel + 1).lesson : `Retry starts at Level ${currentLevel + 1}: ${levelInfo(currentLevel).name}, with full boost.`;
-      $('retry').textContent = finished ? 'Continue to next level ↗' : touchLayout.matches ? 'Retry checkpoint ↻' : 'Retry checkpoint · SPACE ↗';
+      $('result-copy').textContent = finished ? `NEXT / ${levelInfo(currentLevel + 1).name}` :
+        gapCrash ? 'JUMP LATER. BOOST ACROSS.' :
+        wallCrash ? 'STEER CLEAR OF SOLID WALLS.' :
+        gate ? `${PHASES[gate.phase].name} REQUIRED / ${PHASES[race.phase].name} ACTIVE` : 'MATCH THE GATE’S PHASE.';
+      $('result-distance').textContent=`${(race.s/1000).toFixed(2)} KM`;
+      $('result-time').textContent=format(race.time);
+      $('retry-label').textContent=finished?'CONTINUE':'RETRY';
+      $('retry-hint').textContent=touchLayout.matches||finished?'':'SPACE / R';
+      $('retry').setAttribute('aria-label',finished?'Continue to next level':'Retry checkpoint');
       if (finished && race.mode === 'phase') {
         try {
           const saved = Number(localStorage.getItem(progressKey));
@@ -352,6 +460,7 @@ $('retry').addEventListener('click', () => start(race.state === 'checkpoint' ? c
 $('restart').addEventListener('click', () => start());
 $('level').addEventListener('change', () => updateLesson(Number($('level').value)));
 $('pause').addEventListener('click', pause); $('resume').addEventListener('click', pause);
+$('return-menu').addEventListener('click',()=>{clearInput();race.reset();view.snap=true;sync();});
 let fullscreenHintTimer;
 const fullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
 function syncFullscreen() {
@@ -468,6 +577,9 @@ thumbpad.addEventListener('contextmenu', e => e.preventDefault());
 touchLayout.addEventListener('change', () => { clearInput(); updateLesson(Number($('level').value)); });
 const controlCodes = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyW', 'KeyJ', 'KeyA', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'Digit1', 'Digit2', 'Digit3', 'Numpad1', 'Numpad2', 'Numpad3', 'KeyR', 'KeyP', 'Escape'];
 window.addEventListener('keydown', e => {
+  if($('controls-dialog').open)return;
+  if(race.state==='ready'&&e.target.closest('button, select, input, a'))return;
+  if(race.state==='ready'&&!constructionReview)return;
   if (constructionReview && e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && !e.altKey) {
     e.preventDefault(); if (!e.repeat) toggleReviewSpeed(); return;
   }
@@ -497,7 +609,7 @@ window.addEventListener('keyup', e => keys.delete(e.code));
 function suspend() { clearInput(); if (race.state === 'running') { race.state = 'paused'; accumulator = 0; sync(); } }
 window.addEventListener('blur', suspend); document.addEventListener('visibilitychange', () => { if (document.hidden) suspend(); });
 window.addEventListener('resize', () => { clearInput(); view?.resize(); });
-$('race-world').addEventListener('webglcontextlost', e => { e.preventDefault(); suspend(); $('loading-error').hidden = false; $('loading-error').textContent = 'Graphics interrupted. Reload this page to restart.'; race.state = 'ready'; view = null; $('start').disabled = true; sync(); });
+$('race-world').addEventListener('webglcontextlost', e => { e.preventDefault(); suspend(); view?.assetStream?.dispose(); $('loading-error').hidden = false; $('loading-error').textContent = 'Graphics interrupted. Reload this page to restart.'; race.state = 'ready'; view = null; buffering = false; assetNotice.hidden = true; $('start').disabled = true; sync(); });
 
 function updateHud() {
   const running = race.state === 'running', touch = touchLayout.matches;
@@ -545,9 +657,21 @@ function updateHud() {
 }
 
 function loop(now) {
+  const profiling = profiler.enabled;
+  const began = profiling ? performance.now() : 0;
+  const startedRunning = race.state === 'running' && !buffering;
+  const timing = profiling ? {} : null;
   const dt = Math.min((now - last) / 1000, 0.06) * (constructionReview ? reviewTimeScale : 1); last = now;
   if (view) {
-    accumulator += race.state === 'running' ? dt : 0;
+    campaignCache?.update();
+    view.prepareAssets(race.s, timing);
+    if(campaignCache?.ready()&&!cacheMemoryRequested){
+      cacheMemoryRequested=true;profiler.measureMemory('all-levels-ready');
+    }
+    prepareNextLevel();
+    updateAssetReadiness();
+    const assetsDone = profiling ? performance.now() : 0;
+    accumulator += race.state === 'running' && !buffering ? dt : 0;
     while (accumulator >= 1 / 120) {
       const keyboardSteer = Number(keys.has('ArrowRight') || keys.has('KeyD')) - Number(keys.has('ArrowLeft') || keys.has('KeyA'));
       const steer = Math.max(-1, Math.min(1, keyboardSteer + pad.steer));
@@ -560,11 +684,37 @@ function loop(now) {
       accumulator -= 1 / 120;
       if (race.state === 'checkpoint') { advanceCheckpoint(); break; }
     }
-    sync(); updateHud(); view?.render(race, dt);
+    const simulated = profiling ? performance.now() : 0;
+    sync(); updateHud();
+    const hudDone = profiling ? performance.now() : 0;
+    const preview=race.state==='ready'&&view?.menuDemo&&view.assetsReady(0);
+    const renderPose=preview?view.menuDemo.update(document.hidden?0:dt,view):race;
+    $('demo-shade').style.opacity=preview?view.menuDemo.fade:0;
+    view?.render(renderPose, buffering ? 0 : dt, timing);
+    if (profiling && view) {
+      timing.simulationMs = simulated - assetsDone;
+      timing.assetPumpMs = assetsDone - began;
+      timing.hudMs = hudDone - simulated;
+      timing.mainMs = performance.now() - began;
+      profiler.record(now, view, { level: currentLevel, state: buffering ? 'buffering' : race.state, startedRunning,
+        prefetchBytes:preparedLevel?.stream?.cacheBytes ?? 0, prefetchAssets:preparedLevel?.stream?.generated ?? 0,
+        prefetchTotal:preparedLevel?.stream?.total ?? 0, prefetchLimited:preparedLevel?.stream?.prefetchLimited ?? false,
+        preloadBytes:view.assetStream?.attachedBytes ?? 0,
+        cachedActiveBytes:view.assetStream?.source ? view.assetStream.attachedBytes : 0,
+        expandedLevelBytes:view.assetStream?.expandedBytes ?? 0,
+        shaderWarmupState:view.shaderWarmup.state,shaderWarmupMs:view.shaderWarmup.durationMs,
+        distance: race.s, mode: race.mode, phase: race.phase, reviewTimeScale }, timing);
+    }
   }
   requestAnimationFrame(loop);
 }
-try { view = new RaceView($('race-world')); }
+try {
+  if(cacheAll){
+    campaignCache=new CampaignCache((type,data)=>profiler.event(type,data));
+    profiler.cacheProvider=()=>campaignCache.snapshot();
+  }
+  view = createView(null,campaignCache?.streamFor(currentLevel));
+}
 catch (error) { $('start').disabled = true; $('loading-error').hidden = false; $('loading-error').textContent = `Could not initialize the racer: ${error.message}`; }
 sync(); updateHud(); requestAnimationFrame(loop);
 

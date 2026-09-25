@@ -3,7 +3,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { SpeedEffects, EFFECT_DEFAULTS } from '../speed-effects.js';
 import { PassageGuide } from './guidance.js';
 import { OBSTACLES, solidSpans, openingSpans, WALL_HEIGHT, HOLE_HEIGHT } from './obstacles.js';
-import { LENGTH, PHASES, STRIPS, GATES, section, frame, point, stripCenter, clamp } from './track.js';
+import { LENGTH, PHASES, STRIPS, GATES, section, frame, point, stripCenter, clamp, trackProfileSnapshot } from './track.js';
 import { GAPS, JUMP, gapAt, surfaceSlices } from './jumps.js';
 import { constructionReview, constructionBaseline, constructionCategory, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail, constructionTransition, constructionGap, constructionGapShape } from './levels.js';
 import { foundationChunk } from './construction.js';
@@ -17,7 +17,10 @@ import {modeledObstacle} from './obstacle-kit.js';
 import {emitterGate,emitterCutRanges,setEmitterColor} from './phase-emitter-kit.js';
 import {wallObstacle} from './wall-kit.js';
 import {passageObstacle} from './passage-kit.js';
-import {campaignChunk,campaignDecorations,campaignGate,campaignObstacle,campaignGap,campaignCheckpoint} from './campaign-kit.js';
+import { CampaignStream } from './campaign-stream.js';
+import { racingShip } from './ship-kit.js';
+import { spaceSky, resizeSpaceSky } from './space-sky.js';
+import { SpaceScenery } from './space-scenery.js';
 
 // Lightweight ribbons remain for review baselines, guides and driving-mode gap fills.
 function surface(s, u, height = 0) {
@@ -85,13 +88,16 @@ function wallVolume(obstacle, left, right, bottom, top) {
 }
 
 export class RaceView {
-  constructor(canvas) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  constructor(canvas, renderer = null, preparedStream = null, shared = null) {
+    this.shaderWarmup={state:constructionReview?'ready':'waiting',durationMs:0};
+    this.disposed=false;
+    this.renderer = renderer || new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x080e19);
     this.scene.fog = new THREE.Fog(0x080e19, 210, 710);
-    this.camera = new THREE.PerspectiveCamera(77, 1, 0.15, 850);
+    this.camera = new THREE.PerspectiveCamera(77, 1, 0.15, 4000);
+    this.sky=shared?.sky||spaceSky();this.scene.add(this.sky);
     this.scene.add(this.camera);
     this.speedEffects = new SpeedEffects(this.camera);
     this.cameraBase = new THREE.Quaternion();
@@ -102,7 +108,16 @@ export class RaceView {
     if (constructionCategory === '08'||constructionTransition||(constructionGap&&constructionGapShape==='inside')) this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
     this.chunks = []; this.gates = []; this.energyGroups = []; this.walls = []; this.gapMarkers = [];
     this.pendingAssets = [];
-    const decorations = !constructionReview ? campaignDecorations() : null;
+    if(!constructionReview){
+      this.spaceScenery=shared?.spaceScenery||new SpaceScenery();
+      if(shared?.spaceScenery)this.spaceScenery.setTrack();
+      this.scene.add(this.spaceScenery.group);
+    }
+    if (!constructionReview) {
+      this.assetStream = preparedStream || new CampaignStream({ ...trackProfileSnapshot(), gates: GATES, strips: STRIPS, obstacles: OBSTACLES, gaps: GAPS });
+      this.assetStream.activate();
+      this.pendingAssets = this.assetStream.pending;
+    }
     if (!constructionReview) this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
     this.gapFills = new THREE.Group(); this.scene.add(this.gapFills);
     const asphalt = new THREE.MeshStandardMaterial({ color: 0x263649, roughness: 0.8, side: THREE.DoubleSide });
@@ -112,11 +127,8 @@ export class RaceView {
     for (let start = -50; start < LENGTH + 200; start += 100) {
       const end = start + 100, group = new THREE.Group();
       if (!constructionReview) {
-        this.queueAsset(group, () => {
-          const road = campaignChunk(THREE, start, decorations);
-          this.energyGroups.push(road.userData.energyGroup);
-          return road;
-        }, start, end);
+        this.assetStream.add(group, { kind: 'chunk', start }, start, end,
+          road => this.energyGroups.push(road.userData.energyGroup));
         this.chunks.push({start, group}); this.scene.add(group); continue;
       }
       if(constructionWalls||constructionCheckpoints){
@@ -172,7 +184,7 @@ export class RaceView {
       const fill = new THREE.Mesh(ribbon(gap.start, gap.end, () => left, () => right, 0, 64, false), asphalt);
       this.gapFills.add(fill);
       if (!constructionReview) {
-        this.queueAsset(group, () => campaignGap(THREE, gap), gap.start - 12, gap.end + 12);
+        this.assetStream.add(group, { kind: 'gap', entity: gap }, gap.start - 12, gap.end + 12);
         this.scene.add(group); this.gapMarkers.push({gap, group}); continue;
       }
       for (const s of [gap.start - 0.8, gap.end])
@@ -185,8 +197,9 @@ export class RaceView {
     for (const gate of GATES) {
       if (!constructionReview) {
         const group = new THREE.Group();
-        this.queueAsset(group, () => campaignGate(THREE, gate), gate.s - 15, gate.s + 9);
-        this.scene.add(group); this.gates.push({gate, group, displayedPhase:gate.phase}); continue;
+        const entry = { gate, group, displayedPhase: null };
+        this.assetStream.add(group, { kind: 'gate', entity: gate }, gate.s - 15, gate.s + 9, () => { entry.displayedPhase = null; });
+        this.scene.add(group); this.gates.push(entry); continue;
       }
       if(constructionEmitters){
         const group=emitterGate(THREE,gate,constructionWallShape);
@@ -214,7 +227,7 @@ export class RaceView {
     for (const obstacle of OBSTACLES) {
       if (!constructionReview) {
         const group = new THREE.Group();
-        this.queueAsset(group, () => campaignObstacle(THREE, obstacle), obstacle.s - 24, obstacle.s + obstacle.depth);
+        this.assetStream.add(group, { kind: 'obstacle', entity: obstacle }, obstacle.s - 24, obstacle.s + obstacle.depth);
         this.scene.add(group); this.walls.push({obstacle, group}); continue;
       }
       if(constructionWalls){
@@ -244,28 +257,52 @@ export class RaceView {
     }
     if(constructionCheckpoints){this.checkpointStation=checkpointStation(THREE,constructionWallShape);this.scene.add(this.checkpointStation);}
     if(constructionWalls||constructionCheckpoints)applySlabEnvironment(THREE,this.renderer,this.scene);
-    this.ship = new THREE.Group();
-    this.hullMaterial = new THREE.MeshStandardMaterial({ color: 0xe9f2fa, metalness: 0.5, roughness: 0.3 });
-    const hull = new THREE.Mesh(new THREE.ConeGeometry(0.9, 3.9, 4), this.hullMaterial); hull.rotation.x = -Math.PI / 2; this.ship.add(hull);
-    const wings = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.16, 1.5), this.hullMaterial); wings.position.z = 0.6; this.ship.add(wings);
-    this.phaseMaterial = new THREE.MeshBasicMaterial({ color: PHASES[0].hex });
-    const canopy = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.45, 1.6), this.phaseMaterial); canopy.position.y = 0.35; this.ship.add(canopy);
-    this.exhaust = new THREE.Mesh(new THREE.ConeGeometry(0.34, 3, 8), this.phaseMaterial); this.exhaust.rotation.x = Math.PI / 2; this.exhaust.position.z = 2.5; this.ship.add(this.exhaust);
+    Object.assign(this,shared?.shipAssets||racingShip());
     this.scene.add(this.ship);
     this.shadow = new THREE.Mesh(new THREE.CircleGeometry(1.6, 24), new THREE.MeshBasicMaterial({ color: 0x050912,
       transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
     this.scene.add(this.shadow);
     this.finish = new THREE.Group();
-    if (!constructionReview) this.queueAsset(this.finish, () => campaignCheckpoint(THREE), LENGTH - 15, LENGTH + 15);
+    if (!constructionReview) this.assetStream.add(this.finish, { kind: 'checkpoint' }, LENGTH - 15, LENGTH + 15);
     this.scene.add(this.finish);
     if (!constructionReview) applySlabEnvironment(THREE,this.renderer,this.scene);
     this.passageGuide = new PassageGuide(this.scene);
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.resize(); this.snap = true;
   }
-  queueAsset(group, build, start, end) {
-    if (start < 850) group.add(build());
-    else this.pendingAssets.push({group, build, start, end});
+  prepareAssets(distance, timing = null) {
+    const metric = this.assetStream?.update(distance, (group, root) => {
+      applySlabEnvironment(THREE, this.renderer, root); group.add(root);
+    });
+    if (timing) Object.assign(timing, { assetBuildMs: 0, assetAttachMs: 0, workerBuildMs: 0, workerPackMs: 0 }, metric);
+    if(this.assetStream?.ready()&&this.shaderWarmup.state==='waiting')this.prepareShaders();
+    return metric;
+  }
+  prepareShaders() {
+    const began=performance.now(),warmup=this.shaderWarmup;
+    warmup.state='compiling';
+    const programsBefore=this.renderer.info.programs.length;
+    this.onShaderWarmup?.('shader-warmup-start',{programsBefore,
+      parallelCompile:this.renderer.extensions.has('KHR_parallel_shader_compile')});
+    // compileAsync traverses hidden and distant meshes too. Use the actual scene
+    // so lighting, fog, environment maps and instancing match the race shaders.
+    // Do not render these materials until the async compilation has completed.
+    const fail=error=>{
+      if(this.disposed)return;
+      warmup.state='error';warmup.error=`Graphics preparation failed: ${error.message??error}`;
+      this.onShaderWarmup?.('shader-warmup-error',{message:warmup.error});
+    };
+    try {
+      this.renderer.compileAsync(this.scene,this.camera).then(()=>{
+        if(this.disposed)return;
+        warmup.state='ready';warmup.durationMs=performance.now()-began;
+        this.onShaderWarmup?.('shader-warmup-ready',{durationMs:warmup.durationMs,
+          programsBefore,programsAfter:this.renderer.info.programs.length});
+      },fail);
+    }catch(error){fail(error);}
+  }
+  assetsReady(distance) {
+    return (!this.assetStream || this.assetStream.ready(distance))&&this.shaderWarmup.state==='ready';
   }
   badgeMaterial(phase) {
     this.badges ??= [];
@@ -283,33 +320,45 @@ export class RaceView {
     }
     return this.badges[phase];
   }
-  dispose() {
+  releaseSharedObjects() {
+    const shipAssets=Object.fromEntries(['ship','phaseMaterials','exhaustMaterial','exhausts','shipGlowMaterial'].map(key=>[key,this[key]]));
+    this.scene.remove(this.ship,this.sky);
+    if(this.spaceScenery)this.scene.remove(this.spaceScenery.group);
+    return {shipAssets,sky:this.sky,spaceScenery:this.spaceScenery};
+  }
+  dispose({ keepRenderer = false } = {}) {
+    this.disposed=true;
+    this.assetStream?.dispose();
     this.pendingAssets.length = 0;
     const geometries = new Set(), materials = new Set(), textures = new Set();
     this.scene.traverse(object => {
+      if (object.isInstancedMesh) object.dispose();
       if (object.geometry) geometries.add(object.geometry);
       for (const material of object.material ? Array.isArray(object.material) ? object.material : [object.material] : []) {
         materials.add(material);
-        for (const value of Object.values(material)) if (value?.isTexture && !value.userData.sharedTrackResource) textures.add(value);
+        for (const [key, value] of Object.entries(material)) {
+          if (value?.isTexture && !value.userData.sharedTrackResource && !(keepRenderer && key === 'envMap')) textures.add(value);
+        }
       }
     });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose());
-    disposeSlabEnvironment(this.renderer);
-    this.renderer.dispose();
+    if (!keepRenderer) { disposeSlabEnvironment(this.renderer); this.renderer.dispose(); }
+    else this.renderer.renderLists.dispose();
   }
   resize() {
     this.renderer.setSize(innerWidth, innerHeight, false); this.camera.aspect = innerWidth / innerHeight;
     this.camera.updateProjectionMatrix();
+    resizeSpaceSky(this.sky,this.camera.aspect);
   }
-  render(race, dt) {
-    // Prepare bounded work ahead of travel instead of building a whole detailed
-    // campaign at level entry. Deferred factories read the live gameplay data.
-    const next = this.pendingAssets.filter(a => a.start < race.s + 1100 && a.end > race.s - 180).sort((a,b) => a.start-b.start)[0];
-    if (next) {
-      next.group.add(next.build());
-      applySlabEnvironment(THREE,this.renderer,next.group);
-      this.pendingAssets.splice(this.pendingAssets.indexOf(next),1);
+  render(race, dt, timing = null) {
+    // Keep the previous canvas frame while the loading UI remains responsive.
+    // Rendering a compiling program would force the driver to wait synchronously.
+    if(this.shaderWarmup.state!=='ready'){
+      if(timing)Object.assign(timing,{guideEffectsMs:0,renderSubmitMs:0,viewMs:0});
+      this.renderer.info.reset();
+      return;
     }
+    const began = timing ? performance.now() : 0;
     const landingDip = this.reduced ? 0 : Math.sin(Math.PI * race.landing / 0.18) * 0.14;
     const f = frame(race.s, race.u), lift = JUMP.hover + race.height - landingDip + (this.reduced || race.airborne ? 0 : Math.sin(race.time * 7) * 0.055);
     this.ship.position.copy(f.p).addScaledVector(f.normal, lift);
@@ -320,8 +369,14 @@ export class RaceView {
     this.shadow.position.copy(f.p).addScaledVector(f.normal, 0.025);
     this.shadow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.normal);
     this.shadow.material.opacity = 0.5 / (1 + Math.max(0, race.height) * 0.15);
-    this.phaseMaterial.color.setHex(PHASES[race.phase].hex);
-    this.exhaust.scale.set(1 + race.thrustBlend * 0.45, (race.stripBoost ? 1.9 : 0.7) + race.thrustBlend * 2.4, 1);
+    this.exhaustMaterial.color.setHex(PHASES[race.phase].hex);
+    this.shipGlowMaterial.color.setHex([0x00cfff,0xff9200,0xb800ff][race.phase]);
+    this.shipGlowMaterial.opacity=.3+race.thrustBlend*.06;
+    for(const material of this.phaseMaterials){
+      material.color.setHex([0x00cfff,0xff9200,0xb800ff][race.phase]);
+      material.emissive.copy(material.color);
+    }
+    for(const exhaust of this.exhausts)exhaust.scale.set(1+race.thrustBlend*.45,1+race.thrustBlend*.45,(race.stripBoost?1.9:.7)+race.thrustBlend*2.4);
     const portrait = this.camera.aspect < 0.85;
     const boostPull = this.reduced ? 0 : race.thrustBlend * 2.2;
     this.camera.position.copy(f.p).addScaledVector(f.forward, (portrait ? -16 : -12) - boostPull).addScaledVector(f.normal, (portrait ? 6.5 : 5.2) + Math.max(0, race.height) * 0.45);
@@ -350,14 +405,28 @@ export class RaceView {
     this.gapFills.visible = race.mode === 'drive';
     for (const { gap, group } of this.gapMarkers) group.visible = (!constructionReview || race.mode === 'phase') && gap.end + 12 > race.s - 50 && gap.start - 12 < race.s + 760;
     this.finish.visible = !constructionReview && race.s > LENGTH - 750;
-    if(constructionGap)this.passageGuide.group.visible=false;
+    const guideBegan = timing ? performance.now() : 0;
+    this.spaceScenery?.update(race.s);
+    if(constructionGap||race.demo)this.passageGuide.group.visible=false;
     else this.passageGuide.update(race, this.reduced);
     this.speedEffects.update({ speed: race.speed, time: race.time, distance: race.s,
       boostBlend: race.boostBlend, status: race.state }, {
       shake: EFFECT_DEFAULTS.shake + race.thrustBlend * 0.34,
       wind: EFFECT_DEFAULTS.wind + race.thrustBlend * 0.35,
     }, this.reduced);
+    const renderBegan = timing ? performance.now() : 0;
+    // Follow the course-facing camera pose, excluding shake, to keep the cropped
+    // background ahead through turns and tube rolls without exposing panel edges.
+    this.sky.position.copy(this.camera.position);
+    this.sky.quaternion.copy(this.cameraBase);
+    const skyZoom=Math.tan(THREE.MathUtils.degToRad(this.camera.fov/2))/Math.tan(THREE.MathUtils.degToRad(102/2));
+    this.sky.scale.set(skyZoom,skyZoom,1);
     this.renderer.render(this.scene, this.camera);
+    if (timing) {
+      timing.guideEffectsMs = renderBegan - guideBegan;
+      timing.renderSubmitMs = performance.now() - renderBegan;
+      timing.viewMs = performance.now() - began;
+    }
   }
 }
 

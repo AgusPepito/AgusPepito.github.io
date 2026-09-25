@@ -14,15 +14,15 @@ export function obstacleReviewSequence(shape='flat'){
     {s:1800,kind:'hole',center:shape==='flat'?-.25:.96,width:5/half,height:4.2,depth:5},
   ];
 }
-export function barrierAssembly(THREE,{shape='flat',width=18,center=0,height=2.4,startCap=true,endCap=true}={}){
-  const root=barrier(THREE,{width,height,startCap,endCap});
+export function barrierAssembly(THREE,{shape='flat',width=18,center=0,height=2.4,startCap=true,endCap=true,firstModuleOnly=false}={}){
+  const root=barrier(THREE,{width,height,startCap,endCap,firstModuleOnly});
   conformWallParts(THREE,root,{shape,center});root.name=`${shape}-j3-louver-bank`;return root;
 }
-export function obstacleAssembly(THREE,{shape='flat',type='jump-only',opening=10,center=0,road=false,halfWidth=wallHalfWidth(shape),closed=shape!=='flat'}={}){
+export function obstacleAssembly(THREE,{shape='flat',type='jump-only',opening=10,center=0,road=false,halfWidth=wallHalfWidth(shape),closed=shape!=='flat',firstModuleOnly=false}={}){
   const root=new THREE.Group(),half=halfWidth;
   root.name=`${shape}-${type}-assembly`;
   if(type==='opening-only')root.add(passageAssembly(THREE,{shape,opening,center,infill:true,halfWidth,closed}));
-  else if(type==='jump-only')root.add(barrierAssembly(THREE,{shape,width:half*2,startCap:!closed,endCap:!closed}));
+  else if(type==='jump-only')root.add(barrierAssembly(THREE,{shape,width:half*2,startCap:!closed,endCap:!closed,firstModuleOnly}));
   else{
     root.add(conformWallParts(THREE,compactPassage(THREE,{opening,clearance:HOLE_HEIGHT,height:4.2}),{shape,center}));
     const reach=opening/2+COMPACT_JAMB_WIDTH;
@@ -31,6 +31,7 @@ export function obstacleAssembly(THREE,{shape='flat',type='jump-only',opening=10
   }
   if(type!=='opening-only'){
     const marks=new THREE.Group(),mat=new THREE.MeshStandardMaterial({color:0xe5ddc8,emissive:0xfff3db,emissiveIntensity:.65,roughness:.5});mat.name='j3-approach-white';
+    marks.name='jump-approach-markings';
     const count=Math.max(1,Math.round(half*2/6)),pitch=half*2/count;
     for(let i=0;i<count;i++){
       const x=-half+(i+.5)*pitch;

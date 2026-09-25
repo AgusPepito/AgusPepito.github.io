@@ -1,3 +1,4 @@
+import {omitFaces,openBottomBox,topCylinder} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
 
 export const CHECKPOINT_HALF_LENGTH=15;
@@ -18,10 +19,10 @@ export default function generate(THREE,{width=36,projection=true,rows=5}={}){
   };
   for(const [key,m]of Object.entries(mats)){m.name='checkpoint-r1-'+key;if(['ivory','graphite','steel','brass','glass'].includes(key))m.userData.slabFinish=true;}
   function mesh(name,g,key,x=0,y=0,z=0){const m=new THREE.Mesh(g,mats[key]);m.name=name;m.position.set(x,y,z);root.add(m);return m;}
-  const box=(name,x,y,z,w,h,d,key)=>mesh(name,new THREE.BoxGeometry(w,h,d),key,x,y,z);
+  const box=(name,x,y,z,w,h,d,key)=>mesh(name,openBottomBox(THREE,w,h,d),key,x,y,z);
   function horizontal(name,s,key,x,y,z,depth=.10){
     const g=new THREE.ExtrudeGeometry(s,{depth,bevelEnabled:true,bevelSize:.018,bevelThickness:.018,bevelSegments:1,steps:1});
-    g.translate(0,0,-depth-.018);g.rotateX(-Math.PI/2);return mesh(name,g,key,x,y,z);
+    omitFaces(THREE,g,2,-1);g.translate(0,0,-depth-.018);g.rotateX(-Math.PI/2);return mesh(name,g,key,x,y,z);
   }
   function plate(name,x,z,w,d,key,holes=[],circle=false,top=-.045){
     const b=.09,s=new THREE.Shape();
@@ -32,12 +33,12 @@ export default function generate(THREE,{width=36,projection=true,rows=5}={}){
   }
   function ring(x,z,outer,inner,y,key){const s=new THREE.Shape();s.absarc(0,0,outer,0,Math.PI*2,false);const p=new THREE.Path();p.absarc(0,0,inner,0,Math.PI*2,true);s.holes.push(p);return horizontal('concentric-instrument-bezel',s,key,x,y,z,.12);}
   function bolt(x,z,y=-.031){
-    mesh('instrument-captive-washer',new THREE.CylinderGeometry(.065,.065,.022,12),'dark',x,y-.02,z);
-    mesh('instrument-hex-fastener',new THREE.CylinderGeometry(.041,.041,.033,6),'steel',x,y,z);
+    mesh('instrument-captive-washer',topCylinder(THREE,.065,.022,8),'dark',x,y-.02,z);
+    mesh('instrument-hex-fastener',topCylinder(THREE,.041,.033,6),'steel',x,y,z);
     box('fastener-drive-recess',x,y+.018,z,.035,.003,.008,'dark');
   }
   function lens(x,z,r,y){
-    mesh('recessed-optical-glass',new THREE.CylinderGeometry(r,r,.075,32),'glass',x,y,z);
+    mesh('recessed-optical-glass',topCylinder(THREE,r,.075,24),'glass',x,y,z);
     ring(x,z,r+.09,r+.01,y+.042,'steel');
   }
   function cassette(x,z,w=2.86){
@@ -45,20 +46,20 @@ export default function generate(THREE,{width=36,projection=true,rows=5}={}){
     box('timing-cassette-dark-well',x,-.38,z,w-.08,.08,.50,'dark');
     for(let j=0;j<5;j++){
       const lx=x+(j-2)*(w-.55)/5;
-      mesh('lamp-reflector-cup',new THREE.CylinderGeometry(.13,.13,.10,12),'graphite',lx,-.25,z);
-      mesh('recessed-pearl-timing-lamp',new THREE.CylinderGeometry(.082,.082,.045,16),'light',lx,-.18,z);
+      mesh('lamp-reflector-cup',topCylinder(THREE,.13,.10,8),'graphite',lx,-.25,z);
+      mesh('recessed-pearl-timing-lamp',topCylinder(THREE,.082,.045,8),'light',lx,-.18,z);
     }
     for(const dx of [-w/2+.075,w/2-.075])bolt(x+dx,z,-.06);
   }
   function instrument(x,z){
-    mesh('circular-well-opaque-floor',new THREE.CylinderGeometry(1.51,1.51,.10,40),'dark',x,-.93,z);
+    mesh('circular-well-opaque-floor',topCylinder(THREE,1.51,.10,32),'dark',x,-.93,z);
     ring(x,z,1.47,1.20,-.11,'ivory');
     ring(x,z,1.19,1.04,-.23,'steel');
     ring(x,z,1.02,.82,-.39,'graphite');
     ring(x,z,.81,.69,-.48,'brass');
     lens(x,z,.64,-.63);
     ring(x,z,.34,.30,-.566,'steel');
-    mesh('optical-center-white-indicator',new THREE.CylinderGeometry(.06,.06,.028,16),'light',x,-.58,z);
+    mesh('optical-center-white-indicator',topCylinder(THREE,.06,.028,8),'light',x,-.58,z);
     for(let n=0;n<24;n++){
       const a=n*Math.PI/12,s=Math.sin(a),c=Math.cos(a);
       const tick=box('radial-calibration-mark',x+s*1.34,-.103,z+c*1.34,.033,.006,n%3===0?.18:.095,'graphite');tick.rotation.y=a;

@@ -1,3 +1,4 @@
+import {omitFaces,openBottomBox} from './geometry-cleanup.js';
 import {surfaceMaps} from './slab-surface-r1.js';
 
 // P3 selected service gantry. The clear opening is NEVER occupied by details:
@@ -15,18 +16,18 @@ export default function generate(THREE,{opening=10,clearance=3.5}={}){
   };
   for(const [key,m]of Object.entries(mats)){m.name='passage-p3-r1-'+key;if(['graphite','ivory','steel'].includes(key))m.userData.slabFinish=true;}
   function mesh(name,g,key,x=0,y=0,z=0,rigid=false){const m=new THREE.Mesh(g,mats[key]);m.name=name;m.position.set(x,y,z);m.userData.wallRigid=rigid;root.add(m);return m;}
-  function box(name,x,y,z,w,h,d,key){return mesh(name,new THREE.BoxGeometry(w,h,d),key,x,y,z);}
+  function box(name,x,y,z,w,h,d,key){return mesh(name,(y-h/2<=.0001?openBottomBox(THREE,w,h,d):new THREE.BoxGeometry(w,h,d)),key,x,y,z);}
   function plate(name,x,y,z,w,h,key,holes=[]){
     const b=.09,s=new THREE.Shape();
     s.moveTo(-w/2+b,-h/2);s.lineTo(w/2-b,-h/2);s.lineTo(w/2,-h/2+b);s.lineTo(w/2,h/2-b);s.lineTo(w/2-b,h/2);s.lineTo(-w/2+b,h/2);s.lineTo(-w/2,h/2-b);s.lineTo(-w/2,-h/2+b);s.closePath();
     for(const [hx,hy,hw,hh]of holes){const p=new THREE.Path();p.moveTo(hx-hw/2,hy-hh/2);p.lineTo(hx-hw/2,hy+hh/2);p.lineTo(hx+hw/2,hy+hh/2);p.lineTo(hx+hw/2,hy-hh/2);p.closePath();s.holes.push(p);}
-    return mesh(name,new THREE.ExtrudeGeometry(s,{depth:.09,bevelEnabled:true,bevelSize:.025,bevelThickness:.025,bevelSegments:1,steps:1}),key,x,y,z-.115);
+    return mesh(name,omitFaces(THREE,new THREE.ExtrudeGeometry(s,{depth:.09,bevelEnabled:true,bevelSize:.025,bevelThickness:.025,bevelSegments:1,steps:1}),2,-1),key,x,y,z-.115);
   }
   function bolt(x,y,z){const m=mesh('gantry-captive-fastener',new THREE.CylinderGeometry(.05,.05,.04,6),'steel',x,y,z,true);m.rotation.x=Math.PI/2;}
   function verticalPipe(x,low,high,z){
-    mesh('protected-jamb-conduit',new THREE.CylinderGeometry(.13,.13,high-low,14),'steel',x,(low+high)/2,z);
-    for(const y of [low+.22,high-.22])mesh('jamb-conduit-coupling',new THREE.CylinderGeometry(.2,.2,.24,12),'brass',x,y,z,true);
-    for(const y of [low+.42,high-.42])mesh('coupling-seal-ring',new THREE.CylinderGeometry(.17,.17,.055,12),'dark',x,y,z,true);
+    mesh('protected-jamb-conduit',new THREE.CylinderGeometry(.13,.13,high-low,10),'steel',x,(low+high)/2,z);
+    for(const y of [low+.22,high-.22])mesh('jamb-conduit-coupling',new THREE.CylinderGeometry(.2,.2,.24,10),'brass',x,y,z,true);
+    for(const y of [low+.42,high-.42])mesh('coupling-seal-ring',new THREE.CylinderGeometry(.17,.17,.055,8),'dark',x,y,z,true);
   }
   for(const side of [-1,1]){
     const center=side*(half+jamb/2),inner=side*(half+.53),outer=side*(half+jamb-.53),service=side*(half+2.3);

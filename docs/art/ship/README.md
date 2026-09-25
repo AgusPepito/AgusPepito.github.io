@@ -1,6 +1,12 @@
 # Ship studies — orbital motorsport
 
-Status: three candidates authored; no winner selected. Recipe verifier, render-sheet review, and gameplay integration are pending. No tests or visual gameplay review were run. The user owns selection and testing.
+Status: the user selected the image-led reference reconstruction (D) for gameplay on 2026-09-25. It replaces the prototype racer. Recipe verification and user visual review remain pending; no tests or visual gameplay review were run.
+
+## Gameplay integration
+
+`src/racer/ship-kit.js` generates the selected model, combines its fixed geometry by material (including multi-material hull faces), and indexes the resulting buffers. The model is rotated to face the race's forward direction and centered vertically on the existing hover anchor. Collision rules and handling are unchanged. Reactor and nozzle energy follow the three phase colors, with two thrust cones attached to normalized nozzle positions provided by the asset. Boost stretches the cones from their outlets. The existing scene lighting is used; shipyard bloom is not added to the racer. Earlier candidate files remain available in the shipyard.
+
+Gameplay glow uses three soft, depth-tested additive sprites at the reactor and twin nozzle exits, sharing one 64-pixel radial texture and one material. Opacity is 0.30, rising to 0.36 under thrust; ship emission is reduced from the preview's 18 to 3. Colors follow the selected phase. This approximates the preview's halo locally rather than adding full-screen bloom. Scene disposal releases the shared glow resources with the ship. Visual tuning remains user-owned.
 
 ## Style lock
 Ivory ceramic armor over graphite machinery; compact late-1990s racing silhouettes; visibly separated engine pods; one large phase core readable from the chase camera; restrained orange identification accents. Energy uses the gameplay cyan/amber/violet palette. No weapons, logos, imported meshes, textures or mesh blobs.

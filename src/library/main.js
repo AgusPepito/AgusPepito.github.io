@@ -45,6 +45,7 @@ $('revision').addEventListener('change', () => {
   const url = new URL(location.href); url.searchParams.set('revision', $('revision').value); url.searchParams.delete('asset'); location.href = url.href;
 });
 if (revision !== 'r1') for (const [id, family] of [['01','frame'],['02','pipe'],['03','grille'],['04','cover']]) {
+  if(revision==='r3'&&family==='frame'){catalog[id]=[];continue;}
   catalog[id] = [
     ...Object.entries((revision === 'r3' ? detailedKit : raisedKit)[family]).map(([kind, factory]) => [kind, `Raised ${family} · ${kind} · ${revision.toUpperCase()}`, factory]),
     ['assembly', `Road with raised housings · ${revision.toUpperCase()}`, () => {
@@ -122,7 +123,7 @@ try {
     $('description').textContent = { '01': 'Approved foundation R1. Parts extracted from the road asset.', '02': 'Approved pipe kit R1.', '03': 'Grille kit R1 — awaiting approval. Open lattice, louvers and reinforced panels.', '04': 'Covered-metal kit R1 — awaiting approval. Plain armor, segmented panels, hatches and vents.' }[$('category').value];
     if (revision === 'r2') $('description').textContent = 'Raised R2: full-height start/end connectors across families. Separate ramp-start/ramp-end caps for exposed ends. Approximately 3.3 m high. Awaiting approval.';
     if (revision === 'r3') $('description').textContent = 'Detailed R3 set: approved 30° profile, full-height family connectors and separate ramp caps. Individual modules are 12 m long; mounted bays use a 12.5 m pitch.';
-    if ($('category').value === '05') $('description').textContent = 'Mixed assembly R1 reuses R3 housings. Full-height family joins, empty frames and ramp caps only at exposed ends. The driving sample uses unequal runs across chunk boundaries.';
+    if ($('category').value === '05') $('description').textContent = 'Mixed assembly uses central pipe, grille and armor pieces. Armor supplies the exposed ramps and terminal pieces; basic housings have been removed.';
     if ($('category').value === '06') $('description').textContent = 'Phase lanes R1: dark inset beds, narrow colored borders, end symbols and neutral edge markers. Active lane width 6.48 m. Drive the sample for matching-phase turbo.';
     if (['07','08'].includes($('category').value)) $('description').textContent = 'Tube R1: 18 m radius, fully drivable circumference, flush bands and shallow protected service recesses. The approved lane geometry follows the curvature at the same 6.48 m width. Use Front to look through the mouth, or zoom into the inside tube.';
     if(['07','08'].includes($('category').value)){

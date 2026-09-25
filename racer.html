@@ -19,7 +19,7 @@
   <p id="page-loading" role="status">Loading track…</p>
   <canvas id="race-world" aria-label="Phase racing course"></canvas>
   <div id="speed-wash" aria-hidden="true"></div>
-  <header><button id="fullscreen" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen">⛶</button><button id="pause" aria-label="Pause">Ⅱ</button></header>
+  <header><button id="music-toggle" aria-label="Mute music" aria-pressed="true" title="Mute music">♫ ON</button><button id="fullscreen" aria-label="Enter fullscreen" aria-pressed="false" title="Fullscreen">⛶</button><button id="pause" aria-label="Pause">Ⅱ</button></header>
   <div id="fullscreen-hint" role="status" hidden></div>
   <div id="race-hud">
     <div id="checkpoint-notice" role="status" hidden></div>
@@ -30,18 +30,49 @@
     <div id="jump-cue" hidden></div>
   </div>
   <section id="menu" class="overlay"><div class="panel">
-    <p class="eyebrow">GRAVITY / MOMENTUM / PHASE</p><h1>FIND YOUR<br><em>FAST LINE.</em></h1>
-    <p>Follow the line's color to match the next phase. Learn one skill at a time, reach checkpoints, then take on increasingly demanding combinations.</p>
-    <div class="instructions desktop-help"><span><b>← → / A D</b> Steer around the surface</span><span><b>S / ↓</b> Tap for a short brake pulse</span><span><b>Space / ↑ / J</b> Tap to jump</span><span><b>W / Shift</b> Hold to boost—even in the air</span><span><b>1 ● &nbsp; 2 ▲ &nbsp; 3 ◆</b> Switch phase instantly</span></div>
-    <div class="instructions touch-help"><span><b>Left thumbpad</b> Drag sideways to steer</span><span><b>Left pad up</b> Jump · pull back to rearm</span><span><b>Pull backward</b> One short brake pulse</span><span><b>Right thumbpad</b> Left cyan · down amber · right violet</span><span><b>Right pad up</b> Hold for turbo</span></div>
-    <p class="subtle">Checkpoints refill boost and save your progress.<br>Gold edges: jumps or gaps. Tall red walls: use their opening.</p>
-    <label class="mode-choice" for="level">Starting checkpoint <select id="level"><option value="0">1 · First Shift — learn phases</option><option value="1">2 · Around the Tube — steering</option><option value="2">3 · Take Flight — jumps and turbo</option><option value="3">4 · Combinations — the original challenge</option><option value="4">5 · Overload — expert rounds</option></select></label>
-    <p id="level-lesson" class="subtle"></p>
-    <label class="mode-choice" for="mode">Course mode <select id="mode"><option value="phase">Phase race · phases, walls and jumps</option><option value="drive">Driving only · empty track</option></select></label>
-    <button id="start" class="primary">Start from checkpoint ↗</button><p id="loading-error" hidden></p>
+    <p class="eyebrow"><span class="section-number">01</span> ORBITAL ANTIGRAVITY RACER</p>
+    <h1 class="wordmark"><span>VECTOR</span><span>SHIFT<span class="checkers" aria-hidden="true"></span></span></h1>
+    <p class="review-copy" hidden></p><p class="subtle review-copy" hidden></p>
+    <div class="checkpoint-choice"><label for="level">STARTING CHECKPOINT</label><div class="checkpoint-row">
+      <button id="level-prev" aria-label="Previous checkpoint">‹</button>
+      <select id="level"><option value="0">01 / FIRST SHIFT</option><option value="1">02 / AROUND THE TUBE</option><option value="2">03 / TAKE FLIGHT</option><option value="3">04 / COMBINATIONS</option><option value="4">05 / OVERLOAD</option></select>
+      <button id="level-next" aria-label="Next checkpoint">›</button>
+    </div></div>
+    <button id="start" class="primary" disabled data-loading="true" aria-busy="true"><span id="start-label">LOADING</span><span id="start-progress" aria-hidden="true">0%</span></button>
+    <button id="open-controls" class="secondary-action">CONTROLS <span aria-hidden="true">»</span></button>
+    <p id="menu-status" role="status"></p><p id="loading-error" role="alert" hidden></p>
+    <div class="menu-signature" aria-hidden="true">VECTOR SHIFT <span>ORBITAL RACING DIVISION</span></div>
   </div></section>
-  <section id="result" class="overlay" hidden><div class="panel compact"><p class="eyebrow" id="result-label"></p><h1 id="result-title"></h1><p id="result-copy"></p><div id="sector-results"></div><button id="retry" class="primary">Race again ↗</button><button id="back">Back to start</button></div></section>
-  <section id="paused" class="overlay" hidden><div class="panel compact"><p class="eyebrow">VECTOR SHIFT / PHASE RACER</p><h1>PAUSED.</h1><p id="pause-level"></p><p id="best"></p><button id="resume" class="primary">Resume ↗</button><button id="restart">Retry checkpoint</button><a class="original-link" href="./index.html">Original game ↗</a></div></section>
+  <div id="demo-shade" aria-hidden="true"></div>
+  <dialog id="controls-dialog" aria-labelledby="controls-title">
+    <div class="controls-top"><span class="eyebrow">02 / FLIGHT MANUAL</span><button id="close-controls" aria-label="Close controls">✕</button></div>
+    <h2 id="controls-title">CONTROLS <span class="checkers" aria-hidden="true"></span></h2>
+    <div class="control-device" role="group" aria-label="Controls device"><button data-controls-device="pc" aria-pressed="true">PC</button><button data-controls-device="touch" aria-pressed="false">TOUCH</button></div>
+    <div id="controls-pc">
+      <div class="key-grid"><div><div class="key-pair"><kbd>A</kbd><kbd>D</kbd></div><strong>STEER</strong><small>or ← / →</small></div><div><kbd class="wide-key">SPACE</kbd><strong>JUMP</strong><small>or ↑ / J</small></div><div><kbd>W</kbd><strong>BOOST</strong><small>hold W or Shift</small></div><div><kbd>S</kbd><strong>BRAKE</strong><small>tap S or ↓</small></div></div>
+      <div class="phase-help"><span><kbd>1</kbd><b class="ion">●</b>ION</span><span><kbd>2</kbd><b class="sol">▲</b>SOL</span><span><kbd>3</kbd><b class="flux">◆</b>FLUX</span></div>
+      <p class="control-note">Match your phase to the colored line and gate.</p><p class="control-note">Esc / P · Pause &nbsp; R · Retry checkpoint</p>
+    </div>
+    <div id="controls-touch" hidden>
+      <div class="touch-diagrams"><div><h3>LEFT THUMBPAD</h3><div class="pad-diagram"><span class="north">↑<small>JUMP</small></span><span class="west">←<small>STEER</small></span><i></i><span class="east">→<small>STEER</small></span><span class="south">↓<small>BRAKE</small></span></div></div><div><h3>RIGHT THUMBPAD</h3><div class="pad-diagram"><span class="north">↑<small>BOOST</small></span><span class="west ion">●<small>ION</small></span><i></i><span class="east flux">◆<small>FLUX</small></span><span class="south sol">▲<small>SOL</small></span></div></div></div>
+      <p class="control-note">Left pad: drag sideways to steer. Push up to jump; pull back to rearm. Pull down for a brake pulse.</p><p class="control-note">Right pad: hold up for boost. Left, down and right switch phase.</p>
+    </div>
+    <p id="level-lesson" class="control-note"></p>
+    <button id="controls-done" class="primary">BACK <span aria-hidden="true">↵</span></button>
+  </dialog>
+  <section id="result" class="overlay race-overlay" aria-labelledby="result-title" hidden><div class="panel race-panel">
+    <div class="panel-heading"><span class="section-number" aria-hidden="true">03</span><p class="eyebrow" id="result-label"></p><span class="checkers" aria-hidden="true"></span></div>
+    <h1 id="result-title"></h1>
+    <p id="result-copy" class="panel-copy"></p>
+    <div class="race-summary"><div><span>DISTANCE</span><strong id="result-distance"></strong></div><div><span>TIME</span><strong id="result-time"></strong></div></div>
+    <div class="panel-actions"><button id="retry" class="primary"><span id="retry-label">RETRY</span><span class="action-tail"><small id="retry-hint"></small><span aria-hidden="true">»</span></span></button><button id="back" class="panel-secondary"><span>MAIN MENU</span><span aria-hidden="true">↵</span></button></div>
+  </div></section>
+  <section id="paused" class="overlay race-overlay" aria-labelledby="pause-title" hidden><div class="panel race-panel">
+    <div class="panel-heading"><span class="section-number" aria-hidden="true">02</span><p class="eyebrow">RACE ON HOLD</p><span class="checkers" aria-hidden="true"></span></div>
+    <h1 id="pause-title">PAUSED.</h1>
+    <div class="panel-inset"><p id="pause-level"></p><p id="best"></p></div>
+    <div class="panel-actions"><button id="resume" class="primary"><span>RESUME</span><span aria-hidden="true">»</span></button><button id="restart" class="panel-secondary"><span>RETRY CHECKPOINT</span><span aria-hidden="true">↻</span></button><div class="panel-action-pair"><button id="pause-controls" class="panel-secondary">CONTROLS</button><button id="return-menu" class="panel-secondary">MAIN MENU</button></div></div>
+  </div></section>
   <footer>
     <div id="thumbpad" role="group" aria-label="Drag sideways to steer, forward to jump, backward to brake">
 

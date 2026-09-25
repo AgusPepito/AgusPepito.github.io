@@ -1,3 +1,4 @@
+import {topCylinder} from './geometry-cleanup.js';
 // A partial opening's lateral edge. X=0 is the cut; intact road is +X.
 // Flush fixtures occupy the intact side, with only exposed fascia below it.
 export default function generate(THREE,{length=12.5}={}){
@@ -26,7 +27,7 @@ export default function generate(THREE,{length=12.5}={}){
     const tiles=Math.max(1,Math.floor(l/.65)),usable=l-.34;
     for(let j=0;j<tiles;j++)box('recessed-border-light-tile',.43,-.042,z-usable/2+(j+.5)*usable/tiles,.25,.024,usable/tiles-.04,'light');
     for(const x of [.12,.43])for(const s of [-1,1]){
-      const bolt=new THREE.Mesh(new THREE.CylinderGeometry(.032,.032,.012,6),mats.steel);
+      const bolt=new THREE.Mesh(topCylinder(THREE,.032,.012,6),mats.steel);
       bolt.name='flush-border-fastener';bolt.position.set(x,-.003,z+s*(l/2-.08));root.add(bolt);
     }
   }

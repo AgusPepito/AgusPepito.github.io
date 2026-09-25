@@ -54,7 +54,7 @@ export default function generate(THREE,{kind='takeoff',width=36,length=12}={}){
   // Actual holes in both the top armor and its backing expose the light wells.
   const footprint=rectangle(0,length/2,width,length),holes=fixtures.map(f=>f.outer);
   shapeMesh('apron-brushed-armor',footprint,-.012,'plate',holes);
-  shapeMesh('apron-joint-backing',footprint,-.18,'dark');
+
   function bevel(name,outer,inner){
     const clockwise=outer.reduce((sum,a,i)=>{const b=outer[(i+1)%outer.length];return sum+a[0]*b[1]-b[0]*a[1];},0)<0;
     for(let i=0;i<outer.length;i++){

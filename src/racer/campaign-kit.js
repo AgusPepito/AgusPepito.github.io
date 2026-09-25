@@ -14,6 +14,10 @@ import { wallAssembly, mergeWallParts } from './wall-kit.js';
 import { mountDetailedBay, mixedBayAt } from './mixed-kit.js';
 import { cutGapLayers } from './gap-kit.js';
 import { mountCourseSurface } from './course-surface.js';
+import { inspectionBatches } from './inspection-batches.js';
+import { gateModulePlan, repeatGateModule } from './gate-modules.js';
+import {canDeformGate,deformGateModule} from './deformed-gate.js';
+import {fullyMasked} from './mask-coverage.js';
 
 const PITCH = 12.5;
 const overlaps = (a, b, c, d) => a < d && b > c;
@@ -33,14 +37,27 @@ export function campaignDecorations() {
     if (STRIPS.some(strip => overlaps(s, s + 12, strip.start, strip.end))) continue;
     services.push({ start: s, end: s + 12, variant: ['pipe', 'cooling', 'access', 'armor'][Math.floor(s / 200) % 4] });
   }
-  const layouts = [-1, 1].map((side, sideIndex) => {
-    const layout = Array(Math.ceil((LENGTH + 100) / PITCH)).fill(null);
-    for (let s = 100; s < LENGTH - 125; s += 400) {
-      if (!clear(s - 15, s + 115) || [s, s + 50, s + 100].some(at => section(at).curl !== 0)) continue;
-      for (let i = 0; i < 8; i++) layout[s / PITCH + i] = ['pipe', 'grille', 'cover', 'frame'][(Math.floor(i / 2) + sideIndex) % 4];
+  const bayCount=Math.ceil((LENGTH+100)/PITCH), eligible=Array(bayCount).fill(false);
+  // 450 m of walls / 50 m of breathing room, clipped per bay instead of
+  // rejecting an entire run when just one gate or gap intersects it.
+  for(let i=2;i<bayCount;i++){
+    const s=i*PITCH,end=s+PITCH;
+    if(end>LENGTH-35||(i-2)%40>=36||!clear(s-.75,end+.75))continue;
+    // Extend along open curling edges too; finish before the two edges close.
+    if([s,s+PITCH*.25,s+PITCH*.5,s+PITCH*.75,end].some(at=>Math.abs(section(at).curl)>=.8))continue;
+    eligible[i]=true;
+  }
+  const layouts=[Array(bayCount).fill(null),Array(bayCount).fill(null)];
+  const families=['cover','cover','pipe','cover','grille','cover'];
+  for(let first=0;first<bayCount;){
+    if(!eligible[first]){first++;continue;}
+    let end=first+1;while(end<bayCount&&eligible[end])end++;
+    // Avoid isolated ramp pairs in small leftover clearances.
+    if(end-first>=4)for(let i=first;i<end;i++)for(let side=0;side<2;side++){
+      layouts[side][i]=i===first||i===end-1?'cover':families[(Math.floor((i-first)/4)+side*2)%families.length];
     }
-    return layout;
-  });
+    first=end;
+  }
   return { services, layouts };
 }
 
@@ -65,14 +82,18 @@ function masksFor(start, end, center, half, decorations) {
   return masks;
 }
 
-export function campaignChunk(THREE, start, decorations) {
+export function campaignChunk(THREE, start, decorations, {inspect=false,skipMasked=true} = {}) {
   const root = new THREE.Group(), layers = new THREE.Group(), energy = new THREE.Group();
+  root.userData.optimization={version:8,kind:'chunk',skipMasked,skippedSlabTiles:0};
+  const roadParts=inspect?new THREE.Group():layers, serviceParts=inspect?new THREE.Group():layers, bayParts=inspect?new THREE.Group():layers;
   const end = Math.min(start + 100, LENGTH + 100);
   for (let at = start; at < end; at += PITCH) {
     const length = Math.min(PITCH, end - at), center = at + length / 2, half = section(center).halfWidth;
+    const masks=masksFor(at,at+length,center,half,decorations);
+    if(skipMasked&&fullyMasked([-half,half,-length/2,length/2],masks)){root.userData.optimization.skippedSlabTiles++;continue;}
     const source = slabs(THREE, {width: half * 2, length, columns: Math.max(6, Math.round(half * 2 / 5)), index: Math.floor(at / PITCH)});
-    cutGapLayers(THREE, source, masksFor(at, at + length, center, half, decorations));
-    layers.add(mountCourseSurface(THREE, source, center, half));
+    cutGapLayers(THREE, source, masks);
+    roadParts.add(mountCourseSurface(THREE, source, center, half));
   }
   for (const strip of STRIPS) for (let at = strip.start; at < strip.end; at += PITCH) {
     const a = Math.max(start, at), b = Math.min(end, at + PITCH, strip.end);
@@ -98,30 +119,58 @@ export function campaignChunk(THREE, start, decorations) {
   }
   for (const belt of decorations.services) if (belt.start >= start && belt.start < end) {
     const center = (belt.start + belt.end) / 2, half = section(center).halfWidth;
-    layers.add(mountCourseSurface(THREE, serviceBelt(THREE, {radius: half / Math.PI, variant: belt.variant}), center, half));
+    serviceParts.add(mountCourseSurface(THREE, serviceBelt(THREE, {radius: half / Math.PI, variant: belt.variant}), center, half, {instanceRigid:true}));
   }
   for (let at = Math.max(0, Math.ceil(start / PITCH) * PITCH); at < end; at += PITCH) for (const [i, side] of [-1, 1].entries()) {
     const bay = mixedBayAt(decorations.layouts[i], at / PITCH);
     if (!bay) continue;
-    const source = new THREE.Group(); mountDetailedBay(THREE, source, bay.family, bay.kind, side, 0);
-    layers.add(mountCourseSurface(THREE, source, at + PITCH / 2, 18));
+    const center=at+PITCH/2,half=section(center).halfWidth;
+    const source = new THREE.Group();
+    // Authored inward foot extends 1.4 m from its pivot. Overlap the slab by
+    // 0.2 m and sink the base slightly into its nominal y=0 surface.
+    mountDetailedBay(THREE,source,bay.family,bay.kind,side,0,{lateral:half+1.2,height:-.03});
+    bayParts.add(mountCourseSurface(THREE, source, center, half));
   }
-  root.add(mergeWallParts(THREE, layers));
-  const mergedEnergy = mergeWallParts(THREE, energy);
+  if(inspect){
+    root.add(inspectionBatches(THREE,roadParts,'Road slabs'),inspectionBatches(THREE,serviceParts,'Service belts'),inspectionBatches(THREE,bayParts,'Roadside bays'));
+    const lanes=inspectionBatches(THREE,energy,'Phase lanes');lanes.traverse(m=>{if(m.isMesh)m.renderOrder=1;});root.add(lanes);
+    root.userData.energyGroup=lanes;return root;
+  }
+  root.add(mergeWallParts(THREE, layers, {indexed:true,worldBaked:true}));
+  const mergedEnergy = mergeWallParts(THREE, energy, {indexed:true,worldBaked:true});
   mergedEnergy.traverse(m => { if (m.isMesh) m.renderOrder = 1; });
   root.add(mergedEnergy); root.userData.energyGroup = mergedEnergy;
   return root;
 }
 
 function finishStation(THREE, source, s, half, options) {
-  const result = mergeWallParts(THREE, mountCourseSurface(THREE, source, s, half, options));
+  const result = mergeWallParts(THREE, mountCourseSurface(THREE, source, s, half, {instanceRigid:true,...options}), {indexed:true,worldBaked:true});
   result.traverse(m => { if (m.isMesh && m.material.name.endsWith('-curtain')) m.renderOrder = 2; });
   return result;
 }
 
-export function campaignGate(THREE, gate) {
+export function campaignGate(THREE, gate, timings = null, {inspect=false,modules=true,deform=true} = {}) {
   const half = section(gate.s).halfWidth;
-  return finishStation(THREE, emitter(THREE, {width: gate.width * half * 2, color: PHASES[gate.phase].hex}), gate.s, half, {center: () => gate.center});
+  const began = timings ? performance.now() : 0;
+  const plan=modules?gateModulePlan(gate):{mode:'baked',reason:'Module instancing disabled for comparison'};
+  if(modules&&deform&&plan.mode==='baked'&&canDeformGate()){
+    const source=emitter(THREE,{width:gate.width*half*2,color:PHASES[gate.phase].hex,firstModuleOnly:true});
+    const authored=performance.now();
+    const result=deformGateModule(THREE,source,gate,{inspect,timings});
+    if(timings)timings.sourceMs=authored-began;
+    return result;
+  }
+  const repeated=plan.mode!=='baked';
+  const source = emitter(THREE, {width: gate.width * half * 2, color: PHASES[gate.phase].hex, reuseModules:true,firstModuleOnly:repeated});
+  const authored = timings ? performance.now() : 0;
+  mountCourseSurface(THREE, source, gate.s, half, {center: () => gate.center, timings,cacheFrames:true,instanceRigid:true});
+  const conformed = timings ? performance.now() : 0;
+  const merged = inspect?inspectionBatches(THREE,source,'Gate'):mergeWallParts(THREE, source, {indexed:true,timings,worldBaked:true});
+  const result=repeated?repeatGateModule(THREE,merged,plan):merged;
+  result.userData.gateModules=plan;
+  result.traverse(m => { if (m.isMesh && m.material.name.endsWith('-curtain')) m.renderOrder = 2; });
+  if (timings) Object.assign(timings, {sourceMs:authored-began,conformMs:conformed-authored,mergeMs:performance.now()-conformed,modulePlan:plan});
+  return result;
 }
 
 export function campaignCheckpoint(THREE) {
@@ -129,19 +178,25 @@ export function campaignCheckpoint(THREE) {
   return finishStation(THREE, checkpoint(THREE, {width: half * 2}), LENGTH, half);
 }
 
-export function campaignObstacle(THREE, obstacle) {
+export function campaignObstacle(THREE, obstacle, {modules=true}={}) {
   const {halfWidth: half, closed} = section(obstacle.s), height = obstacle.height ?? WALL_HEIGHT;
+  // Closed full-width jump barriers have no unique end caps. Keep partial,
+  // open-road and varying-cross-section assemblies on the existing path.
+  const plan=modules&&closed&&obstacle.kind==='jump'?gateModulePlan({s:obstacle.s,width:1,center:0},
+    {moduleWidth:4.5,approach:25,departure:Math.max(6,obstacle.depth+1)}):{mode:'baked',reason:'Barrier needs its original assembly'};
+  const repeated=plan.mode!=='baked';
   const root = new THREE.Group();
   if (obstacle.kind === 'wall') {
     for (const [a, b] of solidSpans(obstacle)) root.add(wallAssembly(THREE, {width: (b - a) * half, center: (a + b) * half / 2}));
   } else {
     root.add(obstacleAssembly(THREE, {
       type: obstacle.kind === 'jump' ? 'jump-only' : height === 4.2 ? 'jump-or-opening' : 'opening-only',
+      firstModuleOnly:repeated,
       halfWidth: half, closed, opening: obstacle.width * half * 2, center: obstacle.center * half,
     }));
   }
   const sourceHeight = obstacle.kind === 'jump' ? 2.4 : height === 4.2 && obstacle.kind === 'hole' ? 4.2 : WALL_HEIGHT;
-  return finishStation(THREE, root, obstacle.s, half, {prepare(geometry) {
+  const options={prepare(geometry) {
     const p = geometry.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const y = p.getY(i);
@@ -150,7 +205,15 @@ export function campaignObstacle(THREE, obstacle) {
       const newY = obstacle.kind === 'hole' ? y <= HOLE_HEIGHT ? y : HOLE_HEIGHT + (y - HOLE_HEIGHT) * (height - HOLE_HEIGHT) / (sourceHeight - HOLE_HEIGHT) : y * height / sourceHeight;
       p.setXYZ(i, p.getX(i), newY, p.getZ(i) < 0 ? p.getZ(i) * obstacle.depth / 5 : p.getZ(i));
     }
-  }});
+  }};
+  let result;
+  if(repeated){
+    const marks=root.getObjectByName('jump-approach-markings');marks.removeFromParent();
+    result=repeatGateModule(THREE,finishStation(THREE,root,obstacle.s,half,options),plan);
+    result.add(finishStation(THREE,marks,obstacle.s,half,options));
+  }else result=finishStation(THREE,root,obstacle.s,half,options);
+  result.userData.optimization={version:8,kind:'obstacle',modulePlan:plan};
+  return result;
 }
 
 export function campaignGap(THREE, gap) {
@@ -184,5 +247,5 @@ export function campaignGap(THREE, gap) {
     if (side < 0) source.rotation.y = Math.PI;
     root.add(mountCourseSurface(THREE, source, center, section(center).halfWidth, {center: () => gap.center + side * gap.width}));
   }
-  return mergeWallParts(THREE, root);
+  return mergeWallParts(THREE, root, {indexed:true});
 }

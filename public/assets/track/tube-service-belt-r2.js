@@ -1,3 +1,4 @@
+import {omitFaces,topCylinder} from './geometry-cleanup.js';
 // Recipe route B: one detailed ivory service-belt candidate, authored unwrapped.
 // Twelve metres along the tube; all depth is relative to the nominal road skin.
 // The caller removes the underlying skin before mapping this into either tube.
@@ -32,7 +33,12 @@ export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,var
   function skin(name,x,z,w,l,y,material){
     const g=new THREE.PlaneGeometry(w,l,Math.max(1,Math.ceil(w/.2)),Math.max(1,Math.ceil(l/.5)));g.rotateX(-Math.PI/2);return mesh(name,g,material,x,y,z);
   }
-  function box(name,x,y,z,w,h,l,material){return mesh(name,new THREE.BoxGeometry(w,h,l,Math.max(1,Math.ceil(w/.2)),1,Math.max(1,Math.ceil(l/.5))),material,x,y,z);}
+  function box(name,x,y,z,w,h,l,material){
+    const g=new THREE.BoxGeometry(w,h,l,Math.max(1,Math.ceil(w/.2)),1,Math.max(1,Math.ceil(l/.5)));
+    // Floating louvers and handles retain both sides; these fixtures sit on armor.
+    if(['bolted-identification-plaque','broad-hatch-hinge','quarter-turn-door-lock','hatch-reinforcement-strap','additional-quarter-turn-lock'].includes(name))omitFaces(THREE,g,1,-1);
+    return mesh(name,g,material,x,y,z);
+  }
   function quad(name,a,b,c,d,material){
     const along=Math.max(1,Math.ceil(Math.hypot(...a.map((v,i)=>d[i]-v))/.2));
     const across=Math.max(1,Math.ceil(Math.hypot(...a.map((v,i)=>b[i]-v))/.3));
@@ -55,7 +61,7 @@ export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,var
         [x+n[j][0],bottom,z+n[j][1]],[x+n[i][0],bottom,z+n[i][1]],material);
     }
   }
-  function bolt(x,z,y=.07){mesh('captive-hex-bolt',new THREE.CylinderGeometry(.065,.065,.055,6),'edge',x,y,z);}
+  function bolt(x,z,y=.07){mesh('captive-hex-bolt',topCylinder(THREE,.065,.055,6),'edge',x,y,z);}
   const glyphs={P:['110','101','110','100','100'],C:['111','100','100','100','111'],A:['010','101','111','101','101']};
   function stencil(x,z,letter){
     box('bolted-identification-plaque',x+.085,-.01,z+.17,.36,.14,.54,'aged');
@@ -80,10 +86,10 @@ export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,var
       if(family==='pipe'){
         for(const dx of variant==='pipe'?[-.78,.78]:[-.94,0,.94]){
           const pipeRadius=variant==='pipe'?.23:.17;
-          const pipe=mesh('broad-service-conduit',new THREE.CylinderGeometry(pipeRadius,pipeRadius,articulated?3.6:3.96,14,8),'steel',x+dx,-.43,0);pipe.rotation.x=Math.PI/2;
+          const pipe=mesh('broad-service-conduit',new THREE.CylinderGeometry(pipeRadius,pipeRadius,articulated?3.6:3.96,10,4),'steel',x+dx,-.43,0);pipe.rotation.x=Math.PI/2;
           for(const z of [-1.37,1.37]){
-            const collar=mesh('stepped-conduit-coupling',new THREE.CylinderGeometry(.235,.235,.44,12),'edge',x+dx,-.43,z);collar.rotation.x=Math.PI/2;
-            for(const dz of [-.21,.21]){const seal=mesh('coupling-retaining-ring',new THREE.CylinderGeometry(.25,.25,.065,12),'brass',x+dx,-.43,z+dz);seal.rotation.x=Math.PI/2;}
+            const collar=mesh('stepped-conduit-coupling',new THREE.CylinderGeometry(.235,.235,.44,10),'edge',x+dx,-.43,z);collar.rotation.x=Math.PI/2;
+            for(const dz of [-.21,.21]){const seal=mesh('coupling-retaining-ring',new THREE.CylinderGeometry(.25,.25,.065,10),'brass',x+dx,-.43,z+dz);seal.rotation.x=Math.PI/2;}
           }
         }
         for(const z of [-.86,.86])box('recessed-pipe-retaining-strap',x,-.18,z,w-1.25,.085,.16,'aged');

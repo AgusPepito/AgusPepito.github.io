@@ -113,5 +113,10 @@ export default function generate(THREE) {
   const center=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
   for(const child of g.children){child.position.x-=center.x;child.position.y-=bounds.min.y;child.position.z-=center.z;}
   g.scale.set(3.1/size.x,.95/size.y,3.9/size.z);
+  // Engine exits in the normalized model coordinates, for gameplay thrust effects.
+  g.userData.exhausts=[-1,1].map(side=>new THREE.Vector3(side*1.08,.365,-1.675)
+    .sub(new THREE.Vector3(center.x,bounds.min.y,center.z)).multiply(g.scale).toArray());
+  g.userData.reactorGlow=new THREE.Vector3(0,.82,-.83)
+    .sub(new THREE.Vector3(center.x,bounds.min.y,center.z)).multiply(g.scale).toArray();
   return g;
 }
