@@ -4,7 +4,9 @@
 
 GitHub Pages: https://aguspepito.github.io/ — Phase Racer is the homepage; the preserved highway prototype is linked at `/highway.html`.
 
-Pushing `main` publishes through `.github/workflows/pages.yml`. The workflow installs dependencies, builds, packages `pages-dist/`, and deploys to Pages. It does not run tests. Local preview URLs remain unchanged. Records and progress are stored per browser/site, so local preview saves do not transfer to the hosted game.
+Pushing `main` publishes through `.github/workflows/pages.yml`. The workflow installs dependencies, builds, packages `pages-dist/`, and deploys to Pages. It does not run tests. Local preview URLs remain unchanged. Progress and local records are stored per browser/site. Online leaderboards share published scores, but local preview and hosted-game player identities are separate.
+
+**Per-level leaderboards:** Set your **Pilot name** on the main menu. The **Top times** chart automatically loads submitted records for the selected course. Local example pilots fill any remaining places until ten real players have submitted times; they are never uploaded or counted as records. Campaign completions publish automatically under your saved pilot name. Activate the database with `supabase/leaderboard.sql` and enable anonymous sign-ins first; see [leaderboard setup](docs/LEADERBOARDS.md). Practice runs remain unranked.
 
 ## New: Phase Racer
 
@@ -32,7 +34,7 @@ This is a **temporary primitive-only mechanics study**, not a submission-ready a
 
 ## Development
 
-Requires Node 20 or newer.
+Requires Node 22.12 or newer.
 
 ```sh
 npm install

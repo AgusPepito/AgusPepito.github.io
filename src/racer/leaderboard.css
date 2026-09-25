@@ -1,0 +1,113 @@
+/* Approved menu concept: live course in the center, controls and timing at the edges. */
+.area-campaign #menu{--menu-line:#849ca45e;display:grid;grid-template-columns:minmax(330px,460px) minmax(380px,490px);justify-content:space-between;gap:36px;align-items:start;align-content:safe center;padding:76px max(28px,3vw) 36px;background:linear-gradient(90deg,#080e1766,transparent 43%,transparent 57%,#080e1744);backdrop-filter:none}
+.area-campaign #menu>.panel{width:100%;min-width:0;max-width:none}
+.area-campaign .menu-brand{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:0 0 18px}
+.area-campaign #menu .wordmark{font-size:clamp(40px,4vw,58px);line-height:.86;margin:0;letter-spacing:-.06em}
+.menu-mode-badge{padding:8px 19px;border:1px solid #91a7b27a;border-bottom:2px solid var(--cyan);background:#15232dcc;font-size:10px;font-weight:800;letter-spacing:.09em;transform:skewX(-14deg)}
+.pilot-profile{margin:0 0 12px;padding:14px 16px;background:linear-gradient(110deg,#18252dea,#101a23e8);border:1px solid var(--menu-line);border-radius:2px}
+.pilot-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.pilot-heading label{font-size:10px;letter-spacing:.1em;font-weight:800}
+.pilot-heading>span{font-size:8px;letter-spacing:.08em;color:#9dafba}
+.pilot-name-row{display:flex;gap:12px}
+#pilot-name{flex:1;min-width:0;width:100%;height:40px;padding:8px 11px;border:1px solid #8da5b073;border-radius:0;background:#08121bbf;color:var(--ivory);font-family:inherit;font-size:13px;font-weight:700}
+#pilot-name::placeholder{font-weight:400;color:#91a1ad}
+#pilot-name:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#menu .pilot-name-row button{flex-shrink:0;display:flex;gap:17px;align-items:center;height:40px;padding:8px 18px;font-size:11px;background:var(--ivory);color:#14202a;border:0;border-radius:0;font-weight:800}
+#menu .pilot-name-row button:hover{background:#fff9e9}
+#menu #pilot-note{margin:6px 0 0;font-size:10px;line-height:1.4;color:#b2c0c8}
+#menu .pilot-status{margin:8px 0 0;font-size:10px;line-height:1.4;color:#d7dcd8}
+#menu .pilot-status:empty{display:none}
+
+/* Area browsing has its own header. The rows below select actual courses. */
+.area-campaign #campaign-picker{max-width:none;border:1px solid var(--menu-line);border-radius:2px;padding:12px 14px;background:linear-gradient(125deg,#1d2a33ed,#101b24ec)}
+.area-campaign .campaign-summary{display:grid;grid-template-columns:auto auto 1fr;gap:12px;align-items:center;margin:0 0 9px}
+.area-campaign .campaign-summary>span{font-size:9px;letter-spacing:.07em;color:#cad5da}
+.area-campaign .campaign-summary>strong{font-size:14px;font-style:normal;letter-spacing:.04em}
+.area-campaign .campaign-summary .area-counter{justify-self:end;font-size:10px;white-space:nowrap;color:#c1d1db}
+.area-campaign #area-carousel-nav{position:static;display:grid;grid-template-columns:36px minmax(0,1fr) 46px;align-items:stretch;gap:5px;margin-bottom:6px;pointer-events:auto}
+.area-campaign #area-carousel-nav button{width:100%;height:38px;min-height:38px;font-size:29px;border:1px solid #8aa3af6b;box-shadow:none;background:var(--ivory);color:#12212c;border-radius:0}
+.area-campaign #area-carousel-nav button:not(:disabled):hover{background:#fff7e4;transform:none}
+.area-campaign #area-carousel-nav button:disabled{opacity:.4;background:#2b3d4a;color:#b0c5d2}
+#browsed-area-title{display:flex;align-items:center;min-width:0;padding:3px 8px;border:1px solid #8aa3af66;background:#16232b8c;color:var(--ivory);font-size:clamp(17px,1.8vw,23px);line-height:1.2;font-weight:900;letter-spacing:.015em}
+.area-campaign #area-tabs{gap:16px}
+.area-campaign #area-tabs .area-card,.area-campaign #area-tabs .area-card.selected{border:0;background:transparent;border-radius:0}
+.area-campaign #area-tabs .area-cover{border:0;background:transparent}
+.area-campaign #area-tabs img{height:88px;border:1px solid #8399a867}
+.area-campaign .area-card-copy{display:block;padding:8px 0 0}
+.area-campaign #area-tabs small{font-size:9px;line-height:1.45;color:#b5c6ce}
+.area-campaign #area-tabs .level-list-heading{margin:12px 0 6px;padding-top:9px;border-top:1px solid #8399a840;font-size:10px;letter-spacing:.07em;color:var(--ivory)}
+.area-campaign .area-levels{display:grid;grid-template-columns:minmax(0,1fr);gap:5px;padding:0}
+.area-campaign #area-tabs .area-levels button{display:grid;grid-template-columns:37px minmax(0,1fr) auto 12px;gap:8px;align-items:center;min-height:37px;width:100%;padding:0 10px 0 0;text-align:left;border:1px solid #8fa5b163;background:linear-gradient(90deg,#25333e99,#18263099);font-size:11px;font-weight:700;letter-spacing:.015em;border-radius:0}
+.area-campaign #area-tabs .area-levels button[aria-pressed=true]{background:linear-gradient(90deg,#075367ad,#10344499);border-color:#4de1ffd0;color:var(--cyan);box-shadow:inset 2px 0 var(--cyan),0 0 10px #4de1ff16}
+.area-campaign #area-tabs .area-levels button:not(:disabled):not([aria-pressed=true]):hover{background:#344856b3;border-color:#96b9c9}
+.area-campaign .level-number{align-self:stretch;display:grid;place-items:center;border-right:1px solid #829caa55;font-size:16px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.level-title{min-width:0;line-height:1.2}
+.level-state{font-size:8px;letter-spacing:.04em;white-space:nowrap;color:#a7ccd8}
+.area-campaign [aria-pressed=true] .level-state{color:var(--cyan)}
+.level-chevron{font-size:22px;text-align:right;font-weight:400}
+.area-campaign #area-tabs .area-levels button.complete::after{content:none}
+.area-campaign #area-tabs .area-levels button:focus-visible{outline-offset:-3px}
+.area-campaign .area-card .area-level-name{min-height:28px;margin:9px 0 0!important;display:flex;align-items:center;gap:8px;font-size:10px!important;line-height:1.4;letter-spacing:0;color:#b9ccd7}
+.area-level-name.unlock-hint::before{content:'◇';font-size:17px;color:#adc6d3}
+.area-campaign .area-card.locked .area-level-name{letter-spacing:0}
+.area-campaign .area-card.locked .level-state{color:#b4c0c6}
+
+/* The launch status stays visible for ready, loading and locked courses. */
+.race-launch{margin-top:10px;padding:11px 14px 13px;border:1px solid var(--menu-line);background:linear-gradient(120deg,#17252be8,#121b25d9);border-radius:2px}
+.area-campaign #menu-status{position:static;width:auto;height:auto;overflow:visible;clip-path:none;white-space:normal;margin:0 0 8px;font-size:10px;line-height:1.4;font-weight:700;letter-spacing:.1em;color:#eddba6}
+.area-campaign #menu #start{display:flex;gap:10px;max-width:none;width:100%;min-height:52px;margin:0;padding:12px 18px;background:linear-gradient(165deg,#ffe68b,#ffc449 60%,#e6a82d);color:#1b211f;font-size:clamp(15px,1.55vw,21px);font-weight:900;font-style:normal;line-height:1.2;border:1px solid #ffde76;box-shadow:0 0 18px #ffc54018}
+.area-campaign #menu #start:hover:not(:disabled){background:linear-gradient(165deg,#fff1ae,#ffd569)}
+#start-label{text-align:left;min-width:0}
+#start-progress{font-size:30px;line-height:1;flex-shrink:0}
+.area-campaign #menu #start:disabled{background:#293744;color:#bcc9d1;border-color:#8399a850;box-shadow:none;opacity:1;cursor:not-allowed}
+.area-campaign #menu #start[data-loading=true]{cursor:wait}
+.area-campaign #asset-notice.in-menu{max-width:none;margin:0 0 10px}
+.area-campaign #asset-notice.in-menu .loading-panel{padding:10px;border-top-width:1px}
+.area-campaign #asset-notice.in-menu .loading-stage{font-size:8px;margin-bottom:7px}
+.area-campaign #asset-notice.in-menu .loading-heading{margin-bottom:10px}
+.area-campaign #asset-notice.in-menu .loading-course{font-size:13px}
+.area-campaign #asset-notice.in-menu .loading-value{font-size:20px}
+.area-campaign .menu-tools{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:none;margin-top:10px}
+.area-campaign #menu .menu-tools .secondary-action,.area-campaign #campaign-mode{display:flex;align-items:center;justify-content:space-between;min-height:43px;width:100%;margin:0;padding:10px 15px;border:1px solid var(--menu-line);border-radius:2px;background:linear-gradient(110deg,#22323be6,#15222cdb);clip-path:none;font-size:11px;font-style:normal;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--ivory)}
+.area-campaign #campaign-mode::after{content:'›';font-size:22px;line-height:1;font-weight:400}
+.area-campaign #campaign-mode:hover{border-color:var(--cyan);background:#30424d}
+
+/* Readable timing overlay, with the player's real best kept separate from the field. */
+#menu-leaderboard{width:100%;min-width:0;align-self:center;padding:20px 22px 12px;color:var(--ivory);background:linear-gradient(135deg,#203039e8,#111b24ee);border:1px solid var(--menu-line);border-radius:2px;box-shadow:0 16px 50px #0003}
+.timing-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#leaderboard-title{margin:0;color:var(--ivory);font-family:'Arial Black',Arial,sans-serif;font-size:clamp(26px,2.5vw,37px);font-weight:900;letter-spacing:-.035em;line-height:1.05}
+.timing-course{margin:9px 0 18px;font-size:10px;line-height:1.4;letter-spacing:.075em;color:#b9cfdd}
+.timing-record{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;padding:20px 0;border-block:1px solid #91a8b44d}
+.timing-record>div{min-width:0;display:flex;flex-direction:column;gap:8px}
+.timing-record .timing-personal{border-left:1px solid #91a8b44d;padding-left:18px}
+.timing-record span{font-size:10px;letter-spacing:.09em;color:#c2d6e2}
+.timing-record strong{font-size:clamp(25px,2.5vw,37px);line-height:1;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.045em;color:var(--cyan)}
+.timing-record .timing-personal strong{font-size:clamp(24px,2.2vw,33px);color:var(--ivory)}
+.timing-record p{margin:0;font-size:11px;line-height:1.4;color:#c3d2db;overflow-wrap:anywhere}
+.timing-chart-heading{display:grid;grid-template-columns:25px 1fr auto;column-gap:10px;margin:17px 8px 8px;font-size:8px;letter-spacing:.06em;color:#bdd0dc}
+.timing-chart{list-style:none;margin:0;padding:0;display:grid}
+.timing-row{display:grid;grid-template-columns:25px minmax(0,1fr) auto;column-gap:10px;row-gap:6px;align-items:center;padding:10px 8px 9px;border-top:1px solid #8ba4b12f;min-height:42px;font-size:12px}
+.timing-rank{grid-row:1 / 3;align-self:center;font-size:11px;font-variant-numeric:tabular-nums;color:#aec5d4}
+.timing-pilot{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.timing-time{font-family:ui-monospace,monospace;font-size:12px;font-variant-numeric:tabular-nums;letter-spacing:-.025em;font-weight:700}
+.timing-track{grid-column:2 / 4;height:4px;display:block;background:#7589971c}
+.timing-track i{display:block;height:100%;background:linear-gradient(90deg,#688999,#a6c3d0)}
+.timing-row:first-child:not(.is-placeholder){color:var(--cyan)}
+.timing-row:first-child:not(.is-placeholder) .timing-rank{color:var(--cyan);font-weight:800}
+.timing-row:first-child:not(.is-placeholder) .timing-track i,.timing-row.is-you .timing-track i{background:var(--cyan)}
+.timing-row.is-placeholder{color:#a0b4c0}
+.timing-row.is-placeholder .timing-track i{opacity:.45}
+.timing-row:not(.is-placeholder)+.is-placeholder{margin-top:8px;border-top-style:dashed}
+.timing-example{margin-left:8px;font-size:7px;font-weight:400;letter-spacing:.06em;color:#92a7b4}
+.timing-row.is-you{box-shadow:inset 2px 0 var(--cyan);background:#4de1ff0d}
+.timing-axis{display:flex;justify-content:space-between;margin:7px 8px 0 43px;padding-top:6px;border-top:1px solid #79838a44;font-size:8px;color:#9dafba;font-variant-numeric:tabular-nums}
+.timing-empty{min-height:280px;display:grid;place-items:center;text-align:center;font-size:11px;letter-spacing:.06em;color:#afc2ce;line-height:1.6;padding:25px}
+.timing-board-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:32px;margin-top:10px}
+.timing-board-footer p{font-size:9px;line-height:1.5;color:#a8bbc6;margin:0}
+#menu-leaderboard [data-refresh]{height:34px;min-width:34px;padding:0;border-radius:0;background:#263b47;font-size:21px}
+.board-result-status{font-size:12px;line-height:1.5;color:#c8d2d7;margin:12px 0;overflow-wrap:anywhere}
+
+@media(min-width:1500px){.area-campaign #menu{grid-template-columns:minmax(0,510px) minmax(0,560px);padding-inline:4vw}.area-campaign #area-tabs img{height:105px}.area-campaign #area-tabs .area-levels button{min-height:42px;font-size:12px}#menu-leaderboard{padding:24px 27px 15px}.timing-row{padding-block:12px;font-size:13px}.timing-time{font-size:13px}.timing-record strong{font-size:42px}}
+@media(max-height:830px) and (min-width:1001px){.area-campaign #menu{align-content:start;padding-top:62px;padding-bottom:24px}.area-campaign #menu .wordmark{font-size:39px}.area-campaign .menu-brand{margin-bottom:12px}.pilot-profile{padding-block:10px}.area-campaign #area-tabs img{height:65px}.area-campaign #area-tabs .area-levels button{min-height:33px}.area-campaign #area-tabs .level-list-heading{margin-top:8px;padding-top:7px}.area-campaign .area-card .area-level-name{min-height:22px}.timing-row{padding-block:7px;min-height:35px}.timing-record{padding-block:15px}.timing-record strong{font-size:31px}#menu-leaderboard{align-self:start;margin-top:25px}.race-launch{padding-block:9px}}
+@media(max-width:1000px){.area-campaign #menu{grid-template-columns:minmax(0,540px);justify-content:center;align-content:start;gap:24px;padding:70px 24px 28px}.area-campaign #menu .wordmark{font-size:48px}.area-campaign #menu>.panel{max-width:none}#menu-leaderboard{align-self:start}.timing-record strong{font-size:35px}}
+@media(max-width:480px){.area-campaign #menu{padding-inline:14px}.area-campaign #menu .wordmark{font-size:40px}.menu-mode-badge{padding-inline:11px;font-size:9px}.pilot-profile{padding:12px}.pilot-heading>span{font-size:7px}.area-campaign #campaign-picker{padding:10px}.area-campaign .campaign-summary{gap:8px}.area-campaign .campaign-summary>span{font-size:8px}.area-campaign .campaign-summary .area-counter{font-size:9px}.area-campaign #area-tabs .area-levels button{grid-template-columns:30px minmax(0,1fr) auto 8px;gap:6px;font-size:10px;min-height:40px}.level-state{font-size:7px}.level-chevron{font-size:18px}#menu-leaderboard{padding:18px 14px 12px}#leaderboard-title{font-size:28px}.timing-chart-heading{font-size:7px;grid-template-columns:20px 1fr auto;column-gap:7px}.timing-row{grid-template-columns:20px minmax(0,1fr) auto;column-gap:7px}.timing-record{gap:10px}.timing-record .timing-personal{padding-left:12px}.timing-record strong{font-size:30px}.timing-record .timing-personal strong{font-size:27px}.timing-axis{margin-left:35px}.timing-time{font-size:11px}}

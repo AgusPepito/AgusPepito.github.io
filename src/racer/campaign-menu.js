@@ -7,6 +7,18 @@ export class CampaignMenu {
     document.getElementById('campaign-picker').hidden=false;
     document.getElementById('construction-level-choice').hidden=true;
     document.getElementById('campaign-mode').hidden=false;
+    const wordmark=document.querySelector('#menu .wordmark');
+    const brand=document.createElement('div');brand.className='menu-brand';wordmark.before(brand);brand.append(wordmark);
+    const modeBadge=document.createElement('span');modeBadge.className='menu-mode-badge';modeBadge.textContent=practice?'PRACTICE':'CAMPAIGN';brand.append(modeBadge);
+    const summary=document.querySelector('.campaign-summary');
+    this.areaCounter=document.createElement('span');this.areaCounter.className='area-counter';summary.append(this.areaCounter);
+    this.areaHeading=document.createElement('strong');this.areaHeading.id='browsed-area-title';this.areaHeading.setAttribute('aria-live','polite');
+    const navigation=document.getElementById('area-carousel-nav');
+    navigation.insertBefore(this.areaHeading,document.getElementById('area-next'));
+    document.getElementById('area-tabs').before(navigation);
+    const launch=document.createElement('div');launch.className='race-launch';
+    const start=document.getElementById('start');start.before(launch);
+    launch.append(document.getElementById('menu-status'),document.getElementById('menu-loading-slot'),start);
     this.areaButtons=CAMPAIGN_AREAS.map(area=>{
       const card=document.createElement('article');card.className='area-card';
       card.setAttribute('aria-label',`${area.name} levels`);
@@ -14,20 +26,25 @@ export class CampaignMenu {
       const image=document.createElement('img');image.src=`${import.meta.env.BASE_URL}${area.image}`;
       image.alt='';image.width=2172;image.height=724;image.decoding='async';image.loading='lazy';image.draggable=false;
       const copy=document.createElement('span');copy.className='area-card-copy';
-      const name=document.createElement('strong'),description=document.createElement('small');
-      name.textContent=area.name;description.textContent=`${area.theme} · ${area.skill}`;
-      copy.append(name,description);button.append(image,copy);card.append(button);
+      const description=document.createElement('small');
+      description.textContent=`${area.theme} · ${area.skill}`;
+      copy.append(description);button.append(image,copy);card.append(button);
       const levels=areaLevels(area.id);
       button.addEventListener('click',()=>{
         onSelect((levels.find(level=>!progress.completed.has(level.id))??levels[0]).index);
       });
       const nodes=document.createElement('div');nodes.className='area-levels';
       nodes.setAttribute('role','group');nodes.setAttribute('aria-label',`${area.name} levels`);
+      const levelHeading=document.createElement('p');levelHeading.className='level-list-heading';levelHeading.textContent='SELECT LEVEL';card.append(levelHeading);
       const levelButtons=levels.map((level,ordinal)=>{
         const node=document.createElement('button');node.type='button';
-        node.textContent=String(ordinal+1).padStart(2,'0');node.title=level.name;
+        const number=document.createElement('span');number.className='level-number';number.textContent=String(ordinal+1).padStart(2,'0');
+        const title=document.createElement('span');title.className='level-title';title.textContent=level.name;
+        const state=document.createElement('span');state.className='level-state';
+        const chevron=document.createElement('span');chevron.className='level-chevron';chevron.textContent='›';chevron.setAttribute('aria-hidden','true');
+        node.append(number,title,state,chevron);node.title=level.name;
         node.addEventListener('click',()=>onSelect(level.index));nodes.append(node);
-        return {level,node};
+        return {level,node,state};
       });
       const selectedName=document.createElement('p');selectedName.className='area-level-name';
       card.append(nodes,selectedName);document.getElementById('area-tabs').append(card);
@@ -39,6 +56,9 @@ export class CampaignMenu {
       if(!strip.clientWidth)return;
       const index=Math.min(this.areaButtons.length-1,Math.max(0,Math.round(strip.scrollLeft/step())));
       this.browsedArea=this.areaButtons[index].area.id;
+      this.areaHeading.textContent=this.areaButtons[index].area.name;
+      this.areaCounter.textContent=`AREA ${String(index+1).padStart(2,'0')} / ${String(CAMPAIGN_AREAS.length).padStart(2,'0')}`;
+      this.areaButtons.forEach((entry,at)=>{entry.card.inert=at!==index;});
       previous.disabled=strip.scrollLeft<=1;
       next.disabled=strip.scrollLeft>=strip.scrollWidth-strip.clientWidth-1;
     };
@@ -58,7 +78,7 @@ export class CampaignMenu {
     const area=campaignArea(index),levels=areaLevels(area.id),progress=this.progress;
     const clearedTotal=CAMPAIGN_LEVELS.filter(level=>progress.completed.has(level.id)).length;
     const completion=document.getElementById('campaign-completion');
-    completion.textContent=`${clearedTotal}/${CAMPAIGN_LEVELS.length}`;
+    completion.textContent=`${clearedTotal} / ${CAMPAIGN_LEVELS.length}`;
     completion.setAttribute('aria-label',`${clearedTotal} of ${CAMPAIGN_LEVELS.length} levels cleared`);
     for(const entry of this.areaButtons){
       const unlocked=this.practice||progress.unlocked(entry.area.id);
@@ -71,13 +91,19 @@ export class CampaignMenu {
       const completed=areaLevels(entry.area.id).filter(level=>progress.completed.has(level.id)).length;
       entry.button.setAttribute('aria-label',`${entry.area.name}. ${entry.area.skill}. ${unlocked?`${completed} of ${entry.levelButtons.length} levels cleared`:lockedReason}.`);
       entry.button.title=unlocked?`${entry.area.theme} · ${entry.area.skill}`:lockedReason;
-      for(const {level,node} of entry.levelButtons){
+      for(const {level,node,state} of entry.levelButtons){
         const cleared=progress.completed.has(level.id);
         node.disabled=!unlocked;node.classList.toggle('complete',cleared);
         node.setAttribute('aria-pressed',String(level.index===index));
         node.setAttribute('aria-label',`${campaignLabel(level.index)}${cleared?' · complete':''}${unlocked?'':' · locked'}`);
+        state.textContent=!unlocked?'LOCKED':level.index===index?`SELECTED${cleared?' ✓':''}`:cleared?'CLEARED ✓':'';
       }
-      entry.selectedName.textContent=active?levels.find(level=>level.index===index).name:unlocked?'':'LOCKED';
+      const nextArea=CAMPAIGN_AREAS[CAMPAIGN_AREAS.indexOf(entry.area)+1];
+      const nextUnlocked=nextArea&&progress.unlocked(nextArea.id);
+      entry.selectedName.classList.toggle('unlock-hint',!this.practice&&(!unlocked||Boolean(nextArea&&!nextUnlocked)));
+      entry.selectedName.textContent=this.practice?'Practice · progress and times are not saved.':!unlocked?lockedReason:
+        nextArea?`Next area: ${nextArea.name} · ${nextUnlocked?'unlocked':'clear all 4 levels to unlock'}`:
+        progress.areaComplete(entry.area.id)?'Nexus complete. Replay to improve your times.':'Final area · clear all 4 levels to finish the campaign.';
     }
     // Browsing the carousel does not select/load a course. Keep the active card
     // in view only on an actual area change, not on every level selection.

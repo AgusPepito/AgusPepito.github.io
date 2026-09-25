@@ -10,9 +10,9 @@
   <style>
     body[data-state="loading"] { margin: 0; background: #080e19; }
     body[data-state="loading"] > :not(#page-loading):not(script) { visibility: hidden; }
-    #page-loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 18px; margin: 0; background: #080e19; color: #e6e1d2; font: 700 12px system-ui, sans-serif; letter-spacing: .15em; text-align: center; }
-    #page-loading strong { font-size: 28px; font-style: italic; letter-spacing: -.04em; }
-    #page-loading i { height: 4px; background: linear-gradient(90deg,#263744 25%,#4de1ff 50%,#263744 75%); background-size: 200% 100%; animation: boot-loading 1.2s ease-in-out infinite; }
+    #page-loading { position: fixed; inset: 0; display: grid; place-content: center; gap: 18px; margin: 0; padding: 24px; background: radial-gradient(ellipse at center,#20303a,#080e19 70%); color: #adc3ce; font: 700 9px system-ui, sans-serif; letter-spacing: .16em; text-align: center; }
+    #page-loading strong { font-size: clamp(24px,6vw,36px); color: #e6e1d2; font-style: italic; letter-spacing: -.04em; }
+    #page-loading i { height: 3px; background: linear-gradient(90deg,#263744 25%,#4de1ff 50%,#263744 75%); background-size: 200% 100%; animation: boot-loading 1.2s ease-in-out infinite; }
     @keyframes boot-loading { to { background-position: -200% 0; } }
     @media(prefers-reduced-motion:reduce) { #page-loading i { animation: none; } }
     body:not([data-state="loading"]) #page-loading { display: none; }
@@ -60,14 +60,14 @@
     <div class="menu-signature" aria-hidden="true">VECTOR SHIFT <span>ORBITAL RACING DIVISION</span></div>
   </div></section>
   <dialog id="controls-dialog" aria-labelledby="controls-title">
-    <div class="controls-top"><span class="eyebrow">02 / FLIGHT MANUAL</span><button id="close-controls" aria-label="Close controls">✕</button></div>
-    <h2 id="controls-title">CONTROLS <span class="checkers" aria-hidden="true"></span></h2>
+    <div class="controls-top"><span class="screen-kicker">FLIGHT MANUAL</span><button id="close-controls" aria-label="Close controls">✕</button></div>
+    <h2 id="controls-title">CONTROLS</h2>
     <div class="graphics-choice"><label for="graphics-quality">GRAPHICS</label><select id="graphics-quality"><option value="rich">Rich · luminous effects</option><option value="light">Light · lower graphics load</option></select></div>
     <div class="control-device" role="group" aria-label="Controls device"><button data-controls-device="pc" aria-pressed="true">PC</button><button data-controls-device="touch" aria-pressed="false">TOUCH</button></div>
     <div id="controls-pc">
       <div class="key-grid"><div><div class="key-pair"><kbd>A</kbd><kbd>D</kbd></div><strong>STEER</strong><small>or ← / →</small></div><div><kbd class="wide-key">SPACE</kbd><strong>JUMP</strong><small>or ↑ / J</small></div><div><kbd>W</kbd><strong>BOOST</strong><small>hold W or Shift</small></div><div><kbd>S</kbd><strong>BRAKE</strong><small>tap S or ↓</small></div></div>
       <div class="phase-help"><span><kbd>1</kbd><b class="ion">●</b>ION</span><span><kbd>2</kbd><b class="sol">▲</b>SOL</span><span><kbd>3</kbd><b class="flux">◆</b>FLUX</span></div>
-      <p class="control-note">Match your phase to the colored line and gate.</p><p class="control-note">Esc / P · Pause &nbsp; R · Retry checkpoint</p>
+      <p class="control-note">Match your phase to the colored line and gate.</p><p class="control-note">Esc / P · Pause &nbsp; R · Retry level</p>
     </div>
     <div id="controls-touch" hidden>
       <div class="touch-diagrams"><div><h3>LEFT THUMBPAD</h3><div class="pad-diagram"><span class="north">↑<small>JUMP</small></span><span class="west">←<small>STEER</small></span><i></i><span class="east">→<small>STEER</small></span><span class="south">↓<small>BRAKE</small></span></div></div><div><h3>RIGHT THUMBPAD</h3><div class="pad-diagram"><span class="north">↑<small>BOOST</small></span><span class="west ion">●<small>ION</small></span><i></i><span class="east flux">◆<small>FLUX</small></span><span class="south sol">▲<small>SOL</small></span></div></div></div>
@@ -77,17 +77,29 @@
     <button id="controls-done" class="primary">BACK <span aria-hidden="true">↵</span></button>
   </dialog>
   <section id="result" class="overlay race-overlay" aria-labelledby="result-title" hidden><div class="panel race-panel">
-    <div class="panel-heading"><span class="section-number" aria-hidden="true">03</span><p class="eyebrow" id="result-label"></p><span class="checkers" aria-hidden="true"></span></div>
-    <h1 id="result-title"></h1>
+    <div class="screen-heading"><div><span id="result-kicker" class="screen-kicker">RUN ENDED</span><h1 id="result-title"></h1></div><span id="result-emblem" class="screen-emblem" aria-hidden="true">!</span></div>
+    <div class="result-course">
+      <div class="screen-course-meta"><span id="result-label"></span><span id="result-mode"></span></div>
+      <h2 id="result-level"></h2>
+      <div class="race-summary"><div><span>DISTANCE</span><strong id="result-distance"></strong></div><div><span>TIME</span><strong id="result-time"></strong></div></div>
+    </div>
     <p id="result-copy" class="panel-copy"></p>
-    <div class="race-summary"><div><span>DISTANCE</span><strong id="result-distance"></strong></div><div><span>TIME</span><strong id="result-time"></strong></div></div>
-    <div class="panel-actions"><button id="retry" class="primary"><span id="retry-label">RETRY</span><span class="action-tail"><small id="retry-hint"></small><span aria-hidden="true">»</span></span></button><button id="back" class="panel-secondary"><span>MAIN MENU</span><span aria-hidden="true">↵</span></button></div>
+    <div class="panel-actions"><button id="retry" class="primary"><span id="retry-label">RETRY LEVEL</span><span class="action-tail"><small id="retry-hint"></small><span aria-hidden="true">»</span></span></button><div class="result-secondary-actions"><button id="back" class="panel-secondary"><span>MAIN MENU</span><span aria-hidden="true">↵</span></button></div></div>
   </div></section>
-  <section id="paused" class="overlay race-overlay" aria-labelledby="pause-title" hidden><div class="panel race-panel">
-    <div class="panel-heading"><span class="section-number" aria-hidden="true">02</span><p class="eyebrow">RACE ON HOLD</p><span class="checkers" aria-hidden="true"></span></div>
-    <h1 id="pause-title">PAUSED.</h1>
-    <div class="panel-inset"><p id="pause-level"></p><p id="best"></p></div>
-    <div class="panel-actions"><button id="resume" class="primary"><span>RESUME</span><span aria-hidden="true">»</span></button><button id="restart" class="panel-secondary"><span>RETRY CHECKPOINT</span><span aria-hidden="true">↻</span></button><div class="panel-action-pair"><button id="pause-controls" class="panel-secondary">CONTROLS</button><button id="return-menu" class="panel-secondary">MAIN MENU</button></div></div>
+  <section id="paused" class="overlay race-overlay" aria-labelledby="pause-title" hidden><div class="panel race-panel pause-panel">
+    <div class="pause-heading"><div class="pause-heading-copy"><span class="pause-kicker">RACE ON HOLD</span><h1 id="pause-title">PAUSED</h1></div><span class="pause-emblem" aria-hidden="true">Ⅱ</span></div>
+    <div class="pause-course">
+      <div class="pause-course-meta"><span id="pause-area"></span><span id="pause-mode"></span></div>
+      <h2 id="pause-level"></h2>
+      <dl class="pause-times"><div><dt>THIS RUN</dt><dd id="pause-time">0:00.00</dd></div><div><dt id="pause-best-label">PERSONAL BEST</dt><dd id="best">—</dd></div></dl>
+      <div class="pause-progress-heading"><span>LEVEL PROGRESS</span><strong id="pause-progress-copy">0%</strong></div>
+      <div id="pause-progress" role="progressbar" aria-label="Current level progress" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+    </div>
+    <div class="panel-actions pause-actions">
+      <button id="resume" class="primary"><span>RESUME RACE</span><span class="pause-action-tail"><small class="pause-shortcut">ESC / P</small><span aria-hidden="true">»</span></span></button>
+      <button id="restart" class="panel-secondary"><span>RETRY LEVEL</span><span class="pause-action-tail"><small class="pause-shortcut">R</small><span aria-hidden="true">↻</span></span></button>
+      <div class="panel-action-pair"><button id="pause-controls" class="panel-secondary"><span>CONTROLS</span><span aria-hidden="true">?</span></button><button id="return-menu" class="panel-secondary"><span>MAIN MENU</span><span aria-hidden="true">↵</span></button></div>
+    </div>
   </div></section>
   <footer>
     <div id="thumbpad" role="group" aria-label="Drag sideways to steer, forward to jump, backward to brake">

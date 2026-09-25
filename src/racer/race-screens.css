@@ -1,0 +1,112 @@
+/* One visual language for every player-facing screen and outcome. */
+:root{
+  --screen-surface:linear-gradient(135deg,#20303af5,#111c26f5);
+  --screen-border:#8aa4b66e;
+  --screen-muted:#adc3ce;
+  --screen-action:linear-gradient(165deg,#ffe68b,#ffc449 60%,#e6a82d);
+}
+:is(#result,#paused){padding:70px max(20px,env(safe-area-inset-right)) max(30px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:radial-gradient(ellipse at center,#07121b66,#03080fbb);backdrop-filter:blur(3px);align-items:safe center;overscroll-behavior:contain}
+:is(#result,#paused) .race-panel,#controls-dialog{background:var(--screen-surface);border:1px solid var(--screen-border);border-top:2px solid #a9c8d477;border-radius:3px;box-shadow:0 24px 90px #0007}
+:is(#result,#paused) .race-panel{width:min(470px,100%);padding:26px;min-width:0}
+#result{--outcome:#ffb58c}
+#result[data-outcome=complete]{--outcome:var(--cyan)}
+.screen-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:24px}
+.screen-heading>div{min-width:0}
+.screen-kicker{display:block;color:var(--screen-muted);font-size:9px;font-weight:700;line-height:1.4;letter-spacing:.16em}
+#result-kicker{color:var(--outcome)}
+#result #result-title{font-size:clamp(30px,5vw,42px);font-style:normal;line-height:1.04;letter-spacing:-.045em;margin:9px 0 0;max-width:none;text-wrap:balance;overflow-wrap:anywhere}
+.screen-emblem{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0;border:1px solid var(--outcome);color:var(--outcome);font-size:26px;font-weight:700;line-height:1;background:#7c9ba20a}
+.result-course{padding:16px;margin-bottom:17px;background:#07141e80;border:1px solid #809cae40;border-left:2px solid var(--outcome)}
+.screen-course-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#b3cad8;font-size:9px;line-height:1.5;letter-spacing:.06em}
+#result-mode{flex-shrink:0;padding:3px 6px;background:#9cb7c20c;border:1px solid #89a8ba33;font-size:8px;letter-spacing:.04em}
+#result-level{font-size:clamp(19px,3.5vw,25px);line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:9px 0 20px;color:var(--ivory);text-wrap:balance}
+#result .race-summary{padding:0;margin:0;border:0;gap:18px}
+#result .race-summary>div{min-width:0;gap:7px}
+#result .race-summary>div+div{padding-left:18px;border-color:#849fa43d}
+#result .race-summary span{font-size:8px;line-height:1.4;letter-spacing:.11em;color:var(--screen-muted)}
+#result .race-summary strong{font:700 23px/1.2 ui-monospace,monospace;letter-spacing:-.045em;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+#result #result-time{color:var(--cyan)}
+#result .panel-copy{font-size:11px;line-height:1.65;letter-spacing:.035em;margin:0 0 20px;color:#c3d2da}
+#result .board-result-status{font-size:10px;line-height:1.55;margin:0 0 18px;padding:10px 12px;background:#4de1ff08;border-left:2px solid #4de1ff66;color:#bcd0dc}
+#result .board-result-status:empty{display:none}
+:is(#result,#paused) .panel-actions{gap:9px}
+:is(#result,#paused,#controls-dialog) :is(#retry,#resume,#controls-done){min-height:60px;margin:0;padding:15px 18px;gap:12px;font-size:24px;font-weight:900;font-style:normal;line-height:1.1;letter-spacing:-.015em;background:var(--screen-action);color:#19231f;border:0;border-radius:1px;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+:is(#result,#paused,#controls-dialog) :is(#retry,#resume,#controls-done):hover{background:linear-gradient(165deg,#fff1ae,#ffd569)}
+:is(#result,#paused,#controls-dialog) :is(#retry,#resume,#controls-done):focus-visible{outline-offset:-5px;outline-color:#19231f}
+:is(#result,#paused) .panel-actions .panel-secondary{min-height:46px;padding:12px 16px;clip-path:none;border:1px solid #8aa4b65c;border-radius:1px;background:linear-gradient(110deg,#263b46a8,#172630a8);font-size:11px;font-style:normal;font-weight:700;letter-spacing:.045em;color:var(--ivory);white-space:normal}
+:is(#result,#paused) .panel-actions .panel-secondary:hover{border-color:#4de1ff99;background:#2b414e}
+.result-secondary-actions{display:flex;gap:9px}
+#result .result-secondary-actions button{flex:1;min-width:0;font-size:10px;background:#13232d66;color:#bcd0dc}
+#result .action-tail{flex-shrink:0;gap:12px}
+#result .action-tail small{font:500 9px/1.2 ui-monospace,monospace;letter-spacing:.03em;opacity:.7}
+
+/* Controls and graphics share the same hierarchy as race panels. */
+#controls-dialog{width:min(640px,calc(100vw - 28px));max-height:calc(100dvh - 28px);padding:26px;color-scheme:dark;scrollbar-color:#597582 #13232d}
+#controls-dialog::backdrop{background:#03080fcc;backdrop-filter:blur(3px)}
+#controls-dialog .controls-top{margin-bottom:5px}
+#controls-dialog #close-controls{width:40px;height:40px;border:1px solid #8aa4b644;border-radius:1px;background:#13232d;color:#adc3ce;font-size:16px}
+#controls-dialog #controls-title{padding:0;margin:0 0 23px;clip-path:none;background:none;color:var(--ivory);font-size:36px;font-style:normal;letter-spacing:-.045em;line-height:1.05}
+#controls-dialog .graphics-choice{padding:14px;margin:0 0 18px;border:1px solid #809cae40;background:#07141e80;gap:12px}
+#controls-dialog .graphics-choice label{font-size:9px;letter-spacing:.11em;color:var(--screen-muted)}
+#controls-dialog .graphics-choice select{min-width:0;max-width:75%;min-height:42px;padding:9px 10px;background:#1b2d39;color:var(--ivory);border:1px solid #8aa4b65c;border-radius:1px;font-size:11px}
+#controls-dialog .control-device{justify-content:flex-start;gap:0;margin:0 0 18px}
+#controls-dialog .control-device button{min-height:42px;min-width:95px;font-size:10px;border:1px solid #8aa4b65c;background:#13232d;color:#adc3ce}
+#controls-dialog .control-device button[aria-pressed=true]{background:#4de1ff16;border-color:#4de1ff99;color:var(--cyan)}
+#controls-dialog .key-grid{gap:8px}
+#controls-dialog .key-grid>div{padding:16px 8px;border:1px solid #809cae33;background:#07141e66;gap:10px;min-width:0}
+#controls-dialog kbd{min-width:34px;height:38px;padding:0 7px;border:1px solid #7d9aaa77;border-bottom-width:3px;border-radius:2px;background:linear-gradient(#2c424f,#192c38);box-shadow:none;font:700 15px/1 ui-monospace,monospace}
+#controls-dialog .wide-key{min-width:72px;font-size:11px}
+#controls-dialog .key-grid strong{font-size:9px;letter-spacing:.11em}
+#controls-dialog .key-grid small{font-size:9px;color:var(--screen-muted)}
+#controls-dialog .phase-help{padding:16px 0;margin-top:18px;border-block:1px solid #809cae40;gap:8px}
+#controls-dialog .phase-help>span{grid-template-columns:auto auto auto;align-items:center;justify-content:center;gap:8px;letter-spacing:.07em;font-size:9px}
+#controls-dialog .phase-help kbd{min-width:27px;height:30px;font-size:12px}
+#controls-dialog .phase-help b{font-size:17px}
+#controls-dialog .control-note{font-size:11px;line-height:1.6;margin-top:13px;color:var(--screen-muted)}
+#controls-dialog #level-lesson:empty{display:none}
+#controls-dialog #level-lesson:not(:empty){padding:12px 14px;border-left:2px solid var(--cyan);background:#07141e80}
+#controls-dialog #controls-done{margin-top:22px;font-size:19px;min-height:52px}
+#controls-dialog .touch-diagrams>div{padding:16px 8px;background:#07141e66;border:1px solid #809cae33}
+#controls-dialog .touch-diagrams h3{font-size:9px;line-height:1.4;color:var(--screen-muted)}
+
+/* Loading, errors and transient notices are part of the same UI system. */
+#asset-notice .loading-panel{background:var(--screen-surface);border:1px solid var(--screen-border);border-top:2px solid var(--cyan);border-radius:3px;padding:24px}
+#asset-notice .loading-course{font-style:normal;letter-spacing:-.025em;line-height:1.2}
+#asset-notice .loading-value{font:700 26px/1.1 ui-monospace,monospace;color:var(--cyan);letter-spacing:-.045em}
+#asset-notice .loading-track{height:3px;background:#7796aa26}
+#asset-notice .loading-stage{font-size:9px;letter-spacing:.13em}
+#asset-notice .loading-retry{background:var(--screen-action);border-radius:1px;min-height:48px;font-size:12px;letter-spacing:.05em}
+#asset-notice[data-error=true] .loading-value{color:#ffbe55}
+#asset-notice:not(.in-menu){overflow-y:auto;padding:max(24px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+#asset-notice.in-menu .loading-panel{padding:14px 16px}
+#menu #loading-error{padding:12px 14px;border:1px solid #ffbe5555;border-left:2px solid #ffbe55;background:#172630;color:#ffdfab;font-size:11px;line-height:1.5}
+:is(#level-notice,#checkpoint-notice,#fullscreen-hint){background:#13232df2;color:#d0e0e8;border:1px solid #8aa4b65c;border-left:2px solid var(--cyan);border-radius:2px;font-size:11px;letter-spacing:.035em;line-height:1.5}
+#checkpoint-notice{border-bottom:1px solid #8aa4b65c}
+#lesson-cue{background:#172630f2;border:1px solid #8aa4b66e;border-left:3px solid #ffbe55;border-radius:2px;color:var(--ivory)}
+#lesson-cue::before{background:#ffbe55;color:#15202b;border-radius:1px}
+#lesson-cue span{color:#c0d2dd}
+/* Results already provide all actions; touchpads must not cover them. */
+body:is([data-state=crashed],[data-state=checkpoint]) footer{visibility:hidden;pointer-events:none}
+body:is([data-state=crashed],[data-state=checkpoint]) footer *{visibility:hidden;pointer-events:none}
+
+@media(pointer:coarse),(max-width:700px){#retry-hint{display:none}}
+@media(max-width:420px){
+  :is(#result,#paused){padding-inline:14px}
+  :is(#result,#paused) .race-panel{padding:20px}
+  .screen-heading{gap:12px}.screen-emblem{width:36px;height:36px;font-size:23px}
+  #result #result-title{font-size:30px}.result-course{padding:13px}.screen-course-meta{font-size:8px}
+  #result .race-summary{gap:12px}#result .race-summary>div+div{padding-left:12px}#result .race-summary strong{font-size:21px}
+  :is(#result,#paused) :is(#retry,#resume){font-size:22px}
+  #result .result-secondary-actions button{padding-inline:10px;font-size:9px}
+  #controls-dialog{padding:20px}#controls-dialog #controls-title{font-size:30px}
+  #controls-dialog .graphics-choice{align-items:stretch;flex-direction:column}#controls-dialog .graphics-choice select{max-width:100%;width:100%}
+  #controls-dialog .phase-help>span{grid-template-columns:auto auto;gap:6px}#controls-dialog .phase-help kbd{grid-column:1 / -1}
+  #controls-dialog .touch-diagrams{gap:8px}#controls-dialog .touch-diagrams>div{padding-inline:4px}
+}
+@media(max-height:650px){
+  :is(#result,#paused){align-items:flex-start;padding-top:60px;padding-bottom:20px}
+  :is(#result,#paused) .race-panel{padding:20px}.screen-heading{margin-bottom:17px}
+  #result #result-title{font-size:32px}.result-course{padding-block:12px;margin-bottom:14px}#result-level{margin-bottom:14px}
+  #result .panel-copy,#result .board-result-status{margin-bottom:14px}
+  :is(#result,#paused) :is(#retry,#resume){min-height:52px}
+}

@@ -1,5 +1,7 @@
 import './style.css';
 import './menu.css';
+import './pause-menu.css';
+import './race-screens.css';
 import { MenuDemo } from './menu-demo.js';
 import { setupMenuUI } from './menu-ui.js';
 import { RaceMusic } from './music.js';
@@ -11,6 +13,7 @@ import { CampaignStream, PREFETCH_BYTES } from './campaign-stream.js';
 import { levelAssetConfig } from './levels.js';
 import {CAMPAIGN_LEVELS,CAMPAIGN_LAYOUT_REVISION,CampaignProgress,campaignArea,campaignLabel} from './campaign.js';
 import {CampaignMenu} from './campaign-menu.js';
+import {LeaderboardUI} from './leaderboard-ui.js';
 import {CourseLoading} from './loading-ui.js';
 import { PHASES, GATES, LENGTH, section, profileSection } from './track.js';
 import { OBSTACLES } from './obstacles.js';
@@ -49,6 +52,7 @@ let buffering = false, bufferBegan = null;
 let preparedLevel = null;
 let finishedBest=false;
 const campaignMenu=constructionReview?null:new CampaignMenu(campaignProgress,campaignPractice,selectFromMenu);
+const leaderboard=constructionReview?null:new LeaderboardUI(()=>currentLevel,campaignPractice,returnToMenu,()=>best?.time??null);
 function takePreparedLevel(index) {
   const prepared = preparedLevel; preparedLevel = null;
   if (prepared?.index === index && prepared.stream && !prepared.stream.error) {
@@ -104,10 +108,10 @@ function updateAssetReadiness() {
   const finalizing=view?.shaderWarmup.state==='compiling'||Boolean(waiting&&stream?.ready());
   courseLoading.update({visible:Boolean(error||buffering||race.state==='ready'&&waiting),inMenu:race.state==='ready',
     name:levelInfo(currentLevel).name,percent,finalizing,error});
-  const status=error?'COULD NOT LOAD COURSE':waiting?'LOADING COURSE':browsingOtherArea?'SELECT A LEVEL':'READY TO RACE';
+  const status=error?'COULD NOT LOAD COURSE':waiting?'LOADING COURSE':browsedLocked?'AREA LOCKED':browsingOtherArea?'SELECT A LEVEL':campaignPractice?'PRACTICE · UNRANKED':'READY TO RACE';
   if($('menu-status').textContent!==status)$('menu-status').textContent=status;
   if(!constructionReview){
-    const button=$('start'),label=error?'LOAD FAILED':browsedLocked?'LOCKED':browsingOtherArea?'SELECT LEVEL':waiting?'LOADING':campaignPractice?'PRACTICE':'RACE';
+    const button=$('start'),label=error?'LOAD FAILED':browsedLocked?'LOCKED':browsingOtherArea?'SELECT LEVEL':waiting?'LOADING':`${campaignPractice?'PRACTICE':'RACE'} · ${levelInfo(currentLevel).name}`;
     const detail=error?'!':waiting||browsingOtherArea?'':'»';
     button.dataset.loading=String(waiting&&!error);
     button.setAttribute('aria-busy',String(waiting&&!error));
@@ -324,6 +328,7 @@ function loadBest() {
   } catch { /* Local records are optional. */ }
 }
 function updateLevelChoice() {
+  leaderboard?.select(currentLevel);
   if(campaignMenu){campaignMenu.select(currentLevel);updateLesson(currentLevel);return;}
   if (![...$('level').options].some(o => Number(o.value) === currentLevel)) {
     const option = document.createElement('option'); option.value = currentLevel;
@@ -397,6 +402,7 @@ function returnToMenu(){
 }
 function start(index = currentLevel, carry = null) {
   const startBegan = performance.now();
+  if(!carry&&leaderboard&&!leaderboard.ensurePilot())return;
   if(!changeLevel(index))return;
   if (!carry) { clearInput(); checkpointNotice = ''; }
   race.reset(); race.mode = 'phase';
@@ -426,6 +432,7 @@ function saveCompletion(){
       best={time:race.time,splits:[...race.splits]};
       try{localStorage.setItem(storageKey,JSON.stringify(best));}catch{/* Optional records. */}
     }
+    leaderboard?.complete(currentLevel,race.time);
   }
   resultSaved=true;campaignMenu.select(currentLevel);
 }
@@ -460,6 +467,7 @@ function pause() {
 function sync() {
   music.setState(race.state);
   document.body.dataset.state = race.state;
+  leaderboard?.setVisible(race.state==='ready');
   $('menu').hidden = race.state !== 'ready'; $('paused').hidden = race.state !== 'paused';
   $('result').hidden = !['crashed', 'checkpoint'].includes(race.state);
   $('pause').hidden = !['running', 'paused'].includes(race.state);
@@ -469,6 +477,7 @@ function sync() {
     if (race.state === 'crashed' || race.state === 'checkpoint') {
       clearInput();
       const finished = race.state === 'checkpoint';
+      leaderboard?.result(finished&&!campaignPractice);
       if(finished)saveCompletion();
       const isBest=finished&&finishedBest&&!campaignPractice;
       const wallCrash = race.crashKind === 'wall';
@@ -476,8 +485,13 @@ function sync() {
       const area=constructionReview?null:campaignArea(currentLevel),next=constructionReview?null:nextCampaignIndex();
       const complete=finished&&!campaignPractice&&area&&campaignProgress.areaComplete(area.id);
       const allComplete=finished&&!campaignPractice&&CAMPAIGN_LEVELS.every(level=>campaignProgress.completed.has(level.id));
-      $('result-label').textContent = `${area?`${area.number} / ${area.name}`:`CHECKPOINT ${currentLevel+1}`}${campaignPractice?' / PRACTICE':isBest?' / BEST TIME':''}`;
-      $('result-title').textContent = finished ? allComplete?'CAMPAIGN CLEAR.':complete?'AREA CLEAR.':campaignPractice?'RUN COMPLETE.':'LEVEL CLEAR.' : gapCrash ? 'MISSED LANDING.' : wallCrash ? 'WALL IMPACT.' : 'OUT OF PHASE.';
+      $('result').dataset.outcome=finished?'complete':'crashed';
+      $('result-kicker').textContent=finished?isBest?'NEW PERSONAL BEST':'FINISH LINE':'RUN ENDED';
+      $('result-emblem').textContent=finished?'✓':'!';
+      $('result-label').textContent=area?`${area.number} / ${area.name}`:'TRACK LIBRARY';
+      $('result-mode').textContent=constructionReview?'REVIEW':campaignPractice?'PRACTICE':'CAMPAIGN';
+      $('result-level').textContent=levelInfo(currentLevel).name;
+      $('result-title').textContent = finished ? allComplete?'CAMPAIGN CLEAR':complete?'AREA CLEAR':campaignPractice?'RUN COMPLETE':'LEVEL CLEAR' : gapCrash ? 'MISSED LANDING' : wallCrash ? 'WALL IMPACT' : 'OUT OF PHASE';
       const gate = GATES.find(g => Math.abs(g.s - race.s) < 0.1);
       const hitObstacle=OBSTACLES.find(o=>race.s>=o.s-4&&race.s<=o.s+o.depth+4);
       $('result-copy').textContent = finished ? next!==null?`NEXT / ${campaignArea(next).name} · ${levelInfo(next).name}`:
@@ -487,9 +501,9 @@ function sync() {
         gate ? `${PHASES[gate.phase].name} REQUIRED / ${PHASES[race.phase].name} ACTIVE` : 'MATCH THE GATE’S PHASE.';
       $('result-distance').textContent=`${(race.s/1000).toFixed(2)} KM`;
       $('result-time').textContent=format(race.time);
-      $('retry-label').textContent=finished?next===null?'CHOOSE LEVEL':'CONTINUE':'RETRY';
+      $('retry-label').textContent=finished?next===null?'CHOOSE LEVEL':'CONTINUE':'RETRY LEVEL';
       $('retry-hint').textContent=touchLayout.matches||finished?'':'SPACE / R';
-      $('retry').setAttribute('aria-label',finished?next===null?'Choose a level':'Continue to next level':'Retry checkpoint');
+      $('retry').setAttribute('aria-label',finished?next===null?'Choose a level':'Continue to next level':'Retry level');
     }
     shown = race.state;
   }
@@ -673,9 +687,18 @@ function updateHud() {
   $('level-notice').textContent = constructionReview?info.name:`${campaignArea(currentLevel).name} / ${campaignLabel(currentLevel)}`;
   const p = PHASES[race.phase]; document.documentElement.style.setProperty('--phase', p.color);
   $('speed').textContent = Math.round(race.speed * 3.6); $('time').textContent = format(race.time);
-  $('pause-level').textContent = constructionReview ? info.name : `${campaignArea(currentLevel).name} / ${campaignLabel(currentLevel)}`;
-  $('best').textContent = constructionReview ? 'Asset review · R retries this sample' : race.mode === 'drive' ? 'Driving only' : `Personal best · ${best ? format(best.time) : '—'}`;
   const progress = Math.min(100, Math.max(0, race.s / LENGTH * 100));
+  if(race.state==='paused'){
+    $('pause-area').textContent=constructionReview?'TRACK LIBRARY':`${campaignArea(currentLevel).name} / ${campaignLabel(currentLevel).split(' / ')[0]}`;
+    $('pause-mode').textContent=constructionReview?'REVIEW':campaignPractice?'PRACTICE':'CAMPAIGN';
+    $('pause-level').textContent=info.name;
+    $('pause-time').textContent=format(race.time);
+    $('pause-best-label').textContent=constructionReview||race.mode==='drive'?'MODE':'PERSONAL BEST';
+    $('best').textContent=constructionReview?'Asset review':race.mode==='drive'?'Driving only':best?format(best.time):'—';
+    $('pause-progress-copy').textContent=`${Math.floor(progress)}%`;
+    $('pause-progress').style.setProperty('--pause-progress',`${progress}%`);
+    $('pause-progress').setAttribute('aria-valuenow',String(Math.floor(progress)));
+  }
   $('course-progress').style.setProperty('--progress', `${progress}%`);
   $('course-progress').setAttribute('aria-valuenow', String(Math.round(progress)));
   $('boost-meter').setAttribute('aria-valuenow', String(Math.floor(race.boost.energy)));

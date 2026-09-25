@@ -1,0 +1,37 @@
+/* Pause uses the menu's graphite panels, cyan telemetry and amber primary action. */
+#paused{padding:70px 20px 30px;background:radial-gradient(ellipse at center,#07121b66,#03080fbb);backdrop-filter:blur(3px);align-items:safe center}
+#paused .pause-panel{width:min(470px,100%);padding:26px;background:linear-gradient(135deg,#20303af5,#111c26f5);border:1px solid #8aa4b66e;border-top:2px solid #a9c8d477;border-radius:3px;box-shadow:0 24px 90px #0007}
+.pause-heading{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:25px}
+.pause-heading-copy{display:grid;gap:8px}
+.pause-kicker{font-size:9px;line-height:1.4;font-weight:700;letter-spacing:.16em;color:#b0c5d1}
+#paused #pause-title{margin:0;font-size:clamp(35px,6vw,48px);line-height:.95;font-weight:900;font-style:normal;letter-spacing:-.05em;color:var(--ivory)}
+.pause-emblem{display:grid;place-items:center;flex-shrink:0;width:48px;height:48px;border:1px solid #4de1ff55;background:#4de1ff08;color:var(--cyan);font-size:29px;font-weight:700;line-height:1}
+.pause-course{padding:17px 16px 15px;margin-bottom:22px;background:#07141e80;border:1px solid #809cae40;border-left:2px solid #4de1ff9c}
+.pause-course-meta{display:flex;align-items:center;justify-content:space-between;gap:10px;color:#b3cad8;font-size:9px;line-height:1.5;letter-spacing:.06em}
+#pause-mode{flex-shrink:0;padding:3px 6px;background:#9cb7c20c;border:1px solid #89a8ba33;font-size:8px;letter-spacing:.04em}
+#paused #pause-level{font-size:clamp(19px,3.5vw,25px);line-height:1.15;font-weight:800;letter-spacing:-.02em;margin:9px 0 20px;color:var(--ivory);text-wrap:balance}
+.pause-times{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:0 0 19px}
+.pause-times>div{min-width:0;display:grid;gap:7px}
+.pause-times>div+div{border-left:1px solid #849fa43d;padding-left:18px}
+.pause-times dt{font-size:8px;letter-spacing:.11em;line-height:1.4;color:#adc3ce}
+.pause-times dd{margin:0;font-family:ui-monospace,monospace;font-size:23px;font-weight:700;letter-spacing:-.045em;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--ivory);overflow-wrap:anywhere}
+.pause-times #pause-time{color:var(--cyan)}
+.pause-progress-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;font-size:8px;letter-spacing:.09em;color:#adc3ce}
+.pause-progress-heading strong{font-size:10px;font-weight:500;font-variant-numeric:tabular-nums;color:#d0dfe5}
+#pause-progress{height:3px;background:#7796aa26}
+#pause-progress i{display:block;width:var(--pause-progress,0%);height:100%;background:var(--cyan)}
+#paused .pause-actions{gap:9px}
+#paused .pause-actions button{font-style:normal;border-radius:1px}
+#paused .pause-actions #resume{min-height:60px;padding:15px 18px;font-size:24px;line-height:1.1;letter-spacing:-.015em;background:linear-gradient(165deg,#ffe68b,#ffc449 60%,#e6a82d);color:#19231f;border:0;clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px)}
+#paused .pause-actions #resume:hover{background:linear-gradient(165deg,#fff1ae,#ffd569)}
+.pause-action-tail{display:flex;align-items:center;gap:16px}
+.pause-action-tail>span{font-size:26px;line-height:1;font-weight:700}
+.pause-shortcut{font:500 9px/1.2 ui-monospace,monospace;letter-spacing:.03em;opacity:.7;white-space:nowrap}
+#paused .pause-actions .panel-secondary{min-height:46px;padding:12px 16px;clip-path:none;border:1px solid #8aa4b65c;background:linear-gradient(110deg,#263b46a8,#172630a8);font-size:11px;font-weight:700;letter-spacing:.045em;color:var(--ivory)}
+#paused .pause-actions .panel-secondary:hover{border-color:#4de1ff99;background:#2b414e}
+#paused .panel-action-pair{gap:9px}
+#paused .panel-action-pair .panel-secondary{justify-content:space-between;font-size:10px;background:#13232d66;color:#bcd0dc}
+#paused .panel-action-pair .panel-secondary>span+span{font-size:16px;color:#9ebac9}
+@media(pointer:coarse),(max-width:700px){.pause-shortcut{display:none}}
+@media(max-width:420px){#paused{padding-inline:14px}#paused .pause-panel{padding:20px}.pause-course{padding-inline:13px}.pause-course-meta{font-size:8px}.pause-times{gap:12px}.pause-times>div+div{padding-left:12px}.pause-times dd{font-size:21px}#paused .pause-actions #resume{font-size:22px}}
+@media(max-height:650px){#paused{align-items:flex-start;padding-top:60px;padding-bottom:20px}#paused .pause-panel{padding:20px}.pause-heading{margin-bottom:17px}#paused #pause-title{font-size:36px}.pause-course{margin-bottom:16px;padding-block:12px}#paused #pause-level{margin-bottom:13px}.pause-times{margin-bottom:13px}#paused .pause-actions #resume{min-height:52px}.pause-heading-copy{gap:5px}}
