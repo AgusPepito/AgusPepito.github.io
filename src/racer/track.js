@@ -2,9 +2,9 @@ import { Vector3 } from 'three';
 import {transitionSection,transitionPoint,runSection} from './transition-profile.js';
 
 export let LENGTH = 2400;
-let profile = 'flat',profileRuns=[];
-export function setTrackProfile(length, shape, runs=[]) { LENGTH = length; profile = shape; profileRuns=runs; }
-export function trackProfileSnapshot() { return { length: LENGTH, shape: profile, runs:profileRuns }; }
+let profile = 'flat',profileRuns=[],profileMotion=[];
+export function setTrackProfile(length, shape, runs=[], motion=[]) { LENGTH = length; profile = shape; profileRuns=runs; profileMotion=motion; }
+export function trackProfileSnapshot() { return { length: LENGTH, shape: profile, runs:profileRuns, motion:profileMotion }; }
 export const RADIUS = 18;
 export const PHASES = [
   { name: 'ION', symbol: '●', color: '#4de1ff', hex: 0x4de1ff },
@@ -36,19 +36,31 @@ export function profileSection(s,shape,runs=[]) {
 }
 export function section(s) {return profileSection(s,profile,profileRuns);}
 
+// Authored displacement increments have smooth, stationary ends. Geometry,
+// collision and the chase camera all follow this same banking transform.
+export function trackMotionAt(s) {
+  let x=0,y=0,roll=0;
+  for(const move of profileMotion){
+    if(s<=move.start)continue;
+    const t=smooth((s-move.start)/(move.end-move.start));
+    x+=move.x*t;y+=move.y*t;roll+=move.roll*t;
+  }
+  return {x,y,roll};
+}
+
 export function point(s, u, target = new Vector3()) {
-  if(profile==='gap-flat')return target.set(u*18,0,-s);
   if(profile==='transition-09'||profile==='transition-10')return target.set(...transitionPoint(profile.slice(-2),s,u));
   const { curl, halfWidth } = section(s), lateral = u * halfWidth, k = curl / RADIUS;
   const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k * lateral) / k;
   const y = Math.abs(k) < 1e-7 ? 0 : (1 - Math.cos(k * lateral)) / k;
   // Authored bends have truly straight approaches and exits; z remains monotonic.
-  const tubeReview = profile === 'outside' || profile === 'inside' || profile === 'authored';
+  const tubeReview = profile === 'outside' || profile === 'inside' || profile === 'authored' || profile === 'gap-flat';
   const centerX = tubeReview ? 0 : profile === 'flat' ? 18 * smooth((s / LENGTH - 0.15) / 0.2) - 36 * smooth((s / LENGTH - 0.4) / 0.2) + 18 * smooth((s / LENGTH - 0.7) / 0.2) : 95 * smooth((s - 300) / 550) - 170 * smooth((s - 1450) / 750)
     + 210 * smooth((s - 2950) / 500) - 180 * smooth((s - 4050) / 900)
     + 45 * smooth((s - 5900) / 450);
   const centerY = profile === 'flat' || tubeReview ? 0 : 24 * smooth((s - 1500) / 800) - 40 * smooth((s - 4150) / 900);
-  return target.set(x + centerX, y + centerY, -s);
+  const motion=trackMotionAt(s),c=Math.cos(motion.roll),sn=Math.sin(motion.roll);
+  return target.set(x*c-y*sn+centerX+motion.x, x*sn+y*c+centerY+motion.y, -s);
 }
 
 // Same finite-difference frame as gameplay, with reusable vectors for geometry
@@ -64,14 +76,15 @@ export function createFrameSampler() {
     let data = stations.get(s);
     if (!data) {
       const road = section(s), origin = point(s, 0);
-      data = {k:road.curl/RADIUS,half:road.halfWidth,x:origin.x,y:origin.y};
+      const roll=trackMotionAt(s).roll;
+      data = {k:road.curl/RADIUS,half:road.halfWidth,x:origin.x,y:origin.y,c:Math.cos(roll),sn:Math.sin(roll)};
       if (stations.size >= 8192) stations.clear();
       stations.set(s,data);
     }
     const lateral = u * data.half, k = data.k;
     const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k*lateral)/k;
     const y = Math.abs(k) < 1e-7 ? 0 : (1-Math.cos(k*lateral))/k;
-    return target.set(x+data.x,y+data.y,-s);
+    return target.set(x*data.c-y*data.sn+data.x,x*data.sn+y*data.c+data.y,-s);
   };
   return (s, u) => {
     samplePoint(s, u, p);

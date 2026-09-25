@@ -1,255 +1,236 @@
-// Authored campaign: each course introduces or develops one clear demand.
+import {campaignMotion} from './campaign-motion.js';
+
+// One introductory course per area; the remaining courses combine known skills.
 // All obstacle widths are surface-coordinate HALF widths, as in obstacles.js.
 export const CAMPAIGN_AREAS = [
-  {id:'dockyards',name:'DOCKYARDS',number:'01',theme:'OPEN ROAD',description:'Find your line. Learn the phases. Leave the docks.',skill:'Steering · phase matching',image:'assets/areas/dockyards-r1.png'},
-  {id:'conduits',name:'CONDUITS',number:'02',theme:'INNER TUBE',description:'Thread the openings and find a rhythm around the tube.',skill:'Passages · spirals · reversals',image:'assets/areas/conduits-r1.png'},
-  {id:'broken-span',name:'BROKEN SPAN',number:'03',theme:'JUMP ROUTES',skill:'Hurdles · gaps · landings',image:'assets/areas/broken-span-r1.png'},
-  {id:'relay-grid',name:'RELAY GRID',number:'04',theme:'PHASE RHYTHM',skill:'Switch · steer · thread',image:'assets/areas/relay-grid-r1.png'},
-  {id:'outer-ring',name:'OUTER RING',number:'05',theme:'EXTERIOR TUBE',skill:'Helices · fast lines · braking',image:'assets/areas/outer-ring-r1.png'},
+  {id:'dockyards',name:'DOCKYARDS',number:'01',theme:'BANKED ROAD',skill:'Slaloms · phases · tube folds',image:'assets/areas/dockyards-r1.png'},
+  {id:'conduits',name:'CONDUITS',number:'02',theme:'INNER TUBE',skill:'Spirals · phase shifts · reversals',image:'assets/areas/conduits-r1.png'},
+  {id:'broken-span',name:'BROKEN SPAN',number:'03',theme:'JUMP ROUTES',skill:'Jump · rotate · land',image:'assets/areas/broken-span-r1.png'},
+  {id:'relay-grid',name:'RELAY GRID',number:'04',theme:'PHASE RHYTHM',skill:'Switch · thread · jump',image:'assets/areas/relay-grid-r1.png'},
+  {id:'outer-ring',name:'OUTER RING',number:'05',theme:'EXTERIOR TUBE',skill:'Helices · signals · flight',image:'assets/areas/outer-ring-r1.png'},
   {id:'nexus',name:'NEXUS',number:'06',theme:'MASTERY CIRCUIT',skill:'Linked surfaces · combined skills',image:'assets/areas/nexus-r1.png'},
 ];
-export const CAMPAIGN_LAYOUT_REVISION='r2';
+export const CAMPAIGN_LAYOUT_REVISION='r3';
 const gate=(s,phase)=>({s,phase,center:0,width:1,full:true});
-const lane=(start,end,phase,u=0)=>({start,end,phase,from:u,to:u,width:.26});
+const signals=rows=>rows.map(([s,p])=>gate(s,p));
 const wall=(s,center,width)=>({s,kind:'wall',center,width,depth:5});
-const passage=(s,center,width)=>({s,kind:'hole',center:((center+1)%2+2)%2-1,width,depth:5,height:9});
+const wrap=u=>((u+1)%2+2)%2-1;
+const passage=(s,center,width)=>({s,kind:'hole',center:wrap(center),width,depth:5,height:9});
+const holes=(rows,width)=>rows.map(([s,u,w=width])=>passage(s,u,w));
 const hurdle=s=>({s,kind:'jump',center:0,width:1,depth:5,height:2.4});
 const gap=(start,end)=>({start,end,center:0,width:1,full:true});
-const ribbon=(start,end,phase,from,to,width=.105)=>({start,end,phase,from,to,width});
-// Full-width powered approaches let a matching phase supply launch thrust even
-// with an empty battery. A long gap still requires holding boost before jumping.
+// Keep each spiral ribbon near the canonical seam for the surface cut masks,
+// while preserving its authored direction across the wrap.
+const ribbon=(start,end,phase,from,to,width=.105)=>({start,end,phase,from:wrap(from),to:wrap(from)+to-from,width});
+// Matching lanes supply launch thrust even with an empty battery. Long gaps
+// still require holding boost on the approach and jumping near the edge.
 const power=(start,end,phase)=>ribbon(start,end,phase,0,0,1);
 const cue=(start,end,title,pc,touch=pc)=>({start,end,title,pc,touch});
-const course=(id,area,name,profile,lesson,data,hints,runs=[])=>{
+const course=(id,area,name,profile,lesson,data,hints=[],options={})=>{
   const encounters={gates:[],strips:[],obstacles:[],gaps:[],chains:[],...data};
-  // End shortly after the last authored encounter, including its physical depth.
-  // Keeping this derived prevents long empty checkpoint exits as layouts change.
   const last=Math.max(0,...encounters.gates.map(g=>g.s+9),...encounters.obstacles.map(o=>o.s+o.depth),
     ...encounters.strips.map(strip=>strip.end),...encounters.gaps.map(gap=>gap.end));
-  return {id,area,name,length:Math.ceil((last+140)/10)*10,profile,runs,lesson,hints,data:encounters};
+  const length=Math.ceil((last+140)/10)*10;
+  return {id,area,name,length,profile,runs:options.runs??[],motion:campaignMotion(length,encounters,options),lesson,hints,data:encounters};
 };
 
 export const CAMPAIGN_LEVELS = [
-  course('dockyards-clear-route','dockyards','CLEAR ROUTE','flat',
-    'Steer around solid walls and through white-lit openings. Any phase is safe here.',
-    {obstacles:[wall(420,0,.30),wall(780,-.36,.40),passage(1100,.42,.25),
-      wall(1400,.38,.42),passage(1740,-.40,.24),passage(2050,.42,.24)]},[
-      cue(40,330,'FIND YOUR LINE','A / D or ← / → to steer. Pass either side of the wall.','Left pad: drag sideways. Pass either side of the wall.'),
-      cue(800,1010,'THROUGH THE OPENING','Follow the white arrows. Stay low; no jump needed.'),
-    ]),
-  course('dockyards-first-shift','dockyards','FIRST SHIFT','flat',
-    'Match cyan and amber gates. Each color also has its own symbol.',
-    {gates:[gate(430,0),gate(740,1),gate(1040,0),gate(1320,1),
-      gate(1560,0),gate(1790,1),gate(2020,0),gate(2250,1)]},[
-      cue(40,350,'CYAN / ION ●','Press 1 for cyan before the gate.','Right pad left selects cyan before the gate.'),
-      cue(460,670,'AMBER / SOL ▲','Press 2 for amber. Match the next gate.','Right pad down selects amber. Match the next gate.'),
-    ]),
-  course('dockyards-third-signal','dockyards','THIRD SIGNAL','flat',
-    'Add violet to your phases. Matching a colored lane gives free acceleration.',
-    {gates:[gate(540,0),gate(850,1),gate(1180,2),gate(1450,0),
-      gate(1720,2),gate(2000,1),gate(2280,0),gate(2560,2)],
-    strips:[lane(200,460,0),lane(1220,1380,2,.38),lane(1780,1940,2,-.38),lane(2330,2490,0,.38)]},[
-      cue(40,400,'MATCH THE LANE','Press 1 and follow cyan for free acceleration.','Select cyan with the right pad left. Follow its lane for free acceleration.'),
-      cue(880,1110,'VIOLET / FLUX ◆','Press 3 for violet. The next lane uses the same phase.','Right pad right selects violet. The next lane uses the same phase.'),
-      cue(1470,1630,'CONTROL YOUR SPEED','W boosts. Tap S to brake before the next gate.','Right pad up boosts. Left pad down brakes before the next gate.'),
-    ]),
-  course('dockyards-departure','dockyards','DEPARTURE','flat',
-    'Use what you know: steer, match a phase, then line up with the opening. Boost is optional.',
-    {gates:[gate(680,1),gate(1200,2),gate(1990,0),gate(2500,1),gate(3020,2)],
-      strips:[lane(970,1100,1,-.45),lane(2540,2670,1,.42)],
-      obstacles:[wall(420,0,.32),passage(930,-.45,.23),passage(1470,.44,.22),wall(1730,.35,.43),
-        passage(2250,-.42,.22),passage(2760,.42,.21),passage(3270,-.40,.21)]},[
-      cue(40,320,'DEPARTURE','Steer, match, then thread. Read one action ahead.'),
-      cue(3050,3190,'SET UP YOUR EXIT','Release boost and line up with the final opening.'),
-    ]),
+  // Dockyards teaches the controls in one mixed introduction. The road then
+  // banks harder, demands continuous steering and folds into short tube runs.
+  course('dockyards-clear-route','dockyards','CLEAR ROUTE','gap-flat',
+    'Steer through white openings. Match gates with 1, 2 or 3. Matching lanes accelerate; W boosts and S brakes.',
+    {gates:signals([[580,0],[1140,1],[1620,2],[2200,0]]),
+      obstacles:[wall(300,0,.30),passage(850,-.40,.32),wall(1380,-.35,.42),passage(1990,.40,.28),passage(2400,-.40,.26)],
+      strips:[ribbon(1650,1850,2,.40,.40,.26)]},[
+      cue(30,230,'STEER AROUND THE WALL','A / D or ← / → to steer. White openings mark the way through.','Left pad sideways steers. White openings mark the way through.'),
+      cue(340,520,'CYAN / ION ●','Press 1 to match the cyan gate.','Right pad left selects cyan.'),
+      cue(880,1080,'AMBER / SOL ▲','Press 2 to match the amber gate.','Right pad down selects amber.'),
+      cue(1410,1570,'VIOLET / FLUX ◆','Press 3 to match violet. Its lane also gives free acceleration.','Right pad right selects violet. Its lane also gives free acceleration.'),
+      cue(1690,1890,'CONTROL YOUR SPEED','W or Shift boosts. Tap S to brake before a tight opening.','Right pad up boosts. Left pad down brakes before a tight opening.'),
+    ],{amount:.65}),
+  course('dockyards-first-shift','dockyards','FIRST SHIFT','gap-flat',
+    'Weave across banked bends while switching phases. Every opening sets up the next turn.',
+    {gates:signals([[430,1],[940,2],[1240,0],[1750,1],[2070,2]]),
+      obstacles:[passage(300,-.42,.25),wall(590,.38,.43),passage(790,-.42,.24),passage(1090,.42,.24),
+        wall(1400,-.38,.43),passage(1600,.42,.23),passage(1930,-.42,.23),passage(2250,.42,.23)],
+      strips:[ribbon(470,550,1,-.42,-.42,.18),ribbon(1790,1860,1,.42,-.22,.16)]},[],{path:'switchback',amount:.85}),
+  course('dockyards-third-signal','dockyards','THIRD SIGNAL','authored',
+    'The banked road curls into a tube. Rotate through openings and keep matching the signals.',
+    {gates:signals([[970,1],[1300,2],[1620,0],[1890,1],[2660,2]]),
+      obstacles:[wall(270,0,.30),...holes([[820,.15],[1150,.50],[1470,.90],[1780,.45],[1990,0]],.145),passage(2830,-.42,.23)],
+      strips:[ribbon(1010,1080,1,.15,.42,.12),ribbon(1660,1720,0,.90,.55,.12)]},[],
+    {path:'spiral',amount:.70,runs:[{sign:1,enter:340,closed:680,open:2110,exit:2470}]}),
+  course('dockyards-departure','dockyards','DEPARTURE','authored',
+    'Slalom into a rotating phase run, reverse around the tube, then finish across the open road.',
+    {gates:signals([[450,1],[1400,2],[1680,0],[1960,1],[2240,2],[2970,0],[3340,1]]),
+      obstacles:[passage(300,-.42,.24),passage(620,.42,.23),
+        ...holes([[1280,0],[1560,.50],[1840,1],[2120,.50],[2400,0]],.13),
+        passage(3160,-.45,.22),passage(3520,.45,.22)],
+      strips:[ribbon(1730,1800,0,.55,.92,.12),ribbon(3010,3070,0,0,-.35,.16)]},[],
+    {path:'switchback',runs:[{sign:1,enter:780,closed:1080,open:2490,exit:2790}]}),
+
+  // Conduits adds demanding rotation to the phases and lanes already learned.
   course('conduits-thread','conduits','THREAD THE NEEDLE','inside',
-    'Rotate to each offset opening. Release steering through the passage; any phase works.',
-    {obstacles:[[500,0,.135],[900,.40,.135],[1290,-.08,.125],[1680,-.52,.125],
-      [2050,-.02,.125],[2420,.46,.12],[2790,-.12,.12]].map(([s,u,width])=>passage(s,u,width))},[
-      cue(40,390,'INSIDE THE CONDUIT','A / D steers around the tube. Follow the white opening.','Drag the left pad sideways to rotate. Follow the white opening.'),
-      cue(1320,1540,'TURN, THEN SETTLE','Rotate left to the next opening. Release steering as you pass.'),
-    ]),
+    'Rotate around the tube, settle through each opening, then match the next phase.',
+    {obstacles:holes([[340,0,.14],[680,.42,.135],[1040,.94,.13],[1400,.38,.125],
+      [1750,-.20,.12],[2090,-.78,.12],[2440,-.20,.115]],.13),
+      gates:signals([[820,1],[1180,2],[1870,0]])},[
+      cue(30,270,'AROUND THE TUBE','A / D rotates around the tube. Release steering as you enter the white opening.','Left pad sideways rotates around the tube. Center it as you enter the white opening.'),
+      cue(390,590,'TURN, THEN SETTLE','The next opening is to the right. Settle through it, then match amber.'),
+    ],{path:'spiral',amount:.8}),
   course('conduits-spiral','conduits','SPIRAL RUN','inside',
-    'Openings step around the tube in one direction. Turn between them, then settle through each one.',
-    {obstacles:[[500,0],[820,.46],[1140,.92],[1440,1.38],[1740,1.86],
-      [2040,2.34],[2340,2.82],[2630,3.32],[2920,3.82],[3210,4.32]].map(([s,u])=>passage(s,u,.105))},[
-      cue(40,390,'FOLLOW THE SPIRAL','The openings rotate right. Turn between them; settle as you pass.'),
-      cue(1770,1940,'KEEP ROTATING','Continue right around the tube. The next opening is another quarter turn.'),
-    ]),
+    'Keep rotating right through phase changes and optional winding acceleration lanes.',
+    {obstacles:holes([[320,0],[640,.52],[960,1.04],[1280,1.56],[1600,2.08],
+      [1920,2.60],[2240,3.12],[2560,3.64],[2880,4.16]],.11),
+      gates:signals([[450,1],[770,2],[1090,0],[1410,1],[1730,2],[2050,0],[2370,2],[2690,1]]),
+      strips:[ribbon(805,890,2,.60,1.04,.11),ribbon(1445,1530,1,1.64,2.08,.11),
+        ribbon(2085,2170,0,2.68,3.12,.11),ribbon(2725,2810,1,3.72,4.16,.11)]},[],{path:'spiral'}),
   course('conduits-switchback','conduits','SWITCHBACK','inside',
-    'Commit to longer rotations, then reverse. Read the next opening before adding speed.',
-    {obstacles:[[500,0],[810,.56],[1120,1.12],[1430,.56],[1740,0],[2040,-.58],
-      [2340,-1.16],[2640,-.58],[2940,.02],[3230,.66],[3520,.02],[3810,-.62]].map(([s,u])=>passage(s,u,.10))},[
-      cue(40,390,'READ THE NEXT OPENING','This route turns right, then back left.'),
-      cue(1150,1340,'REVERSE THE ARC','The next opening is back to your left.'),
-      cue(2370,2550,'REVERSE AGAIN','Turn back right. Brake if you need more time.'),
-    ]),
+    'Reverse across the tube while reading changing phases. The next opening never shares your line.',
+    {obstacles:holes([[320,0],[630,.60],[940,1.20],[1250,.60],[1560,0],[1870,-.64],
+      [2180,-1.28],[2490,-.64],[2800,.02],[3110,.66],[3420,.02],[3690,-.62]],.105),
+      gates:signals([[450,2],[760,0],[1070,1],[1690,2],[2000,1],[2620,0],[3240,2],[3550,1]]),
+      strips:[ribbon(1310,1440,1,.54,.04,.11),ribbon(2850,2980,0,.08,.60,.11)]},[],{path:'switchback',mirror:-1}),
   course('conduits-flow','conduits','TUNNEL FLOW','inside',
-    'Full rotations, a reverse spiral, then alternating openings. Keep moving until the checkpoint.',
-    {obstacles:[[500,0],[790,.50],[1080,1],[1370,1.50],[1660,2],
-      [2000,1.40],[2280,.80],[2560,.20],[2840,-.40],[3120,-1],
-      [3460,-.36],[3730,.28],[4000,-.40],[4270,.24],[4540,-.44]].map(([s,u])=>passage(s,u,.095))},[
-      cue(40,390,'TUNNEL FLOW','Rotate right, reverse, then alternate. Stay ready for the next opening.'),
-      cue(1690,1900,'NEXT / REVERSE','The next spiral turns back left.'),
-      cue(3150,3350,'NEXT / SWITCHBACK','Right, right, then alternate. Keep boost under control.'),
-    ]),
-  // Broken Span: jump timing first, then gaps and powered launches. Passages
-  // after gaps sit beyond the fast-jump landing range, not at the landing lip.
-  course('broken-span-hurdles','broken-span','HURDLES','gap-flat',
-    'Jump the low amber barriers. Release jump between hurdles; braking gives you time to land.',
-    {obstacles:[520,920,1320,1690,2040,2390,2740].map(hurdle)},[
-      cue(60,390,'JUMP THE BARRIER','Space jumps. Follow the upward lights; release Space between jumps.','Push the left pad up to jump. Pull back between jumps to rearm.'),
-      cue(1360,1570,'LAND BEFORE THE NEXT','Release boost. Tap S if the next hurdle is arriving too quickly.','Release boost. Pull the left pad down if the next hurdle arrives too quickly.'),
-    ]),
-  course('broken-span-crossing','broken-span','CROSSING','gap-flat',
-    'Jump near the edge. These short gaps can be crossed at normal cruise speed.',
-    {gaps:[gap(560,640),gap(1050,1135),gap(1540,1630),gap(2030,2125),gap(2520,2620)],
-      obstacles:[passage(2950,0,.30)]},[
-      cue(60,410,'WAIT FOR THE EDGE','No boost needed. Press Space when the jump cue says JUMP.','No boost needed. Push the left pad up when the cue says JUMP.'),
-      cue(1740,1910,'JUMP, LAND, REARM','Release Space after takeoff so the next jump is ready.','Pull the left pad back after takeoff so the next jump is ready.'),
-      cue(2710,2850,'LAND AND LINE UP','Settle onto the road, then take the white opening.'),
-    ]),
-  course('broken-span-long-reach','broken-span','LONG REACH','gap-flat',
-    'Match cyan on the powered approach, hold boost, then jump near the lip. The lane supplies boost even with an empty battery.',
-    {gaps:[gap(900,1100),gap(1990,2210),gap(3130,3370)],
-      strips:[power(480,888,0),power(1570,1978,0),power(2690,3118,0)],
-      obstacles:[passage(1500,0,.30),passage(2610,0,.28),passage(3760,0,.26)]},[
-      cue(60,420,'POWERED TAKEOFF','Select cyan with 1. Hold W on the cyan approach, then jump near the edge.','Select cyan with right pad left. Hold right pad up on the lane; jump near the edge.'),
-      cue(520,750,'BUILD SPEED FIRST','Keep W held on cyan. Wait for the jump cue to turn ready.','Keep the right pad up on cyan. Wait for the jump cue to turn ready.'),
-      cue(1180,1390,'RELEASE AND LAND','Release W after crossing. Tap S before the opening if needed.','Release boost after crossing. Pull left pad down before the opening if needed.'),
-      cue(2720,2930,'LONGEST SPAN','The cyan lane supplies thrust even with an empty battery. Hold boost before jumping.'),
-    ]),
-  course('broken-span-landing-line','broken-span','LANDING LINE','gap-flat',
-    'Jump, land, then steer to the opening. Cruise clears the gaps; avoid entering a passage while airborne.',
-    {gaps:[gap(1280,1370),gap(2820,2920)],
-      obstacles:[hurdle(500),passage(920,-.35,.26),passage(1800,.35,.25),
-        hurdle(2160),passage(2580,-.35,.24),passage(3370,.35,.24)]},[
-      cue(60,370,'LAND, THEN THREAD','Jump the barrier. Land before steering through the opening on the left.'),
-      cue(1430,1650,'SET UP THE LANDING','Release boost and move right after landing. Stay low through the opening.'),
-      cue(3020,3240,'FINAL LANDING LINE','One last opening on the right. Settle before entering.'),
-    ]),
+    'A full spiral, a reverse spiral, then alternating turns. Phase changes keep coming between passages.',
+    {obstacles:holes([[300,0],[590,.56],[880,1.12],[1170,1.68],[1460,2.24],
+      [1800,1.62],[2090,1],[2380,.38],[2670,-.24],[2960,-.86],
+      [3300,-.18],[3590,.50],[3880,-.18],[4170,.50]],.10),
+      gates:signals([[430,1],[1010,2],[1310,0],[1930,1],[2510,2],[2810,0],[3430,2],[3720,1],[4010,0]]),
+      strips:[ribbon(645,770,1,.64,1.04,.10),ribbon(2150,2270,1,.94,.44,.10),
+        ribbon(3020,3170,0,-.78,-.26,.10)]},[],{path:'spiral',mirror:-1,amount:1.15}),
 
-  // Relay Grid: familiar phases followed by steering, never a first jump lesson.
-  course('relay-grid-pulse','relay-grid','PULSE','flat',
-    'Read repeated three-phase patterns, then their reversal. Steering is free here.',
-    {gates:[[480,0],[760,1],[1040,2],[1310,0],[1580,1],[1850,2],
-      [2160,2],[2390,1],[2620,0],[2850,1],[3080,2]].map(([s,p])=>gate(s,p))},[
-      cue(60,360,'FIND THE PULSE','Cyan, amber, violet. Use 1, 2, 3 and look one gate ahead.','Cyan, amber, violet. Right pad left, down, right; look one gate ahead.'),
-      cue(1900,2070,'REVERSE THE PATTERN','Violet, amber, cyan. Read the color instead of repeating by memory.'),
-    ]),
-  course('relay-grid-switch-thread','relay-grid','SWITCH AND THREAD','flat',
-    'Choose a phase, cross its gate, then steer into the white opening. Repeat across alternating sides.',
-    {gates:[[450,0],[980,1],[1510,2],[2040,0],[2570,2],[3100,1]].map(([s,p])=>gate(s,p)),
-      obstacles:[[690,-.42,.23],[1220,.42,.23],[1750,-.42,.22],[2280,.42,.22],
-        [2810,-.42,.21],[3340,.42,.21]].map(([s,u,w])=>passage(s,u,w))},[
-      cue(60,350,'SWITCH, THEN STEER','Match the phase gate first. The next white opening is on the left.'),
-      cue(1260,1430,'KEEP THE TWO-STEP','Set your phase early, then line up with the next passage.'),
-    ]),
+  // The jump introduction reuses tube steering and phases. Later courses
+  // combine flight with rotations immediately, rather than repeating tutorials.
+  course('broken-span-hurdles','broken-span','HURDLES','inside',
+    'Jump amber hurdles and gaps, then rotate to the landing passage. Match the powered lane for the long launch.',
+    {obstacles:[hurdle(400),passage(790,.40,.135),hurdle(1080),passage(1470,-.40,.13),
+        passage(2230,.35,.13),passage(3350,0,.125)],
+      gates:signals([[580,1],[1280,2],[2100,0],[3520,1]]),
+      gaps:[gap(1760,1840),gap(2720,2920)],strips:[power(2340,2708,0)]},[
+      cue(40,300,'JUMP THE AMBER BARRIER','Space jumps. Release it between jumps; land before entering a white opening.','Left pad up jumps. Pull back between jumps; land before entering a white opening.'),
+      cue(1490,1660,'JUMP AT THE EDGE','This first gap needs no boost. Jump when the takeoff cue turns ready.','This first gap needs no boost. Push left pad up when the takeoff cue turns ready.'),
+      cue(2270,2510,'POWERED LAUNCH','Match cyan, hold W or Shift on the lane, then jump at the edge. Release boost after crossing.','Match cyan, hold right pad up on the lane, then jump at the edge. Release boost after crossing.'),
+    ],{path:'spiral',amount:.65}),
+  course('broken-span-crossing','broken-span','CROSSING','inside',
+    'Cross a gap, rotate to the next passage, match its signal and jump again. Cruise clears the gaps.',
+    {gaps:[gap(600,685),gap(1440,1530),gap(2280,2380)],
+      obstacles:[...holes([[320,0],[1060,.60],[1910,-.10],[2760,-.75]],.12),hurdle(3100),passage(3500,-.15,.115)],
+      gates:signals([[1190,1],[2040,2],[2900,0],[3290,1]])},[],{path:'switchback',amount:.85}),
+  course('broken-span-long-reach','broken-span','LONG REACH','authored',
+    'Boost across the tube break, rotate through the landing route, then launch from the banked road.',
+    {gaps:[gap(1270,1470),gap(3300,3520)],
+      gates:signals([[820,0],[2060,1],[2840,2],[4100,1]]),
+      strips:[power(860,1258,0),power(2860,3288,2)],
+      obstacles:[passage(280,-.40,.24),passage(1900,.60,.12),passage(2290,0,.12),passage(3940,-.40,.23)]},[],
+    {path:'sweep',mirror:-1,amount:.85,runs:[{sign:1,enter:380,closed:700,open:2400,exit:2730}]}),
+  course('broken-span-landing-line','broken-span','LANDING LINE','authored',
+    'Thread, hurdle and fly through an inner tube, an open-road gap and a final rotating jump sequence.',
+    {gaps:[gap(1210,1300),gap(2300,2390)],
+      gates:signals([[740,1],[2110,2],[2950,0],[3850,1],[4520,2]]),
+      obstacles:[passage(280,-.30,.12),hurdle(540),passage(930,.35,.12),passage(1630,0,.12),
+        passage(2790,-.45,.23),passage(3110,0,.23),passage(3720,0,.115),passage(4070,.60,.115),hurdle(4350),passage(4750,0,.115)]},[],
+    {path:'switchback',runs:[{sign:1,enter:-400,closed:0,open:1690,exit:1990},
+      {sign:1,enter:3200,closed:3520,open:6000,exit:6320}]}),
+
+  // Relay Grid introduces denser phase phrases, not the phase controls again.
+  course('relay-grid-pulse','relay-grid','PULSE','inside',
+    'Three signals form a phrase. Match the rhythm while rotating between the passage anchors.',
+    {gates:signals([[500,0],[700,1],[900,2],[1250,2],[1450,1],[1650,0],
+      [2020,2],[2220,0],[2420,1],[2790,2]]),
+      obstacles:[...holes([[360,0],[1100,.60],[1850,-.10],[2630,-.75],[2970,-.10]],.12),hurdle(3200)]},[
+      cue(30,290,'READ THE PHRASE','Cyan, amber, violet; then the pattern reverses. Look through the nearest gate to the next.'),
+    ],{path:'spiral',amount:.85}),
+  course('relay-grid-switch-thread','relay-grid','SWITCH AND THREAD','inside',
+    'Match, rotate, thread; jump breaks up the rhythm. Land before committing to the next opening.',
+    {gates:signals([[430,1],[740,2],[1120,0],[1460,1],[1780,2],[2150,0],[2500,2],[2820,1],[3440,0]]),
+      obstacles:[...holes([[300,0],[610,.56],[1320,1.12],[1640,.56],[2360,0],[2680,-.62],[3000,-1.24],[3660,-.62]],.11),
+        hurdle(920),hurdle(1960),hurdle(3250)],
+      strips:[ribbon(1510,1560,1,1.02,.65,.11),ribbon(2540,2620,2,-.08,-.54,.11)]},[],{path:'switchback'}),
   course('relay-grid-rotating-signal','relay-grid','ROTATING SIGNAL','inside',
-    'Phase gates alternate with rotating tube passages. Complete each switch before the precise turn.',
-    {gates:[[500,0],[1000,1],[1500,2],[2000,0],[2500,1],[3000,2]].map(([s,p])=>gate(s,p)),
-      obstacles:[[760,0],[1260,.42],[1760,.88],[2260,1.34],[2760,1.80],[3260,2.26]]
-        .map(([s,u])=>passage(s,u,.12))},[
-      cue(60,390,'SIGNALS IN THE TUBE','Match the color, then rotate to the white opening. No jumps here.'),
-      cue(1800,1910,'KEEP TURNING RIGHT','The passages keep rotating right; the gates keep their three-color rhythm.'),
-    ]),
-  course('relay-grid-circuit','relay-grid','RELAY CIRCUIT','inside',
-    'Switch and rotate through repeated phrases, then reverse direction while reading the next phase.',
-    {gates:[[450,0],[870,1],[1290,2],[1710,1],[2130,0],[2550,2],[2970,0],[3400,1]].map(([s,p])=>gate(s,p)),
-      obstacles:[[660,0],[1080,.46],[1500,.94],[1920,.46],[2340,-.04],[2760,-.54],
-        [3180,0],[3610,.56]].map(([s,u])=>passage(s,u,.11))},[
-      cue(50,340,'RELAY CIRCUIT','Read the phase first, then the opening. Keep boost optional.'),
-      cue(1540,1650,'REVERSE LEFT','The next opening turns back left. Amber comes first.'),
-      cue(2800,2910,'TURN BACK RIGHT','The final phrase turns right. Cyan, then amber.'),
-    ]),
+    'Keep the spiral moving through signals and hurdles, then reverse the orbit without losing the phase rhythm.',
+    {gates:signals([[470,0],[820,1],[1170,2],[1550,0],[1910,1],[2260,2],[2610,0],[3000,2],[3370,1]]),
+      obstacles:[...holes([[320,0],[670,.60],[1020,1.20],[1770,1.80],[2120,2.40],[2470,1.80],[3230,1.20],[3580,.60]],.105),
+        hurdle(1360),hurdle(2820)],
+      strips:[ribbon(860,970,1,.66,1.14,.10),ribbon(2310,2400,2,2.34,1.88,.10)]},[],{path:'orbit',mirror:-1,amount:.9}),
+  course('relay-grid-circuit','relay-grid','RELAY CIRCUIT','authored',
+    'A fast tube relay unfolds into a road jump, then closes around a reversing phase sequence.',
+    {gates:signals([[420,0],[710,1],[1000,2],[1390,1],[1740,0],[2440,2],[3820,1],[4110,2],[4400,0]]),
+      gaps:[gap(2660,2750)],
+      obstacles:[...holes([[300,0],[590,.58],[880,1.16],[1600,.58],[1900,0],
+        [3700,0],[3990,-.64],[4280,-1.28],[4570,-.64]],.105),hurdle(1190),passage(3100,0,.22)]},[],
+    {path:'switchback',mirror:-1,runs:[{sign:1,enter:-360,closed:0,open:1990,exit:2310},
+      {sign:1,enter:3160,closed:3480,open:5700,exit:6020}]}),
 
-  // Outer Ring: the outside shell has a slower unpowered route everywhere.
-  // Lane exits precede openings so releasing/braking is a deliberate action.
+  // Exterior routes carry phases and jumps forward from the very first course.
   course('outer-ring-orbit','outer-ring','ORBIT','outside',
-    'Drive around the outside of the tube. Use the same steering as Conduits; any phase is safe.',
-    {obstacles:[[500,0],[900,.32],[1300,.68],[1700,1.04],[2080,.62],[2460,.20],
-      [2840,-.24],[3220,0]].map(([s,u])=>passage(s,u,.12))},[
-      cue(50,390,'OUTSIDE THE RING','A / D rotates around the outer shell. Follow the white opening.','Drag the left pad sideways to rotate around the outer shell.'),
-      cue(1740,1950,'REVERSE YOUR ORBIT','The next openings turn back left. Keep the road under the ship.'),
-    ]),
+    'Take familiar steering, phases and jumping onto the outer shell. Keep turning through the white openings.',
+    {obstacles:[...holes([[320,0,.14],[660,.45,.13],[1000,.95,.125],[1340,1.45,.12],
+      [2090,.85,.12],[2430,.25,.12],[2780,-.35,.12]],.12),hurdle(1680)],
+      gates:signals([[790,1],[1130,2],[1470,0],[1870,1],[2220,2],[2560,0]])},[
+      cue(30,250,'OUTSIDE THE RING','Use the same steering around the outer shell. Rotate to each white opening.','Use the left pad around the outer shell. Rotate to each white opening.'),
+    ],{path:'orbit',amount:.75}),
   course('outer-ring-helix','outer-ring','HELIX','outside',
-    'Cyan lanes spiral around the shell. Follow them for speed, then settle through each opening.',
-    {obstacles:[[620,.35],[1020,.80],[1420,1.25],[1820,1.70],[2220,2.15],
-      [2620,2.60],[3020,3.05],[3420,3.50],[3820,3.95]].map(([s,u])=>passage(s,u,.11)),
-      strips:[ribbon(200,470,0,0,.35),ribbon(680,870,0,.35,.80),ribbon(1080,1270,0,.80,1.25),
-        ribbon(1480,1670,0,-.75,-.30),ribbon(1880,2070,0,-.30,.15),ribbon(2280,2470,0,.15,.60),
-        ribbon(2680,2870,0,.60,1.05),ribbon(3080,3270,0,-.95,-.50),ribbon(3480,3670,0,-.50,-.05)]},[
-      cue(40,350,'FOLLOW THE HELIX','Select cyan with 1. The lane rotates right; settle at each white opening.','Select cyan with right pad left. Follow the lane right; settle at each opening.'),
-      cue(2250,2410,'KEEP THE SAME DIRECTION','Continue around the shell. Release steering as you enter each passage.'),
-    ]),
+    'Colored lanes spiral around the shell. Change phase, ride the lane, then thread or jump.',
+    {obstacles:[...holes([[360,.25],[760,.75],[1160,1.25],[1940,1.75],[2340,2.25],
+      [2740,2.75],[3140,3.25],[3540,3.75]],.11),hurdle(1510)],
+      gates:signals([[490,1],[890,2],[1290,0],[1700,1],[2070,2],[2470,0],[2870,2],[3270,1]]),
+      strips:[ribbon(540,650,1,.25,.75,.11),ribbon(940,1050,2,.75,1.25,.11),
+        ribbon(1750,1830,1,1.30,1.75,.11),ribbon(2120,2230,2,1.75,2.25,.11),
+        ribbon(2520,2630,0,2.25,2.75,.11),ribbon(2920,3030,2,2.75,3.25,.11),ribbon(3320,3430,1,3.25,3.75,.11)]},[],{path:'orbit'}),
   course('outer-ring-fast-line','outer-ring','FAST LINE','outside',
-    'Amber lanes reward a precise fast route. Leaving the lane gives a slower approach to the same opening.',
-    {obstacles:[[620,0],[1080,.52],[1540,.04],[2000,-.48],[2460,.04],[2920,.56],[3380,.08],[3840,-.44]]
-        .map(([s,u])=>passage(s,u,.11)),
-      strips:[ribbon(200,390,1,-.30,0,.09),ribbon(680,850,1,0,.52,.09),ribbon(1140,1310,1,.52,.04,.09),
-        ribbon(1600,1770,1,.04,-.48,.09),ribbon(2060,2230,1,-.48,.04,.09),ribbon(2520,2690,1,.04,.56,.09),
-        ribbon(2980,3150,1,.56,.08,.09),ribbon(3440,3610,1,.08,-.44,.09)]},[
-      cue(50,360,'CHOOSE YOUR PACE','Select amber with 2 to use the fast lane. Unlit road remains a slower route.','Select amber with right pad down for the fast lane. Unlit road is the slower route.'),
-      cue(1590,1780,'SPEED HAS AN EXIT','Release W as the lane ends. Tap S if you need more time to align.','Release boost as the lane ends. Pull left pad down for more time to align.'),
-    ]),
+    'Accelerate into alternating rotations, then brake to settle. Phase shifts and a hurdle interrupt the line.',
+    {obstacles:[...holes([[440,0],[850,.64],[1260,.02],[1670,-.62],[2080,.02],[2490,.66],[3270,.02],[3680,-.62]],.105),hurdle(2840)],
+      gates:signals([[570,1],[980,2],[1390,0],[1800,1],[2210,2],[2620,0],[3030,1],[3400,2]]),
+      strips:[ribbon(630,760,1,.04,.58,.10),ribbon(1040,1170,2,.60,.08,.10),ribbon(1450,1580,0,-.02,-.56,.10),
+        ribbon(1860,1990,1,-.58,-.04,.10),ribbon(2270,2400,2,.06,.60,.10),ribbon(3460,3590,2,-.02,-.56,.10)]},[],
+    {path:'switchback',mirror:-1,amount:1.1}),
   course('outer-ring-run','outer-ring','RING RUN','outside',
-    'Accelerate along a matching lane, release or brake, then thread two openings before the next burst.',
-    {gates:[gate(1590,1),gate(2700,2),gate(3810,0)],
-      strips:[ribbon(300,680,0,0,.45),ribbon(1650,1850,1,.05,-.55),
-        ribbon(2760,2960,2,-.10,.50),ribbon(3870,4070,0,.08,-.52)],
-      obstacles:[[1000,.45],[1260,.05],[2140,-.55],[2410,-.10],[3250,.50],[3520,.08],
-        [4360,-.52],[4630,-.08]].map(([s,u])=>passage(s,u,.10))},[
-      cue(50,300,'BURST, BRAKE, THREAD','Match cyan to start. Each lane ends before a pair of openings.'),
-      cue(730,890,'END THE BURST','Release W and tap S. Thread both openings before accelerating again.','Release right pad up and pull left pad down. Thread both openings before boosting again.'),
-      cue(4110,4250,'FINAL PAIR','Leave the lane, settle your speed, then finish through two openings.'),
-    ]),
+    'Burst into a helix, jump the tube break, reverse the orbit and clear the final hurdle sequence.',
+    {obstacles:[...holes([[300,0],[830,.65],[1570,1.30],[1960,1.95],[2880,1.30],[3270,.65],[4060,0],[4440,-.65]],.105),
+        hurdle(1150),hurdle(3640)],
+      gates:signals([[440,0],[970,1],[1350,2],[2090,0],[3020,1],[3410,2],[4200,0]]),
+      gaps:[gap(2380,2470)],
+      strips:[ribbon(480,660,0,0,.65,.11),ribbon(1640,1810,2,1.30,1.95,.11),ribbon(3070,3150,1,1.20,.75,.10)]},[],
+    {path:'orbit',mirror:-1,amount:1.1}),
 
-  // Nexus combines learned actions, with intact landing corridors and clear
-  // transitions. The final tube passage returns to the center before unfolding.
-  course('nexus-thread-land','nexus','THREAD AND LAND','gap-flat',
-    'Thread a passage, jump, land, then reposition. Normal speed clears these gaps.',
-    {gaps:[gap(1560,1660),gap(3200,3300)],
-      obstacles:[passage(480,-.42,.23),hurdle(820),passage(1220,.42,.23),
-        passage(2080,-.42,.22),hurdle(2440),passage(2860,.42,.22),passage(3720,-.42,.22)]},[
-      cue(50,350,'THREAD AND LAND','Stay low through the opening. Jump the barrier after it, then land before turning.'),
-      cue(1690,1930,'LAND BEFORE TURNING','Release boost. The next opening is on the left, beyond the landing.'),
-    ]),
-  course('nexus-signal-flight','nexus','SIGNAL AND FLIGHT','gap-flat',
-    'Set your phase before the powered approach, build speed, jump, then land through a broad corridor.',
-    {gates:[gate(450,0),gate(1890,1),gate(3350,2)],
-      strips:[power(510,948,0),power(1950,2388,1),power(3410,3848,2)],
-      gaps:[gap(960,1160),gap(2400,2620),gap(3860,4100)],
-      obstacles:[passage(1580,0,.24),passage(3040,0,.23),passage(4530,0,.22)]},[
-      cue(50,350,'SIGNAL BEFORE FLIGHT','Cyan first. Match the gate, hold W on the lane, then jump at the lip.','Cyan first. Match the gate, hold right pad up on the lane, then jump at the lip.'),
-      cue(1660,1800,'AMBER LAUNCH','Switch to amber before the gate. Its lane supplies the next powered takeoff.'),
-      cue(3110,3260,'VIOLET LAUNCH','The final launch is violet. Build speed before jumping; release boost after crossing.'),
-    ]),
+  // Nexus varies surfaces from its first course. Every later course combines
+  // the full vocabulary; centered passages lead into every unfolding section.
+  course('nexus-thread-land','nexus','THREAD AND LAND','authored',
+    'Banked road, inner-tube relay, road jump and outer spiral. Settle at the center when a tube opens.',
+    {obstacles:[passage(300,-.40,.22),hurdle(650),passage(1060,0,.22),
+        ...holes([[1620,.10],[1960,.62],[2300,0],[4140,0],[4490,-.60],[4840,-1.20],[5190,-.60]],.11),passage(3550,0,.22)],
+      gates:signals([[440,1],[850,2],[1750,0],[2090,1],[2860,2],[4270,0],[4620,1],[4970,2]]),
+      gaps:[gap(3070,3160)]},[
+      cue(30,220,'LINKED SURFACES','Keep the skills flowing. Return to the center opening before a tube unfolds.'),
+    ],{path:'sweep',runs:[{sign:1,enter:1140,closed:1440,open:2450,exit:2730},
+      {sign:-1,enter:3650,closed:3950,open:6300,exit:6620}]}),
+  course('nexus-signal-flight','nexus','SIGNAL AND FLIGHT','inside',
+    'Powered jumps break up a rotating phase run. Land, turn to the next passage, then set up the next launch.',
+    {gates:signals([[440,0],[1690,1],[2980,2],[4270,0],[4690,1]]),
+      strips:[power(480,900,0),power(1750,2150,1),power(3040,3440,2)],
+      gaps:[gap(912,1112),gap(2162,2382),gap(3452,3692)],
+      obstacles:[...holes([[300,0],[1520,.60],[2800,-.10],[4130,-.75],[4910,-.15]],.105),hurdle(4490)]},[],
+    {path:'spiral',mirror:-1,amount:.8}),
   course('nexus-surface-shift','nexus','SURFACE SHIFT','authored',
-    'Flat road, inner tube, flat connector, outer tube, then road. Centered exit passages prepare each transition.',
-    {gates:[gate(2930,1),gate(5540,2)],
-      obstacles:[passage(420,0,.24),...[[1210,0],[1470,.48],[1730,.96],[1990,.48],[2250,0],
-        [3890,0],[4140,-.46],[4390,-.92],[4640,-.46],[4890,0]].map(([s,u])=>passage(s,u,.12)),
-        passage(5820,.40,.22)]},[
-      cue(50,310,'SURFACE SHIFT','The road folds into a tube. Stay centered through the first transition.'),
-      cue(2310,2640,'RETURN TO OPEN ROAD','Keep your line centered while the tube unfolds.'),
-      cue(3080,3490,'OUTSIDE COMES NEXT','The next tube bends outward. Stay centered until it closes.'),
-      cue(4960,5270,'FINAL UNFOLD','Hold the center line. Violet and one final opening await on the road.'),
-    ],[{sign:1,enter:650,closed:1050,open:2350,exit:2750},
-      {sign:-1,enter:3250,closed:3650,open:4950,exit:5350}]),
+    'Hurdles and signals weave through inward and outward folds. Carry each landing into the next rotation.',
+    {obstacles:[hurdle(300),passage(710,0,.22),hurdle(2120),passage(3730,0,.22),hurdle(5100),
+        ...holes([[1440,.15],[1780,.70],[2540,0],[4450,0],[4760,-.65],[5520,-1.30],[5870,-.65],[6200,0]],.105)],
+      gates:signals([[860,0],[1570,1],[1910,2],[2320,0],[3870,1],[4580,2],[4890,0],[5300,1],[5650,2],[6000,0]]),
+      gaps:[gap(3240,3330)]},[],
+    {path:'switchback',runs:[{sign:1,enter:950,closed:1250,open:2630,exit:2930},
+      {sign:-1,enter:3970,closed:4270,open:7200,exit:7520}]}),
   course('nexus-grand-circuit','nexus','GRAND CIRCUIT','authored',
-    'A complete circuit: hurdle and passage, inner-tube relays, a road gap, then an exterior signal run.',
-    {gates:[gate(1140,1),gate(2270,2),gate(2670,0),gate(5340,1),gate(5740,2),gate(6140,0)],
-      gaps:[gap(3760,3850)],
-      obstacles:[hurdle(450),passage(870,-.40,.22),...[[2070,0],[2470,.52],[2870,0]]
-        .map(([s,u])=>passage(s,u,.11)),passage(4240,0,.22),
-        ...[[5140,0],[5540,-.55],[5940,-1.10],[6340,-.55],[6600,0]].map(([s,u])=>passage(s,u,.105))]},[
-      cue(50,320,'GRAND CIRCUIT','Use what you know. Jump, land, thread, then match amber.'),
-      cue(1250,1660,'NEXT / INNER RELAY','Settle at the center. The tube begins with a white opening, then violet.'),
-      cue(2930,3320,'NEXT / ROAD GAP','Stay centered as the tube opens. The next gap needs a normal-speed jump.'),
-      cue(4350,4740,'NEXT / OUTER RELAY','Center up for the outer shell. Match the signals and rotate through the openings.'),
-      cue(6400,6520,'FINAL OPENING','Return to the center of the shell and cross the checkpoint.'),
-    ],[{sign:1,enter:1450,closed:1850,open:3070,exit:3470},
-      {sign:-1,enter:4520,closed:4920,open:8000,exit:8400}]),
+    'A sustained road slalom, inner relay, powered flight and outer spiral. Every learned action returns.',
+    {obstacles:[hurdle(340),passage(730,-.45,.22),passage(1060,0,.22),hurdle(2280),passage(4990,0,.22),hurdle(6380),
+        ...holes([[1630,0],[1940,.60],[2690,1.20],[3000,.60],[3310,0],
+          [5730,0],[6040,-.62],[6800,-1.24],[7150,-.62],[7500,0]],.10)],
+      gates:signals([[870,0],[1760,1],[2070,2],[2480,0],[2820,1],[3130,2],[3880,0],
+        [5130,1],[5860,2],[6170,0],[6580,1],[6930,2],[7280,0]]),
+      strips:[power(3930,4338,0),ribbon(2860,2920,1,1.10,.72,.10),ribbon(6970,7060,2,-1.16,-.70,.10)],
+      gaps:[gap(4350,4570)]},[],
+    {path:'orbit',mirror:-1,runs:[{sign:1,enter:1140,closed:1440,open:3420,exit:3720},
+      {sign:-1,enter:5240,closed:5540,open:8400,exit:8720}]}),
 ];
 
 export function campaignArea(index){return CAMPAIGN_AREAS.find(area=>area.id===CAMPAIGN_LEVELS[index]?.area);}

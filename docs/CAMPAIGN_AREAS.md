@@ -1,70 +1,69 @@
-# Six-area campaign
+# Six-area campaign — R3 flow revision
 
-Implemented 2026-09-25: 24 levels, four in each of six sequential areas. Dockyards and Conduits retain their revised R2 layouts. Broken Span, Relay Grid, Outer Ring and Nexus complete the progression proposal. The old campaign, default encounter arrays and Overload generation remain removed.
+Implemented 2026-09-25: 24 courses, four in each of six areas. This revision replaces isolated lesson sequences and nearly straight routes. Each area's first course introduces its focus while reusing familiar skills. Courses two through four combine earlier mechanics immediately; they have no repeating control tutorials.
 
 ## Courses
 
-| ID | Level | Length | Authored challenge |
-| --- | --- | --- | --- |
-| dockyards-clear-route | Clear Route | 2,200 m | Six wall/passage encounters with alternating sides and narrower openings. |
-| dockyards-first-shift | First Shift | 2,400 m | Eight cyan/amber gates with progressively shorter intervals. |
-| dockyards-third-signal | Third Signal | 2,710 m | Eight three-phase gates and four boost lanes, including offset lanes. |
-| dockyards-departure | Departure | 3,420 m | Twelve wall, phase and passage encounters with optional lane acceleration. |
-| conduits-thread | Thread the Needle | 2,940 m | Seven separated openings, with 72–104° rotations and reversals. |
-| conduits-spiral | Spiral Run | 3,360 m | Ten openings, each about a quarter turn farther around the tube. |
-| conduits-switchback | Switchback | 3,960 m | Twelve openings with 101–115° turns and repeated reversals. |
-| conduits-flow | Tunnel Flow | 4,690 m | Fifteen openings: full rotation, reverse spiral, then alternating turns. |
-| broken-span-hurdles | Hurdles | 2,890 m | Seven low barriers; isolated jump timing develops into a sustained rhythm. |
-| broken-span-crossing | Crossing | 3,100 m | Five cruise-speed gaps, 80–100 m long, then a broad landing passage. |
-| broken-span-long-reach | Long Reach | 3,910 m | Three 200/220/240 m gaps, full-width cyan powered approaches, and landing passages. |
-| broken-span-landing-line | Landing Line | 3,520 m | Alternate hurdles and road gaps with offset passages after landing. |
-| relay-grid-pulse | Pulse | 3,230 m | Eleven full-width gates establish, repeat and reverse a three-phase pattern. |
-| relay-grid-switch-thread | Switch and Thread | 3,490 m | Six gate/passage pairs on alternating road sides. |
-| relay-grid-rotating-signal | Rotating Signal | 3,410 m | Six gate/passage pairs rotate around the inner tube. |
-| relay-grid-circuit | Relay Circuit | 3,760 m | Eight tighter relay pairs with steering reversals. |
-| outer-ring-orbit | Orbit | 3,370 m | Eight passages teach the exterior shell, then reverse the orbit. |
-| outer-ring-helix | Helix | 3,970 m | Nine winding cyan lanes feed a consistent rotating passage sequence. |
-| outer-ring-fast-line | Fast Line | 3,990 m | Eight optional amber lane routes; unlit road supports slower approaches. |
-| outer-ring-run | Ring Run | 4,780 m | Four acceleration/braking phrases, eight passages and three phase changes. |
-| nexus-thread-land | Thread and Land | 3,870 m | Passages, hurdles and short gaps with intact landing corridors. |
-| nexus-signal-flight | Signal and Flight | 4,680 m | Cyan, amber and violet gates precede matching powered gap approaches. |
-| nexus-surface-shift | Surface Shift | 5,970 m | Authored flat/inside/flat/outside/flat sections with centered exit passages. |
-| nexus-grand-circuit | Grand Circuit | 6,750 m | Road hurdle, inner relays, road gap, exterior relays and a final tube checkpoint. |
+| Area | Course | Authored challenge |
+| --- | --- | --- |
+| Dockyards | Clear Route | One introduction to steering, all three phases, lanes and speed control on a gently banked slalom. |
+| Dockyards | First Shift | Continuous alternating passages, solid walls and phase changes on stronger reversing bends. |
+| Dockyards | Third Signal | Banked road folds into an inner tube; rotate through phase passages, then exit onto the road. |
+| Dockyards | Departure | Road slalom, half-turn/reverse tube sequence and a final alternating road run. |
+| Conduits | Thread the Needle | Introduces sustained tube rotation; familiar phase gates return after the first two openings. |
+| Conduits | Spiral Run | Continuous quarter-turn steps with changing signals and winding lanes. |
+| Conduits | Switchback | Large rotations and repeated reversals interleaved with phase decisions. |
+| Conduits | Tunnel Flow | Forward spiral, reverse spiral and alternating passages; signals and optional lanes run throughout. |
+| Broken Span | Hurdles | One flight introduction: hurdles, a short gap and a powered long gap inside a tube, with familiar phases and landing passages. |
+| Broken Span | Crossing | Gap, large rotation, passage, phase, repeat; ends with a hurdle and offset landing passage. |
+| Broken Span | Long Reach | Powered tube jump and rotating landing route; unfold into a second powered road jump. |
+| Broken Span | Landing Line | Tube hurdle/gap phrase, open-road gap, then another tube with a rotating hurdle finish. |
+| Relay Grid | Pulse | Dense three-signal phrases and their reversal, anchored by offset tube passages and a final hurdle. |
+| Relay Grid | Switch and Thread | Phase/passages, steering reversals and three hurdles with room to land. |
+| Relay Grid | Rotating Signal | Spiralling phase passages interrupted by jumps, then a reverse orbit. |
+| Relay Grid | Relay Circuit | Fast inner relay unfolds into a road gap, then closes around a reversing signal run. |
+| Outer Ring | Orbit | Exterior-shell introduction that immediately keeps phases and jumping in play. |
+| Outer Ring | Helix | Changing-phase spiral lanes feed passages and a hurdle across almost two full rotations. |
+| Outer Ring | Fast Line | Accelerate into alternating exterior turns; signals and a hurdle interrupt the route. |
+| Outer Ring | Ring Run | Helix, hurdles, exterior tube gap and a reverse orbit to the finish. |
+| Nexus | Thread and Land | Banked road hurdle, inner relay, road gap and exterior spiral in one linked course. |
+| Nexus | Signal and Flight | Three powered tube jumps separated by large landing rotations and phase choices; final hurdle phrase. |
+| Nexus | Surface Shift | Road hurdles, inward fold, inner jump relay, road gap and outward jump relay. |
+| Nexus | Grand Circuit | Sustained slalom, inner phase/jump relay, powered road flight and a long exterior spiral. |
 
-Dockyards uses the existing gently bending flat profile. Conduits and the later Relay Grid levels use the straight inner tube. Broken Span and the first two Nexus courses use straight road for predictable jump distance. Outer Ring uses the exterior tube. Surface Shift and Grand Circuit use explicit `runs` (enter, closed, open, exit and curl sign) shared by live track sampling and worker configuration. Their centerlines stay straight while the cross-section folds, with hazards outside the transitions. Existing obstacle models and movement rules are reused.
+## Shape and pace
 
-Layout revision R2 increases challenge after user feedback. Conduits full opening widths now progress from approximately 15.3–13.6 m in Thread the Needle to 11.9 m in Spiral Run, 11.3 m in Switchback and 10.7 m in Tunnel Flow. Adjacent openings do not overlap in surface coordinates. Later rotations are approximately 83–122°, with 270–340 m between openings, rather than small shifts and long straight recovery sections. The existing tube steering speed is 52 m/s across a half-circumference of about 56.5 m; these are authored tuning choices, not a playtested reachability claim. Visibility, braking, steering input and boost still affect actual difficulty.
+- Every course has authored lateral bends, elevation changes and banking. The `sweep`, `spiral`, `switchback` and `orbit` silhouettes in `campaign-motion.js` are deliberate paths, mirrored/scaled per course. There is no random encounter placement.
+- Dockyards starts banking on its first course; its third and fourth courses already fold into an inner tube. Conduits retains its rotating-passage identity but no longer discards learned phase matching. Broken Span mostly jumps within tubes or linked surfaces instead of spending four courses on straight road.
+- The first required encounter generally begins at 270–440 m. Later non-flight sequences frequently alternate decisions about 120–210 m apart, with larger passage rotations spaced around 280–410 m. Manual boost is a deliberate faster option; base movement and boost tuning are unchanged.
+- The finish remains derived from the last encounter's physical end plus 140 m, rounded up to ten metres. There is no long empty checkpoint tail. Jump run-ups, landing corridors and unfolding sections remain purposeful breathing room.
+- Only first-in-area courses carry teaching prompts. All courses retain live jump cues, phase colors/symbols and opening guidance. Level descriptions describe the challenge rather than repeating controls.
 
-Course length is derived from the last encounter's end, plus 140 m rounded up to the next 10 m. Every current level has a 141–145 m exit after its final obstacle/gate geometry. Longer gaps between demands in the new jump courses serve powered run-ups or landing corridors. Area introductions give time to read the first hint before the first mandatory obstacle; no new hazard is placed inside a surface transition.
+## Surface and flight constraints
 
-All Conduits courses are steering-only challenges: no phase gates, boost lanes, jumps or gaps. Manual boost remains optional. Dockyards phase sequences initially stand alone; only Departure combines familiar steering and phase actions. Brief distance-triggered prompts have keyboard and touch variants and hide when paused/buffering.
+`campaign.js` carries explicit `runs` for inward/outward folds. Gameplay, workers and the renderer receive those same runs and motion increments. Motion uses smooth stationary ends; longitudinal Z stays monotonic. The ship, collision frame, markings, obstacles and camera sample the same banked surface.
 
-## Later-area authoring
+Motion is held around gate hardware, from 100 m before each gap through 280 m beyond its landing edge, and from 90 m before a hurdle through 300 m after it. Nearby holds merge rather than squeezing a bend into less than 60 m. The bending/rolling travel is distributed through the remaining course sections. These holds keep launch distance stable and preserve exact repeated gate hardware without adding empty road. Phase gates can still occur during a flight, since their phase decision does not require landing.
 
-- Broken Span introduces 2.4 m barriers on intact road before full gaps. Cruise gaps are 80–100 m; the existing 1.3 s jump covers approximately 143 m at 110 m/s on a straight. Long Reach uses 200–240 m gaps and full-width matching-phase lanes extending at least 400 m along each approach. The existing free-lane boost rule permits launch thrust with an empty battery; the player still needs to hold boost before takeoff. No phase switch is required in the air.
-- Landing passages are separated from gap ends by at least 330 m, and from hurdles by at least 400 m where a passage follows. This reserves room for flight and settling even when the player accelerates. Early boost release/braking is still part of the faster route. These are source-based authoring margins, not playtested guarantees.
-- Relay Grid pairs each phase gate with a later passage rather than overlapping the decisions at one station. Gate-to-passage separation progresses from 240–260 m to 210 m. Its inside passages retain meaningful rotations and reversals, without introducing jumps.
-- Outer Ring relaxes precision for the first exterior course, then adds winding optional lanes. Lane ends precede openings by 150 m in Helix, 230 m in Fast Line, and roughly 290–320 m before the first passage of each Ring Run pair. Ring Run deliberately expects release or braking before its paired openings. Clear routes never require matching a lane just to stay on the road.
-- Surface Shift folds inward over 650–1050 m and outward over 3250–3650 m, with open-road connectors between. Centered tube exit passages precede unfolding. Grand Circuit uses a different schedule and finishes on the outside tube instead of adding an empty return-to-road tail. It combines familiar demands over a longer run without introducing a new mechanic.
+Tube passages following flight are placed after the landing corridor. Gap-end to mandatory passage spacing is at least 330 m; hurdles followed by passages allow at least 390 m. Short gaps are 80–100 m and long powered gaps are 200–240 m. Powered approaches provide matching-phase thrust even with an empty battery, but the player must hold boost before takeoff. Full-width powered lanes do not require a midair phase change.
 
-Normal-speed widths, rotations, jump windows, input timing and boost behavior remain subject to the user's playtesting. No automatic reachability or visual approval is claimed.
+Each unfolding tube has a centered passage before the opening transition. Mandatory gates, jumps and passages stay outside changing cross-sections. Optional lane bursts end before the next opening. Tight sequences intentionally make release/braking useful.
 
-## Selection and progression
+Exact gate repetition includes the bank angle and rotated tube axis. Gates on changing banks use the shared CPU surface sampler; unsupported authored motion never enters the old analytic GPU deformation path. Radial tube-gap end caps use the same bank as the road. The cached geometry frame sampler and the runtime sampler apply the same transformation.
 
-- Normal campaign starts at the first incomplete level in an unlocked area. Four selectable level nodes let the user replay or choose any course in that area.
-- One complete card is shown at a time on desktop and mobile. Large arrows browse with native eased scrolling; touch swipes and keyboard focus remain supported. Reduced motion uses instant arrow navigation. The global cleared/total count reflects all 24 courses. Browsing another area disables Race until a level in that area is selected, so an offscreen course cannot start accidentally. All six areas have distinct project-local banner artwork.
-- Each area's four clears unlock the next: Dockyards → Conduits → Broken Span → Relay Grid → Outer Ring → Nexus. Completing an area stops at its result screen; finishing the last course never generates extra rounds. Earlier skipped courses in the current area can be selected directly.
-- Within an area, checkpoint flow retains motion only when the old endpoint and next start have compatible surface curvature/width. Relay Grid's flat-to-inside change starts from a fresh pose; area boundaries always reset. The current course and only one bounded next-course prefetch are retained.
-- Completion is stored as known course IDs under `vector-shift-areas-001`; existing clears are retained. Best-time keys include the layout revision (`r2`) so records from the former lengths do not compete with these runs. Old records and old campaign numeric saves are not erased.
-- Practice (`?practice=1`) opens every area but records neither completion nor best times. `level=<course-id>` selects a course directly; in normal play it still respects area locks.
-- The selected menu course also determines the background preview and prepared geometry. Selecting another course disposes the old course and any mismatched prefetch while retaining shared sky/ship/scenery resources.
-- Only the current course and one next-course prefetch are retained. Prefetch uses the existing 128 MiB background budget and is not started after the final level. The old `preload=all` option no longer activates an unbounded cache.
-- Construction-review URLs retain their own definitions and surface-cycling behavior.
+These are source-based authoring constraints, not playtested reachability or comfort guarantees. The user owns difficulty, readability and motion feedback.
 
-## Source touchpoints and feedback
+## Selection and saved progress
 
-`src/racer/campaign.js` owns areas, stable IDs, encounters, hints and completion. `levels.js` installs those definitions into the shared gameplay arrays and produces worker configs. `campaign-menu.js`, `main.js`, `racer.html` and `menu.css` implement area selection, lesson cues and area/final results. `loading-ui.js` provides the inline menu loader and the dimmed course-handoff panel, with real asset completion, a separate indeterminate visuals stage and reload on failure. Hints and checkpoint notices use opaque light surfaces with dark text. Existing simulation, collision and worker geometry consume the same authored data.
+- Six areas and four selectable courses per area remain unchanged. Clear an area's four courses to unlock the next. The carousel, artwork and cleared/24 counter remain in place.
+- Existing course IDs and the `vector-shift-areas-001` completion namespace are unchanged, preserving clears and area access.
+- Best-time keys now use layout revision `r3`. Earlier times remain stored but do not compete against the new routes.
+- Compatible surfaces carry motion through within-area checkpoints. Area boundaries and incompatible surface changes start from a fresh pose. Authored bending and banking settle before the checkpoint.
+- Practice (`?practice=1`) opens all courses and records neither clears nor times. For the mixed tube revision, use `?practice=1&level=conduits-spiral`; for early folding road, use `?practice=1&level=dockyards-third-signal`.
+- The current course and one bounded next-course prefetch are retained. Construction-review profiles keep their original shapes because they provide no campaign motion.
 
-User feedback should establish whether jump prompts and takeoff cues arrive early enough, whether powered approaches communicate their function, whether phase/passage pairs remain readable on both input types, and whether the longer Nexus circuits sustain flow. Course IDs and save keys support further tuning without erasing completed-area access.
+## Source and verification
 
-Agent verification is source review and a production build only. No tests, simulations, browser checks or visual gameplay reviews are permitted under the standing project instruction.
+`campaign.js` owns encounters, short descriptions, hints and surface schedules. `campaign-motion.js` builds deterministic smooth movement spans around protected stations. `track.js` owns the shared sampling and bank transformation. `levels.js`, track snapshots and `campaign-worker.js` transfer identical geometry inputs; `gate-modules.js`, `deformed-gate.js` and `campaign-kit.js` retain correct gate/gap mounting.
+
+Agent verification is source review and a production build only. No tests, simulations, browser checks or visual gameplay reviews were run. Further tuning should follow the user's play feedback, especially how combined phase/rotation decisions read on mobile and how banking feels during the longer Nexus courses.

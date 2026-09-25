@@ -1,7 +1,7 @@
-import { point, section, RADIUS, trackProfileSnapshot } from './track.js';
+import { point, section, RADIUS, trackProfileSnapshot, trackMotionAt } from './track.js';
 
-// Translation is exact for flat cross-sections even on a sweeping centerline:
-// all lateral positions have the same normal/frame. Tube wedges can rotate
+// Translation along a fixed bank is exact for flat cross-sections even on a
+// sweeping centerline: lateral positions share a normal/frame. Tube wedges rotate
 // exactly only when both curvature and the centerline stay constant over the
 // full station (including the finite-difference samples used by track frames).
 export function gateModulePlan(gate,{moduleWidth=6,approach=15.2,departure=9.2}={}) {
@@ -10,18 +10,20 @@ export function gateModulePlan(gate,{moduleWidth=6,approach=15.2,departure=9.2}=
   // Transition review profiles use a different authored point sampler.
   if(trackProfileSnapshot().shape.startsWith('transition-'))return {mode:'baked',reason:'Authored transition profile'};
   if(road.curl!==0&&Math.abs(road.curl)!==1)return {mode:'baked',reason:'Changing cross-section'};
-  const origin=point(gate.s,0),a=gate.s-approach,b=gate.s+departure;
+  const origin=point(gate.s,0),roll=trackMotionAt(gate.s).roll,a=gate.s-approach,b=gate.s+departure;
   for(let s=a;s<=b+.001;s=Math.min(s+.25,b)){
     const at=section(s);
     if(at.curl!==road.curl||at.halfWidth!==road.halfWidth)return {mode:'baked',reason:'Station overlaps a shape transition'};
+    if(Math.abs(trackMotionAt(s).roll-roll)>1e-9)return {mode:'baked',reason:'Station banks along its length'};
     if(road.curl!==0){
       const p=point(s,0);
       if(Math.abs(p.x-origin.x)>1e-9||Math.abs(p.y-origin.y)>1e-9)return {mode:'baked',reason:'Tube centerline bends through this station'};
     }
     if(s===b)break;
   }
-  return {mode:road.curl===0?'flat-modules':'tube-wedges',count,pitch:width/count,
-    curvature:road.curl/RADIUS,axisX:origin.x,axisY:road.curl===0?0:origin.y+RADIUS/road.curl};
+  return {mode:road.curl===0?'flat-modules':'tube-wedges',count,pitch:width/count,roll,
+    curvature:road.curl/RADIUS,axisX:origin.x-(road.curl===0?0:Math.sin(roll)*RADIUS/road.curl),
+    axisY:origin.y+(road.curl===0?0:Math.cos(roll)*RADIUS/road.curl)};
 }
 
 // Input has already been deformed and batched. A single strip's geometry is
@@ -39,7 +41,7 @@ export function repeatGateModule(THREE,source,plan){
     mesh.name=part.name||part.material.name;mesh.renderOrder=part.renderOrder;
     mesh.castShadow=part.castShadow;mesh.receiveShadow=part.receiveShadow;mesh.frustumCulled=part.frustumCulled;
     for(let i=0;i<plan.count;i++){
-      if(plan.mode==='flat-modules')repeat.makeTranslation(i*plan.pitch,0,0);
+      if(plan.mode==='flat-modules')repeat.makeTranslation(i*plan.pitch*Math.cos(plan.roll),i*plan.pitch*Math.sin(plan.roll),0);
       else{
         const angle=i*plan.pitch*plan.curvature,c=Math.cos(angle),s=Math.sin(angle);
         repeat.makeRotationZ(angle);

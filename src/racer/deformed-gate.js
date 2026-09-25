@@ -4,9 +4,12 @@ import {section,point,trackProfileSnapshot} from './track.js';
 import {mergeWallParts} from './wall-kit.js';
 import {inspectionBatches} from './inspection-batches.js';
 
-// The shader supports the campaign's analytic profiles. Authored review curves
-// keep their existing CPU sampler rather than silently changing their shape.
-export function canDeformGate(){return ['mixed','flat','gap-flat','inside','outside'].includes(trackProfileSnapshot().shape);}
+// The shader supports only the original analytic profiles. Authored folds and
+// banking use the shared CPU sampler when exact repeated modules cannot apply.
+export function canDeformGate(){
+  const profile=trackProfileSnapshot();
+  return !profile.motion.length&&['mixed','flat','gap-flat','inside','outside'].includes(profile.shape);
+}
 
 export function deformGateModule(THREE,source,gate,{inspect=false,timings=null}={}){
   const began=performance.now(),half=section(gate.s).halfWidth,width=gate.width*half*2;

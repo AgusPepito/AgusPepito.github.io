@@ -86,13 +86,13 @@ function describeLevel(index) {
 export function levelAssetConfig(index) {
   if(constructionReview)throw new Error('Campaign preloading is not used by construction reviews');
   const {info,data}=describeLevel(index);
-  return {length:info.length,shape:info.profile,runs:info.runs??[],gates:data.gates,strips:data.strips,obstacles:data.obstacles,gaps:data.gaps};
+  return {length:info.length,shape:info.profile,runs:info.runs??[],motion:info.motion??[],gates:data.gates,strips:data.strips,obstacles:data.obstacles,gaps:data.gaps};
 }
 
 export function configureLevel(index) {
   if(constructionSurfaceCycle)constructionWallShape=emitterShapeFor(index);
   const {info,data}=describeLevel(index);
-  setTrackProfile(info.length, info.profile, info.runs);
+  setTrackProfile(info.length, info.profile, info.runs, info.motion);
   // Preserve array identities for the simulation, renderer and guidance imports.
   GATES.splice(0, GATES.length, ...data.gates.sort((a, b) => a.s - b.s));
   STRIPS.splice(0, STRIPS.length, ...data.strips);

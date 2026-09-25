@@ -1,6 +1,6 @@
 # Campaign progression proposal
 
-Original design proposal, 2026-09-25. All six areas and 24 levels are now implemented; see [delivery notes](CAMPAIGN_AREAS.md) for the actual courses, tighter pacing requested by the user, and authored surface schedules. The text below preserves the original design rationale rather than current placement values. The old campaign and Overload content were removed at the user's request; only optional expert remixes remain a future proposal. Fun combinations remain design hypotheses except for the user's positive feedback about tube passages. No tests or gameplay inspection were performed.
+Historical design proposal, 2026-09-25. The R3 campaign supersedes this proposal's long sequences of isolated lessons: each area's first course introduces its focus, then the next three combine familiar skills immediately. All 24 courses now have authored bends/banking, and tube folds appear during Dockyards. See [delivery notes](CAMPAIGN_AREAS.md) for the current layouts. The text below preserves the original rationale, not current placement values or progression rules. The old campaign and Overload content were removed at the user's request. Fun combinations remain design hypotheses except for the user's positive feedback about tube passages. No tests or gameplay inspection were performed.
 
 ## Direction
 

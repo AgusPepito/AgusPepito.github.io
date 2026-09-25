@@ -6,7 +6,7 @@ import checkpoint from '../../public/assets/track/checkpoint-r1.js';
 import gapEdge from '../../public/assets/track/gap-edge-r1.js';
 import gapBorder from '../../public/assets/track/gap-border-r1.js';
 import tubeTermination from '../../public/assets/track/tube-gap-termination-r1.js';
-import { LENGTH, GATES, STRIPS, PHASES, point, section, stripCenter } from './track.js';
+import { LENGTH, GATES, STRIPS, PHASES, point, section, stripCenter, trackMotionAt } from './track.js';
 import { GAPS } from './jumps.js';
 import { OBSTACLES, WALL_HEIGHT, HOLE_HEIGHT, solidSpans } from './obstacles.js';
 import { obstacleAssembly } from './obstacle-kit.js';
@@ -238,7 +238,9 @@ export function campaignGap(THREE, gap) {
         const p = m.geometry.attributes.position, angle = (gap.full ? 0 : gap.center) * Math.PI * (inside ? 1 : -1), cy = inside ? 18 : -18;
         for (let i = 0; i < p.count; i++) {
           const x = p.getX(i), y = p.getY(i) - cy, station = s - p.getZ(i), base = point(station, 0);
-          p.setXYZ(i, base.x + x * Math.cos(angle) - y * Math.sin(angle), base.y + cy + x * Math.sin(angle) + y * Math.cos(angle), base.z);
+          const roll=trackMotionAt(station).roll,c=Math.cos(roll),sn=Math.sin(roll);
+          const radialX=x*Math.cos(angle)-y*Math.sin(angle),radialY=cy+x*Math.sin(angle)+y*Math.cos(angle);
+          p.setXYZ(i,base.x+radialX*c-radialY*sn,base.y+radialX*sn+radialY*c,base.z);
         }
         m.geometry.computeVertexNormals();
       });

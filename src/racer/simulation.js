@@ -13,7 +13,7 @@ export class Race {
       brakeTime: 0, brakeCooldown: 0, brakeTarget: 0, brakeRate: 0,
       scrape: 0, passed: 0, splits: [], cause: '', crashKind: '', finishTime: null });
   }
-  step(dt, steer, boostHeld, jumpPressed = false, brakePressed = false) {
+  step(dt, steer, boostHeld, jumpPressed = false, brakePressed = false, boostPressed = false) {
     if (this.state !== 'running') return;
     const oldS = this.s, oldU = this.u, oldTime = this.time, oldHeight = this.height;
     this.time += dt;
@@ -34,7 +34,7 @@ export class Race {
     this.edgeGrace = Math.max(0, this.edgeGrace - dt);
     this.scrape = Math.max(0, this.scrape - dt);
     this.stripBoost = !braking && this.mode === 'phase' && !this.airborne && !gapAt(this.s, this.u) && STRIPS.some(strip => strip.phase === this.phase && onStrip(strip, this.s, this.u));
-    this.boostActive = this.boost.step(dt, boostHeld, braking, this.stripBoost);
+    this.boostActive = this.boost.step(dt, boostHeld, braking, this.stripBoost, boostPressed);
     this.boosting = this.stripBoost || this.boostActive;
     this.boostBlend += ((this.boosting ? 1 : 0) - this.boostBlend) * (1 - Math.exp(-7 * dt));
     this.thrustBlend += ((this.boostActive ? 1 : 0) - this.thrustBlend) * (1 - Math.exp(-(this.boostActive ? 12 : 5) * dt));

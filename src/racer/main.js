@@ -22,6 +22,7 @@ import { configureLevel, levelInfo, constructionReview, constructionBaseline, co
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
 const actionPad = { pointer: null, zone: null, boost: false };
+const boostCodes = ['KeyW', 'ShiftLeft', 'ShiftRight'];
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
 const profiler = new PerformancePanel();
 setupMenuUI();
@@ -40,7 +41,7 @@ const campaignParams=new URLSearchParams(location.search);
 const campaignPractice=!constructionReview&&campaignParams.get('practice')==='1';
 const campaignProgress=new CampaignProgress();
 let currentLevel = 0, storageKey;
-let view, best = null, last = performance.now(), accumulator = 0, shown = '', resultSaved = false, jumpQueued = false, brakeQueued = false;
+let view, best = null, last = performance.now(), accumulator = 0, shown = '', resultSaved = false, jumpQueued = false, brakeQueued = false, boostQueued = false;
 let checkpointNotice = '';
 let checkpointNoticeAt=0,reviewCheckpointPassed=false;
 let reviewTimeScale = 1, reviewSpeedButton;
@@ -364,7 +365,7 @@ function resetPad() {
   $('thumbpad').classList.remove('pressed');
 }
 function clearInput() {
-  keys.clear(); resetPad(); jumpQueued = false; brakeQueued = false;
+  keys.clear(); resetPad(); jumpQueued = false; brakeQueued = false; boostQueued = false;
   resetActionPad();
   $('jump').classList.remove('active');
 }
@@ -576,6 +577,7 @@ function moveActionPad(e) {
   // Keep the current sector near diagonal boundaries to avoid accidental toggles.
   if (actionPad.zone && zone !== actionPad.zone && Math.abs(Math.abs(x) - Math.abs(y)) < 0.16) return;
   actionPad.zone = zone; $('action-pad').dataset.zone = zone;
+  if (zone === 'up' && !actionPad.boost) boostQueued = true;
   actionPad.boost = zone === 'up';
   if (zone !== 'up') phase(zone === 'left' ? 0 : zone === 'down' ? 1 : 2);
 }
@@ -644,7 +646,10 @@ window.addEventListener('keydown', e => {
   }
   const index = /^(Digit|Numpad)([123])$/.exec(e.code);
   if (index) { phase(Number(index[2]) - 1); return; }
-  if (race.state === 'running') keys.add(e.code);
+  if (race.state === 'running') {
+    if (boostCodes.includes(e.code) && !e.repeat && !keys.has(e.code)) boostQueued = true;
+    keys.add(e.code);
+  }
 });
 window.addEventListener('keyup', e => keys.delete(e.code));
 function suspend() { clearInput(); if (race.state === 'running') { race.state = 'paused'; accumulator = 0; sync(); } }
@@ -681,7 +686,7 @@ function updateHud() {
     $(id).classList.toggle('boosting', race.boostActive);
     $(id).classList.toggle('braking', race.brakeTime > 0);
   }
-  $('boost-label').textContent = race.stripBoost ? 'FREE TURBO' : race.boost.locked ? 'RELEASE W' : 'TURBO';
+  $('boost-label').textContent = race.stripBoost ? 'FREE TURBO' : race.boost.locked ? touch ? 'CENTER PAD' : 'REPRESS BOOST' : 'TURBO';
   $('jump-icon').textContent = race.state === 'crashed' ? '↻' : '↥';
   $('jump').setAttribute('aria-label', race.state === 'crashed' ? 'Retry checkpoint' : 'Jump');
   $('jump').classList.toggle('active', race.airborne);
@@ -698,7 +703,7 @@ function updateHud() {
     const boostAvailable = race.stripBoost || race.boost.energy >= (race.boostActive ? 0.01 : 15);
     $('jump-cue').dataset.tone = !cue.enough ? 'boost' : cue.ready ? 'jump' : 'wait';
     $('jump-cue').textContent = !cue.enough ? !boostAvailable ? 'LOW TURBO' : race.boost.locked ?
-      touch ? 'CENTER · THEN PUSH UP' : 'RELEASE W · BOOST' : touch ? 'RIGHT PAD ↑ · TURBO' : 'W · TURBO' :
+      touch ? 'CENTER · THEN PUSH UP' : 'REPRESS W / SHIFT' : touch ? 'RIGHT PAD ↑ · TURBO' : 'W · TURBO' :
       cue.ready || race.s > cue.latest ? touch ? 'LEFT PAD ↑ · JUMP' : 'SPACE · JUMP' : 'NEAR THE EDGE';
   }
   for (const b of document.querySelectorAll('[data-phase]')) b.setAttribute('aria-pressed', String(Number(b.dataset.phase) === race.phase));
@@ -720,12 +725,12 @@ function loop(now) {
     while (accumulator >= 1 / 120) {
       const keyboardSteer = Number(keys.has('ArrowRight') || keys.has('KeyD')) - Number(keys.has('ArrowLeft') || keys.has('KeyA'));
       const steer = Math.max(-1, Math.min(1, keyboardSteer + pad.steer));
-      race.step(1 / 120, steer, keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || actionPad.boost, jumpQueued, brakeQueued);
+      race.step(1 / 120, steer, boostCodes.some(code => keys.has(code)) || actionPad.boost, jumpQueued, brakeQueued, boostQueued);
       if(constructionCheckpoints&&!reviewCheckpointPassed&&race.s>=CHECKPOINT_REVIEW_AT){
         reviewCheckpointPassed=true;race.boost.reset();checkpointNoticeAt=race.time;
         checkpointNotice='CHECKPOINT · BOOST REFILLED';
       }
-      jumpQueued = false; brakeQueued = false;
+      jumpQueued = false; brakeQueued = false; boostQueued = false;
       accumulator -= 1 / 120;
       if (race.state === 'checkpoint') { advanceCheckpoint(); break; }
     }

@@ -3,8 +3,9 @@ export const BOOST = { capacity: 100, drain: 25, regen: 5, delay: 2.5, minimum: 
 export class BoostMeter {
   constructor({ regen = BOOST.regen, delay = BOOST.delay } = {}) { this.regen = regen; this.delay = delay; this.reset(); }
   reset() { this.energy = BOOST.capacity; this.cooldown = 0; this.active = false; this.locked = false; }
-  step(dt, held, braking, free = false) {
-    if (!held) this.locked = false;
+  step(dt, held, braking, free = false, pressed = false) {
+    // A fresh press can rearm one binding while another boost binding stays held.
+    if (!held || pressed) this.locked = false;
     if (braking && held) this.locked = true;
     // Matching racer lanes supply thrust even with an empty battery.
     // Preserve charge while powered by the lane; normal drain resumes on exit.
