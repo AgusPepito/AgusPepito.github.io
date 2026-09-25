@@ -3,12 +3,12 @@ import {campaignMotion} from './campaign-motion.js';
 // One introductory course per area; the remaining courses combine known skills.
 // All obstacle widths are surface-coordinate HALF widths, as in obstacles.js.
 export const CAMPAIGN_AREAS = [
-  {id:'dockyards',name:'DOCKYARDS',number:'01',theme:'BANKED ROAD',skill:'Slaloms · phases · tube folds',image:'assets/areas/dockyards-r1.png'},
-  {id:'conduits',name:'CONDUITS',number:'02',theme:'INNER TUBE',skill:'Spirals · phase shifts · reversals',image:'assets/areas/conduits-r1.png'},
-  {id:'broken-span',name:'BROKEN SPAN',number:'03',theme:'JUMP ROUTES',skill:'Jump · rotate · land',image:'assets/areas/broken-span-r1.png'},
-  {id:'relay-grid',name:'RELAY GRID',number:'04',theme:'PHASE RHYTHM',skill:'Switch · thread · jump',image:'assets/areas/relay-grid-r1.png'},
-  {id:'outer-ring',name:'OUTER RING',number:'05',theme:'EXTERIOR TUBE',skill:'Helices · signals · flight',image:'assets/areas/outer-ring-r1.png'},
-  {id:'nexus',name:'NEXUS',number:'06',theme:'MASTERY CIRCUIT',skill:'Linked surfaces · combined skills',image:'assets/areas/nexus-r1.png'},
+  {id:'dockyards',name:'DOCKYARDS',number:'01',theme:'BANKED ROAD',skill:'Slaloms · phases · tube folds',image:'assets/areas/dockyards-r1.webp'},
+  {id:'conduits',name:'CONDUITS',number:'02',theme:'INNER TUBE',skill:'Spirals · phase shifts · reversals',image:'assets/areas/conduits-r1.webp'},
+  {id:'broken-span',name:'BROKEN SPAN',number:'03',theme:'JUMP ROUTES',skill:'Jump · rotate · land',image:'assets/areas/broken-span-r1.webp'},
+  {id:'relay-grid',name:'RELAY GRID',number:'04',theme:'PHASE RHYTHM',skill:'Switch · thread · jump',image:'assets/areas/relay-grid-r1.webp'},
+  {id:'outer-ring',name:'OUTER RING',number:'05',theme:'EXTERIOR TUBE',skill:'Helices · signals · flight',image:'assets/areas/outer-ring-r1.webp'},
+  {id:'nexus',name:'NEXUS',number:'06',theme:'MASTERY CIRCUIT',skill:'Linked surfaces · combined skills',image:'assets/areas/nexus-r1.webp'},
 ];
 export const CAMPAIGN_LAYOUT_REVISION='r3';
 const gate=(s,phase)=>({s,phase,center:0,width:1,full:true});

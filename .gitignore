@@ -1,6 +1,7 @@
 node_modules/
 dist/
 pages-dist/
+tools-dist/
 artifacts/
 *.log
 .env*

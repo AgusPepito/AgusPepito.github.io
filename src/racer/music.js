@@ -1,5 +1,5 @@
 const MUSIC_ROOT=`${import.meta.env.BASE_URL}assets/music/`;
-const RACE_TRACKS=['race-01.mp3','race-02.mp3','race-03.mp3'];
+const RACE_TRACKS=['race-01.mp3'];
 const STORAGE_KEY='vector-shift-music-enabled';
 
 // Stream compressed audio through media elements, not decoded whole-song buffers.
@@ -11,7 +11,7 @@ export class RaceMusic {
     try{this.enabled=localStorage.getItem(STORAGE_KEY)!=='false';}catch{}
     this.menu=new Audio(`${MUSIC_ROOT}menu.mp3`);
     this.menu.loop=true;this.menu.preload='none';this.menu.volume=.35;
-    this.race=new Audio();this.race.preload='none';this.race.volume=.4;
+    this.race=new Audio();this.race.loop=true;this.race.preload='none';this.race.volume=.4;
     this.race.addEventListener('ended',()=>this.nextTrack());
     this.race.addEventListener('error',()=>{
       this.failedTracks.add(this.track);

@@ -3,6 +3,7 @@ import asteroid from '../../public/assets/space/asteroids-r1.js';
 import station from '../../art-studies/phase14-ring-station-r1/station.js';
 import {LENGTH,point,section} from './track.js';
 import {mergeWallParts} from './wall-kit.js';
+import {OffTrackDressing} from './off-track-dressing.js';
 
 function randomSequence(seed){
   return ()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
@@ -18,6 +19,7 @@ export class SpaceScenery {
     this.rocks=rocks;
     this.prototype=mergeWallParts(THREE,station(THREE),{indexed:true});
     this.prototype.traverse(mesh=>{if(mesh.isMesh)mesh.material.fog=false;});
+    this.dressing=new OffTrackDressing();
     this.prototypeGenerationMs=performance.now()-began;
     this.setTrack();
   }
@@ -83,9 +85,11 @@ export class SpaceScenery {
       model.rotation.set(.32+index*.13,index*.8,side*.25);model.scale.setScalar((.85+index%2*.15)*2.5);
       this.group.add(model);this.stations.push({s,group:model});
     }
+    this.dressing.setTrack();this.group.add(this.dressing.group);
     const layoutMs=performance.now()-began,reusedPrototypes=Boolean(this.stats);
-    this.stats={layout:'orbital-vistas-v4',stationScaleMultiplier:2.5,asteroidPrototypes:2,asteroids:asteroidCount,stations:this.stations.length,
+    this.stats={layout:'orbital-vistas-v5-dressing',stationScaleMultiplier:2.5,asteroidPrototypes:2,asteroids:asteroidCount,stations:this.stations.length,
       fieldBatches:this.fields.length*2,stationMaterials:prototype.children.length,
+      dressing:this.dressing.stats,
       reusedPrototypes,prototypeGenerationMs:this.prototypeGenerationMs,layoutMs,
       generationMs:layoutMs+(reusedPrototypes?0:this.prototypeGenerationMs)};
     this.update(0);
@@ -93,5 +97,6 @@ export class SpaceScenery {
   update(distance){
     for(const field of this.fields)field.group.visible=field.end>distance-650&&field.start<distance+2400;
     for(const entry of this.stations)entry.group.visible=Math.abs(entry.s-distance)<3000;
+    this.dressing.update(distance);
   }
 }

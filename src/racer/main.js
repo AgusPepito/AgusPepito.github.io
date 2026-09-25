@@ -15,7 +15,7 @@ import {CAMPAIGN_LEVELS,CAMPAIGN_LAYOUT_REVISION,CampaignProgress,campaignArea,c
 import {CampaignMenu} from './campaign-menu.js';
 import {LeaderboardUI} from './leaderboard-ui.js';
 import {CourseLoading} from './loading-ui.js';
-import { PHASES, GATES, LENGTH, section, profileSection } from './track.js';
+import { PHASES, GATES, LENGTH, section, profileSection, point } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
 import {constructionWalls,constructionWallShape,constructionPassages,constructionEmitters,constructionObstacles,constructionCheckpoints,constructionSurfaceCycle,emitterShapeFor} from './levels.js';
@@ -27,6 +27,13 @@ const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
 const actionPad = { pointer: null, zone: null, boost: false };
 const boostCodes = ['KeyW', 'ShiftLeft', 'ShiftRight'];
 const $ = id => document.getElementById(id), race = new Race(), keys = new Set();
+// Official jam hooks observe the real player, never the animated menu demo.
+window.__READY__ = false;
+const jamPosition = point(race.s, race.u);
+const jamTelemetry = window.__GAME__ = {
+  pos: [jamPosition.x, jamPosition.z], fps: 0, speed: race.speed,
+  draws: 0, tris: 0, status: race.state,
+};
 const profiler = new PerformancePanel();
 setupMenuUI();
 const graphicsSelect=$('graphics-quality');
@@ -86,7 +93,7 @@ function prepareNextLevel() {
 const courseLoading=new CourseLoading(),assetNotice=courseLoading.element;
 function updateAssetReadiness() {
   graphicsSelect.disabled=!view||view.shaderWarmup.state==='compiling';
-  const error = view?.assetStream?.error || view?.shaderWarmup.error;
+  const error = view?.assetStream?.error || view?.shaderWarmup.error || view?.sky.userData.textureState.error;
   const waiting = Boolean(view && !view.assetsReady(race.s));
   const next = race.state === 'running' && waiting;
   if (next !== buffering) {
@@ -733,12 +740,28 @@ function updateHud() {
   $('speed-wash').style.opacity = view?.reduced ? 0 : Math.min(1, race.thrustBlend + (race.stripBoost ? 0.45 : 0));
 }
 
+function updateJamTelemetry(elapsed) {
+  point(race.s, race.u, jamPosition);
+  jamTelemetry.pos[0] = jamPosition.x;
+  jamTelemetry.pos[1] = jamPosition.z;
+  jamTelemetry.fps = elapsed > 0 ? 1 / elapsed : 0;
+  jamTelemetry.speed = race.speed;
+  jamTelemetry.status = buffering ? 'buffering' : race.state;
+  // RacePipeline resets once per frame and accumulates every render pass.
+  jamTelemetry.draws = view?.renderer.info.render.calls ?? 0;
+  jamTelemetry.tris = view?.renderer.info.render.triangles ?? 0;
+  window.__READY__ = Boolean(view && !view.assetStream?.error && !view.shaderWarmup.error &&
+    view.assetsReady(race.s) && jamTelemetry.draws > 0 &&
+    (race.state !== 'ready' || !$('start').disabled));
+}
+
 function loop(now) {
   const profiling = profiler.enabled;
   const began = profiling ? performance.now() : 0;
   const startedRunning = race.state === 'running' && !buffering;
   const timing = profiling ? {} : null;
-  const dt = Math.min((now - last) / 1000, 0.06) * (constructionReview ? reviewTimeScale : 1); last = now;
+  const elapsed = (now - last) / 1000;
+  const dt = Math.min(elapsed, 0.06) * (constructionReview ? reviewTimeScale : 1); last = now;
   if (view) {
     view.prepareAssets(race.s, timing);
     prepareNextLevel();
@@ -779,6 +802,7 @@ function loop(now) {
         distance: race.s, mode: race.mode, phase: race.phase, reviewTimeScale }, timing);
     }
   }
+  updateJamTelemetry(elapsed);
   requestAnimationFrame(loop);
 }
 try {

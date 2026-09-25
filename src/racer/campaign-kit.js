@@ -19,6 +19,7 @@ import { gateModulePlan, repeatGateModule } from './gate-modules.js';
 import {canDeformGate,deformGateModule} from './deformed-gate.js';
 import {fullyMasked} from './mask-coverage.js';
 import {mountEdgeLight,LIT_WALL_OFFSET} from './roadside-lighting.js';
+import {roadEdgeFields} from './road-edge-fields.js';
 
 const PITCH = 12.5;
 const overlaps = (a, b, c, d) => a < d && b > c;
@@ -134,6 +135,8 @@ export function campaignChunk(THREE, start, decorations, {inspect=false,skipMask
     mountEdgeLight(THREE,source,side,{half});
     bayParts.add(mountCourseSurface(THREE, source, center, half));
   }
+  const containment=roadEdgeFields(start,end,decorations.layouts);
+  if(containment)root.add(containment);
   if(inspect){
     root.add(inspectionBatches(THREE,roadParts,'Road slabs'),inspectionBatches(THREE,serviceParts,'Service belts'),inspectionBatches(THREE,bayParts,'Roadside bays'));
     const lanes=inspectionBatches(THREE,energy,'Phase lanes');lanes.traverse(m=>{if(m.isMesh)m.renderOrder=1;});root.add(lanes);

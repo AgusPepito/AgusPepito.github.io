@@ -25,6 +25,7 @@ import { RacePipeline } from './render-pipeline.js';
 import { RaceVfx, softenHoverShadow } from './race-vfx.js';
 import { PhaseWallVfx } from './phase-wall-vfx.js';
 import { ObstacleLighting } from './obstacle-lighting.js';
+import { RoadEdgeFieldVfx } from './road-edge-fields.js';
 import { SUN_DIRECTION, PLANET_DIRECTION, graphicsSetting } from './visual-settings.js';
 
 // Lightweight ribbons remain for review baselines, guides and driving-mode gap fills.
@@ -102,7 +103,7 @@ export class RaceView {
     this.scene = new THREE.Scene(); this.scene.background = new THREE.Color(0x080e19);
     this.scene.fog = new THREE.Fog(0x080e19, 210, 710);
     this.camera = new THREE.PerspectiveCamera(77, 1, 0.15, 4000);
-    this.sky=shared?.sky||spaceSky();this.scene.add(this.sky);
+    this.sky=shared?.sky||spaceSky(this.renderer);this.scene.add(this.sky);
     this.scene.add(this.camera);
     this.speedEffects = new SpeedEffects(this.camera);
     this.cameraBase = new THREE.Quaternion();
@@ -285,6 +286,7 @@ export class RaceView {
     this.vfx=new RaceVfx(this.scene,this.ship,this.exhausts,this.pipeline.quality);
     this.phaseWalls=new PhaseWallVfx(this.gates);
     this.obstacleLighting=new ObstacleLighting(this.walls);
+    this.edgeFields=new RoadEdgeFieldVfx();
     this.resize(); this.snap = true;
     if(constructionReview)this.prepareShaders();
   }
@@ -297,13 +299,14 @@ export class RaceView {
   }
   prepareAssets(distance, timing = null) {
     const metric = this.assetStream?.update(distance, (group, root) => {
-      applySlabEnvironment(THREE, this.renderer, root); group.add(root);
+      applySlabEnvironment(THREE, this.renderer, root); group.add(root);this.edgeFields.bind(root);
     });
     if (timing) Object.assign(timing, { assetBuildMs: 0, assetAttachMs: 0, workerBuildMs: 0, workerPackMs: 0 }, metric);
-    if(this.assetStream?.ready()&&this.shaderWarmup.state==='waiting')this.prepareShaders();
+    if((!this.assetStream||this.assetStream.ready())&&this.sky.userData.textureState.ready&&this.shaderWarmup.state==='waiting')this.prepareShaders();
     return metric;
   }
   prepareShaders() {
+    if(!this.sky.userData.textureState.ready){this.shaderWarmup.state='waiting';return;}
     const began=performance.now(),warmup=this.shaderWarmup;
     const generation=++this.shaderPreparation;
     warmup.state='compiling';
@@ -328,7 +331,7 @@ export class RaceView {
     }catch(error){fail(error);}
   }
   assetsReady(distance) {
-    return (!this.assetStream || this.assetStream.ready(distance))&&this.shaderWarmup.state==='ready';
+    return this.sky.userData.textureState.ready&&(!this.assetStream || this.assetStream.ready(distance))&&this.shaderWarmup.state==='ready';
   }
   badgeMaterial(phase) {
     this.badges ??= [];
@@ -384,7 +387,7 @@ export class RaceView {
   render(race, dt, timing = null) {
     // Keep the previous canvas frame while the loading UI remains responsive.
     // Rendering a compiling program would force the driver to wait synchronously.
-    if(this.shaderWarmup.state!=='ready'){
+    if(this.shaderWarmup.state!=='ready'||!this.sky.userData.textureState.ready){
       if(timing)Object.assign(timing,{guideEffectsMs:0,renderSubmitMs:0,viewMs:0});
       this.renderer.info.reset();
       return;
@@ -435,6 +438,7 @@ export class RaceView {
       }
     }
     this.phaseWalls.update(race,this.reduced,this.pipeline.quality);
+    this.edgeFields.update(race,this.reduced,this.pipeline.quality);
     for (const { obstacle, group } of this.walls) group.visible = race.mode === 'phase' && obstacle.s > race.s - 40 && obstacle.s < race.s + 730;
     this.gapFills.visible = race.mode === 'drive';
     for (const { gap, group } of this.gapMarkers) group.visible = (!constructionReview || race.mode === 'phase') && gap.end + 12 > race.s - 50 && gap.start - 12 < race.s + 760;

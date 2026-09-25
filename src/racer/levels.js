@@ -15,7 +15,10 @@ import {OBSTACLE_REVIEW_LENGTH,obstacleReviewSequence} from './obstacle-kit.js';
 import {CHECKPOINT_REVIEW_LENGTH} from './checkpoint-kit.js';
 import {CAMPAIGN_LEVELS} from './campaign.js';
 
-const reviewParams = new URLSearchParams(globalThis.location?.search || '');
+// Construction studies remain available locally and in the separate tools build.
+// The final racer does not expose links to inspector pages omitted from release.
+const reviewParams = new URLSearchParams(
+  import.meta.env.DEV || import.meta.env.MODE === 'tools' ? globalThis.location?.search || '' : '');
 export const constructionCategory = reviewParams.get('review');
 export const constructionRevision = ['05','06','07','08','09','10','11','12','13'].includes(constructionCategory) ? 'R1' : {r2:'R2',r3:'R3'}[reviewParams.get('revision')] || 'R1';
 export const constructionReview = ['01', '02', '03', '04', '05', '06', '07', '08','09','10','11','12','13'].includes(constructionCategory);

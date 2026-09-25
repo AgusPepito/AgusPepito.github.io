@@ -2,15 +2,15 @@
 
 ## Play online
 
-GitHub Pages: https://aguspepito.github.io/ — Phase Racer is the homepage; the preserved highway prototype is linked at `/highway.html`.
+GitHub Pages: https://aguspepito.github.io/ — Phase Racer is the homepage. The release package contains only the racer; the preserved highway prototype and asset inspectors remain available through the local development server.
 
-Pushing `main` publishes through `.github/workflows/pages.yml`. The workflow installs dependencies, builds, packages `pages-dist/`, and deploys to Pages. It does not run tests. Local preview URLs remain unchanged. Progress and local records are stored per browser/site. Online leaderboards share published scores, but local preview and hosted-game player identities are separate.
+Pushing `main` publishes through `.github/workflows/pages.yml`. The workflow installs dependencies, builds the racer and its runtime media, packages `pages-dist/`, and deploys to Pages. It does not run tests. `npm run build` produces the final game in `dist/`; `npm run build:tools` preserves the full development build separately in `tools-dist/`. The racer production preview remains `/racer.html`. Progress and local records are stored per browser/site. Online leaderboards share published scores, but local preview and hosted-game player identities are separate. See [release packaging](docs/RELEASE_PACKAGE.md).
 
 **Per-level leaderboards:** Set your **Pilot name** on the main menu. The **Top times** chart automatically loads submitted records for the selected course. Local example pilots fill any remaining places until ten real players have submitted times; they are never uploaded or counted as records. Campaign completions publish automatically under your saved pilot name. Activate the database with `supabase/leaderboard.sql` and enable anonymous sign-ins first; see [leaderboard setup](docs/LEADERBOARDS.md). Practice runs remain unranked.
 
 ## New: Phase Racer
 
-Open `/racer.html` for the separate racing pivot. The original highway game remains at `/index.html`, preserved before the pivot in commit `90f2982`. Both pages are included in the production build and link to each other.
+Open `/racer.html` for the racer. On the development server, the original highway game remains at `/index.html`, preserved before the pivot in commit `90f2982`. Only the racer is included in the final production build.
 
 The campaign contains **24 authored levels across six areas**: **Dockyards** (banked slaloms, phases and early tube folds), **Conduits** (rotating phase passages), **Broken Span** (tube jumps and landing routes), **Relay Grid** (phase rhythm, steering and hurdles), **Outer Ring** (exterior helices and flight), and **Nexus** (combined skills and surface transitions). Each area's first course introduces its focus; the other three immediately mix previously learned skills. Authored bends and banking replace long straight runs. Clear an area's four levels to unlock the next. Checkpoints refill boost and continue within an area; incompatible starting surfaces reset the ship pose. Area boundaries stop at a completion screen. Retries restart the current level. The previous campaign and repeating Overload rounds have been removed.
 

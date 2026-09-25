@@ -17,7 +17,7 @@ export class LeaderboardUI {
     this.profile.innerHTML = `
       <div class="pilot-heading"><label for="pilot-name">PILOT NAME</label><span data-pilot-state>CHOOSE YOUR CALLSIGN</span></div>
       <div class="pilot-name-row"><input id="pilot-name" type="text" minlength="2" maxlength="20" placeholder="Enter your pilot name" required autocomplete="nickname" aria-describedby="pilot-note"><button type="submit" aria-label="Save pilot name">SAVE <span aria-hidden="true">↵</span></button></div>
-      <p id="pilot-note">Your name appears with your online times.</p>
+      <p id="pilot-note">Race without a name, or save one to publish your times online.</p>
       <p class="pilot-status" data-profile-status role="status"></p>`;
     document.getElementById('campaign-picker').before(this.profile);
     this.name = this.profile.querySelector('input'); this.name.value = this.service.nickname;
@@ -76,6 +76,8 @@ export class LeaderboardUI {
   }
   ensurePilot() {
     if (this.practice) return true;
+    // A fresh visitor can start with one tap. Unnamed times remain queued locally.
+    if (!this.name.value.trim() && !this.service.nickname) return true;
     if (this.name.value === this.service.nickname && this.service.nickname) return true;
     return this.savePilot();
   }

@@ -1,14 +1,14 @@
 import * as THREE from 'three';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { SUN_DIRECTION, PLANET_DIRECTION } from './visual-settings.js';
 
 // Independent world-oriented layers across the existing backdrop surface.
-export function spaceSky() {
-  const texture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/space/planet-backdrop-r1.png`);
-  texture.colorSpace=THREE.SRGBColorSpace;
-  const galaxyTexture=new THREE.TextureLoader().load(`${import.meta.env.BASE_URL}assets/space/planet-stars-r2.png`);
-  galaxyTexture.colorSpace=THREE.SRGBColorSpace;
+export function spaceSky(renderer) {
+  const textureState={ready:false,error:null};
+  const loader=new KTX2Loader().setTranscoderPath(`${import.meta.env.BASE_URL}vendor/basis/`)
+    .setWorkerLimit(1).detectSupport(renderer);
   const material=new THREE.ShaderMaterial({depthTest:false,depthWrite:false,fog:false,
-    uniforms:{planetMap:{value:texture},galaxyMap:{value:galaxyTexture},sunDirection:{value:SUN_DIRECTION.clone()},planetDirection:{value:PLANET_DIRECTION.clone()}},
+    uniforms:{planetMap:{value:null},galaxyMap:{value:null},sunDirection:{value:SUN_DIRECTION.clone()},planetDirection:{value:PLANET_DIRECTION.clone()}},
     vertexShader:`varying vec3 vSkyRay;
       void main(){vec4 world=modelMatrix*vec4(position,1.0);vSkyRay=world.xyz-cameraPosition;
         gl_Position=projectionMatrix*viewMatrix*world;}`,
@@ -49,11 +49,29 @@ export function spaceSky() {
         #include <tonemapping_fragment>
         #include <colorspace_fragment>
       }`});
-  material.userData.planetTexture=texture;
-  material.userData.galaxyTexture=galaxyTexture;
+  let disposed=false;
+  material.addEventListener('dispose',()=>{disposed=true;});
+  // Encoded with Y flipped to match TextureLoader's original upload orientation.
+  // Wait for both jobs before releasing the worker, including when one fails.
+  Promise.allSettled(['planet-backdrop-r1','planet-stars-r2'].map(name=>
+    loader.loadAsync(`${import.meta.env.BASE_URL}assets/space/${name}.ktx2`))).then(results=>{
+    loader.dispose();
+    const failed=results.find(result=>result.status==='rejected');
+    if(disposed||failed){
+      for(const result of results)if(result.status==='fulfilled')result.value.dispose();
+      if(failed)textureState.error=`Could not load sky textures: ${failed.reason?.message??failed.reason}`;
+      return;
+    }
+    const [texture,galaxyTexture]=results.map(result=>result.value);
+    texture.colorSpace=THREE.SRGBColorSpace;galaxyTexture.colorSpace=THREE.SRGBColorSpace;
+    material.uniforms.planetMap.value=texture;material.uniforms.galaxyMap.value=galaxyTexture;
+    material.userData.planetTexture=texture;material.userData.galaxyTexture=galaxyTexture;
+    textureState.ready=true;
+  });
   const sky=new THREE.Mesh(new THREE.PlaneGeometry(2,2,32,24),material);
   sky.name='layered-orbital-backdrop';sky.renderOrder=-1000;sky.frustumCulled=false;
   sky.userData.imageAspect=1.5;
+  sky.userData.textureState=textureState;
   return sky;
 }
 

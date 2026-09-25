@@ -3,7 +3,7 @@ const FRAME_LIMIT = 18000, SAMPLE_LIMIT = 900, EVENT_LIMIT = 500;
 const LOG_KEY = 'vector-shift-performance-log-v1';
 const LOG_LIMIT = 100;
 const settings=new URLSearchParams(location.search);
-const OPTIMIZATION_VERSION = `orbital-render-v1-shared-assets-v8-side-kit15-walls-dense-v1-space-scenery-v3-handoff-reuse-v1-shader-warmup-v1${settings.get('assetOptimizations')==='off'?'-v7-baseline':''}${settings.get('gateModules')==='off'?'-gates-baked':''}${settings.get('gateDeform')==='off'?'-cpu-gates':''}`;
+const OPTIMIZATION_VERSION = `orbital-render-v1-shared-assets-v8-side-kit15-walls-dense-v1-space-scenery-v3-dressing-v1-handoff-reuse-v1-shader-warmup-v1${settings.get('assetOptimizations')==='off'?'-v7-baseline':''}${settings.get('gateModules')==='off'?'-gates-baked':''}${settings.get('gateDeform')==='off'?'-cpu-gates':''}`;
 const number = value => Math.round(value).toLocaleString();
 const ms = value => `${value.toFixed(1)} ms`;
 const mib = value => `${(value / 1048576).toFixed(1)} MiB`;

@@ -24,7 +24,7 @@ export class CampaignMenu {
       card.setAttribute('aria-label',`${area.name} levels`);
       const button=document.createElement('button');button.type='button';button.className='area-cover';
       const image=document.createElement('img');image.src=`${import.meta.env.BASE_URL}${area.image}`;
-      image.alt='';image.width=2172;image.height=724;image.decoding='async';image.loading='lazy';image.draggable=false;
+      image.alt='';image.width=480;image.height=160;image.decoding='async';image.loading='lazy';image.draggable=false;
       const copy=document.createElement('span');copy.className='area-card-copy';
       const description=document.createElement('small');
       description.textContent=`${area.theme} · ${area.skill}`;

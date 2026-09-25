@@ -3,6 +3,7 @@ import { surfaceMaps } from '../../public/assets/track/slab-surface-r1.js';
 import {installGateShader} from './gate-shader.js';
 import {installPhaseField} from '../../public/assets/track/phase-field-r1.js';
 import {installObstacleLight} from '../../public/assets/track/obstacle-lights-r1.js';
+import {installEdgeField} from '../../public/assets/track/edge-field-r1.js';
 
 // These packets exist only in memory after runtime procedural generation.
 // Transfer geometry ArrayBuffers, not JSON vertex lists or copies of large arrays.
@@ -73,6 +74,7 @@ export function unpackAsset(packet) {
     installGateShader(THREE,material);
     installPhaseField(THREE,material);
     installObstacleLight(THREE,material);
+    installEdgeField(THREE,material);
     return material;
   });
   const attribute = a => new THREE.BufferAttribute(a.array, a.itemSize, a.normalized).setUsage(a.usage);
