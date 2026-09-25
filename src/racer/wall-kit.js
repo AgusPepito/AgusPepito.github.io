@@ -1,5 +1,5 @@
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import wall from '../../public/assets/track/buttressed-wall-r1.js';
+import wall from './recipe-assets/buttressed-wall-r1.js';
 import {subdivideAcross} from './gap-geometry.js';
 import {slabAssembly} from './slab-kit.js';
 import {indexGeometry,mergeIndexedGeometries} from './compact-geometry.js';

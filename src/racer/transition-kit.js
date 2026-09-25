@@ -1,7 +1,7 @@
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import slabs from '../../public/assets/track/slab-surface-r1.js';
-import serviceBelt from '../../public/assets/track/tube-service-belt-r2.js';
-import lane from '../../public/assets/track/phase-lane-r1.js';
+import slabs from './recipe-assets/slab-surface-r1.js';
+import serviceBelt from './recipe-assets/tube-service-belt-r2.js';
+import lane from './recipe-assets/phase-lane-r1.js';
 import {TRANSITION_COURSES,transitionSection,transitionFrame} from './transition-profile.js';
 
 export const TRANSITION_SERVICES={

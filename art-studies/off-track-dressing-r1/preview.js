@@ -5,7 +5,7 @@ import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
 import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
 import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
-import generate from './models.js';
+import generate from '../../src/racer/dressing-assets.js';
 
 // One static mesh per material. Preserve indexed primitive geometry; weld only
 // the unindexed extruded sectors, retaining hard normal/UV boundaries.

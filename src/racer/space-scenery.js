@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import asteroid from '../../public/assets/space/asteroids-r1.js';
+import pittedAsteroid from './recipe-assets/asteroids-r1.js';
+import fracturedAsteroid from './recipe-assets/asteroid-fractured-r1.js';
 import station from '../../art-studies/phase14-ring-station-r1/station.js';
 import {LENGTH,point,section} from './track.js';
 import {mergeWallParts} from './wall-kit.js';
@@ -13,7 +14,9 @@ export class SpaceScenery {
   constructor(){
     const began=performance.now();
     this.group=new THREE.Group();this.group.name='decorative-space-scenery';this.fields=[];this.stations=[];
-    const rocks=[asteroid(THREE,{variant:0}),asteroid(THREE,{variant:1})];
+    // Standalone recipes return Groups. Their single rock mesh remains the
+    // shared instancing prototype after restoring its authored space origin.
+    const rocks=[pittedAsteroid(THREE),fracturedAsteroid(THREE)].map(root=>root.children[0]);
     // Space scenery sits beyond the road's short-distance visibility fog.
     rocks.forEach(rock=>{rock.material.fog=false;});
     this.rocks=rocks;

@@ -1,4 +1,4 @@
-import emitter,{setEmitterColor,EMITTER_APPROACH,EMITTER_DEPARTURE} from '../../public/assets/track/phase-emitter-r1.js';
+import emitter,{setEmitterColor,EMITTER_APPROACH,EMITTER_DEPARTURE} from './recipe-assets/phase-emitter-r1.js';
 import {wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
 import {subdivideAcross} from './gap-geometry.js';
 import {mergeWallParts,wallHalfWidth} from './wall-kit.js';

@@ -1,8 +1,8 @@
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import slabs from '../../public/assets/track/slab-surface-r1.js';
-import gapEdge,{GAP_EDGE_DEPTH} from '../../public/assets/track/gap-edge-r1.js';
-import gapBorder from '../../public/assets/track/gap-border-r1.js';
-import tubeTermination from '../../public/assets/track/tube-gap-termination-r1.js';
+import slabs from './recipe-assets/slab-surface-r1.js';
+import gapEdge,{GAP_EDGE_DEPTH} from './recipe-assets/gap-edge-r1.js';
+import gapBorder from './recipe-assets/gap-border-r1.js';
+import tubeTermination from './recipe-assets/tube-gap-termination-r1.js';
 import {wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
 import {subtractRectangles,subdivideAcross} from './gap-geometry.js';
 

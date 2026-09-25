@@ -1,26 +1,26 @@
 import foundation from '../../public/assets/track/flat-foundation-r1.js';
-import lane from '../../public/assets/track/phase-lane-r1.js';
+import lane from '../racer/recipe-assets/phase-lane-r1.js';
 import marker from '../../public/assets/track/neutral-edge-marker-r1.js';
 import { addMixedBays, expandRuns, mountDetailedBay } from '../racer/mixed-kit.js';
 import { addPhaseLanes } from '../racer/lane-kit.js';
 import { PHASES } from '../racer/track.js';
 import tubeSurface, {wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
-import serviceBelt, {SERVICE_BELT_VARIANTS} from '../../public/assets/track/tube-service-belt-r2.js';
+import serviceBelt, {SERVICE_BELT_VARIANTS} from '../racer/recipe-assets/tube-service-belt-r2.js';
 import { tubeAssembly } from '../racer/tube-kit.js';
 import {transitionAssembly} from '../racer/transition-kit.js';
 import {TRANSITION_COURSES} from '../racer/transition-profile.js';
-import gapEdge from '../../public/assets/track/gap-edge-r1.js';
-import gapSurface from '../../public/assets/track/gap-surface-r2.js';
+import gapEdge from '../racer/recipe-assets/gap-edge-r1.js';
+import gapSurface from '../racer/recipe-assets/gap-surface-r2.js';
 import {gapAssembly,gapEnd} from '../racer/gap-kit.js';
-import gapBorder from '../../public/assets/track/gap-border-r1.js';
-import tubeTermination from '../../public/assets/track/tube-gap-termination-r1.js';
+import gapBorder from '../racer/recipe-assets/gap-border-r1.js';
+import tubeTermination from '../racer/recipe-assets/tube-gap-termination-r1.js';
 import {wallAssembly,wallRoadStudy} from '../racer/wall-kit.js';
 import {passageAssembly} from '../racer/passage-kit.js';
 import {emitterAssembly} from '../racer/phase-emitter-kit.js';
 import {barrierAssembly,obstacleAssembly} from '../racer/obstacle-kit.js';
 import {checkpointAssembly} from '../racer/checkpoint-kit.js';
-import edgeLight from '../../public/assets/track/edge-light-r1.js';
-import slabs from '../../public/assets/track/slab-surface-r1.js';
+import edgeLight from '../racer/recipe-assets/edge-light-r1.js';
+import slabs from '../racer/recipe-assets/slab-surface-r1.js';
 import {mountEdgeLight,LIT_WALL_OFFSET} from '../racer/roadside-lighting.js';
 
 function illuminatedRoadside(THREE) {

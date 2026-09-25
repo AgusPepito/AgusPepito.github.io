@@ -1,4 +1,4 @@
-import checkpoint,{CHECKPOINT_HALF_LENGTH} from '../../public/assets/track/checkpoint-r1.js';
+import checkpoint,{CHECKPOINT_HALF_LENGTH} from './recipe-assets/checkpoint-r1.js';
 import {wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
 import {subdivideAcross} from './gap-geometry.js';
 import {mergeWallParts,wallHalfWidth} from './wall-kit.js';

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import generate from '../../art-studies/off-track-dressing-r1/models.js';
+import generate from './dressing-assets.js';
 import {LENGTH,point,trackMotionAt,trackProfileSnapshot} from './track.js';
 import {mergeWallParts} from './wall-kit.js';
 

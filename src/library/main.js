@@ -9,7 +9,7 @@ import detailedPipe from '../../public/assets/track/raised-pipe-detail-r3.js';
 import { detailedKit, addDetailedBays } from '../racer/detailed-kit.js';
 import { reviewCatalog } from './review-assets.js';
 import { slabAssembly, applySlabEnvironment } from '../racer/slab-kit.js';
-import slabs from '../../public/assets/track/slab-surface-r1.js';
+import slabs from '../racer/recipe-assets/slab-surface-r1.js';
 import {setEmitterColor} from '../racer/phase-emitter-kit.js';
 import {PHASES} from '../racer/track.js';
 import {updatePhaseField} from '../../public/assets/track/phase-field-r1.js';

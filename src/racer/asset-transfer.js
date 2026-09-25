@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { surfaceMaps } from '../../public/assets/track/slab-surface-r1.js';
+import { surfaceMaps } from './recipe-surface-maps.js';
 import {installGateShader} from './gate-shader.js';
 import {installPhaseField} from '../../public/assets/track/phase-field-r1.js';
 import {installObstacleLight} from '../../public/assets/track/obstacle-lights-r1.js';

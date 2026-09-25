@@ -1,4 +1,4 @@
-import edgeLight from '../../public/assets/track/edge-light-r1.js';
+import edgeLight from './recipe-assets/edge-light-r1.js';
 
 export const EDGE_LIGHT_WIDTH=1;
 export const EDGE_ROAD_OVERLAP=.2;

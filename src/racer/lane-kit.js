@@ -1,4 +1,4 @@
-import lane from '../../public/assets/track/phase-lane-r1.js';
+import lane from './recipe-assets/phase-lane-r1.js';
 import edgeMarker from '../../public/assets/track/neutral-edge-marker-r1.js';
 import { PHASES, stripCenter } from './track.js';
 

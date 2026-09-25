@@ -1,7 +1,7 @@
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import tubeSurface, { wrapTubeSurface } from '../../public/assets/track/tube-surface-r1.js';
-import lane from '../../public/assets/track/phase-lane-r1.js';
-import serviceBelt, {SERVICE_BELT_LENGTH} from '../../public/assets/track/tube-service-belt-r2.js';
+import lane from './recipe-assets/phase-lane-r1.js';
+import serviceBelt, {SERVICE_BELT_LENGTH} from './recipe-assets/tube-service-belt-r2.js';
 import { PHASES, RADIUS, stripCenter } from './track.js';
 
 const laneHalfWidth=3.24/(Math.PI*RADIUS);

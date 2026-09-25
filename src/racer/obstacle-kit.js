@@ -1,8 +1,9 @@
-import barrier,{compactPassage,COMPACT_JAMB_WIDTH} from '../../public/assets/track/jump-barrier-r1.js';
+import barrier,{compactPassage,COMPACT_JAMB_WIDTH} from './recipe-assets/jump-barrier-r1.js';
 import {wallHalfWidth,conformWallParts,mergeWallParts} from './wall-kit.js';
 import {passageAssembly} from './passage-kit.js';
 import {slabAssembly} from './slab-kit.js';
 import {HOLE_HEIGHT,WALL_HEIGHT} from './obstacles.js';
+import approachMark from '../../public/assets/track/jump-approach-mark-r1.js';
 
 export const OBSTACLE_REVIEW_LENGTH=2100;
 export function obstacleReviewSequence(shape='flat'){
@@ -30,7 +31,7 @@ export function obstacleAssembly(THREE,{shape='flat',type='jump-only',opening=10
     for(const [a,b]of runs)if(b>a)root.add(barrierAssembly(THREE,{shape,width:b-a,center:(a+b)/2,height:4.2,startCap:!closed&&a===-half,endCap:!closed&&b===half}));
   }
   if(type!=='opening-only'){
-    const marks=new THREE.Group(),mat=new THREE.MeshStandardMaterial({color:0xe5ddc8,emissive:0xfff3db,emissiveIntensity:.65,roughness:.5});mat.name='j3-approach-white';
+    const marks=new THREE.Group();
     marks.name='jump-approach-markings';
     const count=Math.max(1,Math.round(half*2/6)),pitch=half*2/count;
     for(let i=0;i<count;i++){
@@ -38,9 +39,12 @@ export function obstacleAssembly(THREE,{shape='flat',type='jump-only',opening=10
       // Leave a clean approach to the optional opening, including tube seams.
       const delta=!closed?x-center:((x-center+half)%(half*2)+half*2)%(half*2)-half;
       if(type==='jump-or-opening'&&Math.abs(delta)<opening/2+COMPACT_JAMB_WIDTH)continue;
-      for(const z of [12,24])for(const side of [-1,1]){
-        const m=new THREE.Mesh(new THREE.BoxGeometry(.12,.025,1.0),mat);m.name='white-jump-approach-chevron';
-        m.position.set(x+side*.32,.035,z);m.rotation.y=side*Math.PI/4;marks.add(m);
+      for(const z of [12,24]){
+        const mark=approachMark(THREE);
+        // Flatten the fixture into the existing surface-deformation input.
+        for(const mesh of [...mark.children]){
+          mesh.position.x+=x;mesh.position.y+=.0225;mesh.position.z+=z;marks.add(mesh);
+        }
       }
     }
     root.add(conformWallParts(THREE,marks,{shape}));

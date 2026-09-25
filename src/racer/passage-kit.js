@@ -1,4 +1,4 @@
-import passage,{PASSAGE_JAMB_WIDTH} from '../../public/assets/track/service-passage-r1.js';
+import passage,{PASSAGE_JAMB_WIDTH} from './recipe-assets/service-passage-r1.js';
 import {wallAssembly,conformWallParts,mergeWallParts,wallHalfWidth} from './wall-kit.js';
 import {slabAssembly} from './slab-kit.js';
 import {HOLE_HEIGHT} from './obstacles.js';

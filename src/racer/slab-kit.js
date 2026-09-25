@@ -1,7 +1,7 @@
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import slabs from '../../public/assets/track/slab-surface-r1.js';
+import slabs from './recipe-assets/slab-surface-r1.js';
 import tubeSurface,{wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
-import lane from '../../public/assets/track/phase-lane-r1.js';
+import lane from './recipe-assets/phase-lane-r1.js';
 import {PHASES,RADIUS,point,stripCenter} from './track.js';
 import {subtractRectangles} from './gap-geometry.js';
 import {SUN_DIRECTION, PLANET_DIRECTION} from './visual-settings.js';
