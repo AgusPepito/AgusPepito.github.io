@@ -1,5 +1,7 @@
 # Track concept images — 2026-09-24
 
+For the implemented, approved library and the next procedural-level integration pass, start with the [track library handoff](../../TRACK_LIBRARY_HANDOFF.md) and [current approval ledger](../../TRACK_MODULE_WORKLIST.md). The material below records the original concept studies, not the current implementation status.
+
 Generated with the built-in OpenAI image-generation tool. These are visual direction studies, not implemented geometry or promises of real-time fidelity. No game changes or deployment in this step.
 
 Shared prompt direction: original retro-futurist orbital anti-gravity motorsport, dark graphite drivable surfaces, ivory ceramic structural ribs, exposed charcoal machinery, restrained phase energy, warm sun/cool shadows, navy space and distant planets. No vehicles, UI, logos, text, neon wireframes or excessive bloom. Readable physical construction and clear road surfaces.

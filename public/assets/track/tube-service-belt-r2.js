@@ -10,10 +10,10 @@ const patterns={
   access:['access','access','armor','access','cooling','armor'],
   armor:['armor','armor','armor','access','armor','armor'],
 };
-export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,variant='mixed',offset=0}={}) {
+export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,variant='mixed',offset=0,columns=24,articulated=false}={}) {
   const root=new THREE.Group();root.name=`ivory-service-belt-r2-${variant}`;
   const pattern=patterns[variant]||patterns.mixed;
-  const circumference=2*Math.PI*radius,cell=circumference/24;
+  const circumference=2*Math.PI*radius,cell=circumference/columns;
   const mats={
     ivory:new THREE.MeshStandardMaterial({color:0xc7c6b5,roughness:.57,metalness:.25}),
     replacement:new THREE.MeshStandardMaterial({color:0xd8d6c6,roughness:.64,metalness:.18}),
@@ -25,9 +25,9 @@ export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,var
     lamp:new THREE.MeshStandardMaterial({color:0xe7dcc2,emissive:0xe7dcc2,emissiveIntensity:.55,roughness:.6}),
   };
   for(const [key,mat]of Object.entries(mats))mat.name='belt-r2-'+key;
-  let family='armor';
+  let family='armor',column=0;
   function mesh(name,geometry,material,x=0,y=0,z=0){
-    const m=new THREE.Mesh(geometry,mats[material]);m.name=name;m.position.set(x,y,z);m.userData.serviceFamily=family;root.add(m);return m;
+    const m=new THREE.Mesh(geometry,mats[material]);m.name=name;m.position.set(x,y,z);m.userData.serviceFamily=family;m.userData.serviceColumn=column;root.add(m);return m;
   }
   function skin(name,x,z,w,l,y,material){
     const g=new THREE.PlaneGeometry(w,l,Math.max(1,Math.ceil(w/.2)),Math.max(1,Math.ceil(l/.5)));g.rotateX(-Math.PI/2);return mesh(name,g,material,x,y,z);
@@ -61,7 +61,8 @@ export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,var
     box('bolted-identification-plaque',x+.085,-.01,z+.17,.36,.14,.54,'aged');
     for(const [row,bits]of glyphs[letter].entries())for(let col=0;col<3;col++)if(bits[col]==='1')skin('panel-function-stencil',x+col*.085,z+row*.085,.07,.07,.064,'dark');
   }
-  for(let i=0;i<24;i++){
+  for(let i=0;i<columns;i++){
+    column=i;
     const x=-circumference/2+(i+.5)*cell,w=cell-.045;
     family=pattern[((i+offset)%pattern.length+pattern.length)%pattern.length];
     const ivory=i%7===1?'replacement':i%7===4?'aged':'ivory';
@@ -79,7 +80,7 @@ export default function generate(THREE,{radius=18,length=SERVICE_BELT_LENGTH,var
       if(family==='pipe'){
         for(const dx of variant==='pipe'?[-.78,.78]:[-.94,0,.94]){
           const pipeRadius=variant==='pipe'?.23:.17;
-          const pipe=mesh('broad-service-conduit',new THREE.CylinderGeometry(pipeRadius,pipeRadius,3.96,14,8),'steel',x+dx,-.43,0);pipe.rotation.x=Math.PI/2;
+          const pipe=mesh('broad-service-conduit',new THREE.CylinderGeometry(pipeRadius,pipeRadius,articulated?3.6:3.96,14,8),'steel',x+dx,-.43,0);pipe.rotation.x=Math.PI/2;
           for(const z of [-1.37,1.37]){
             const collar=mesh('stepped-conduit-coupling',new THREE.CylinderGeometry(.235,.235,.44,12),'edge',x+dx,-.43,z);collar.rotation.x=Math.PI/2;
             for(const dz of [-.21,.21]){const seal=mesh('coupling-retaining-ring',new THREE.CylinderGeometry(.25,.25,.065,12),'brass',x+dx,-.43,z+dz);seal.rotation.x=Math.PI/2;}

@@ -4,11 +4,12 @@
 <body>
   <aside>
     <h1>Track library</h1><p id="status"></p>
-    <label>Category<select id="category"><option value="01">01 · Flat foundation</option><option value="02">02 · Pipe bays</option><option value="03">03 · Grille bays</option><option value="04">04 · Covered metal bays</option><option value="05">05 · Mixed assembly and joins</option><option value="06">06 · Phase lanes and markings</option><option value="07">07 · Outside tube</option><option value="08">08 · Inside tube</option></select></label>
+    <label>Category<select id="category"><option value="01">01 · Flat foundation</option><option value="02">02 · Pipe bays</option><option value="03">03 · Grille bays</option><option value="04">04 · Covered metal bays</option><option value="05">05 · Mixed assembly and joins</option><option value="06">06 · Phase lanes and markings</option><option value="07">07 · Outside tube</option><option value="08">08 · Inside tube</option><option value="09">09 · Outside transitions</option><option value="10">10 · Inside transitions</option><option value="11">11 · Gaps and cut ends</option><option value="12">12 · Gates, walls and passages</option><option value="13">13 · Checkpoints</option></select></label>
     <label>Revision<select id="revision"><option value="r3">R3 · Detailed 30° housings</option><option value="r2">R2 · Raised roadside housings</option><option value="r1">R1 · Shallow inserts</option></select></label>
     <label>Asset<select id="asset"></select></label>
     <label>Individual part<select id="node"></select></label>
     <p id="description"></p><p id="dimensions"></p>
+    <div id="gate-controls" hidden><label>Live gate phase<select id="gate-phase"><option value="0">1 · Cyan / ION</option><option value="1">2 · Amber / SOL</option><option value="2">3 · Violet / FLUX</option></select></label></div>
     <div class="views"><button data-view="perspective">Perspective</button><button data-view="top">Top</button><button data-view="front">Front</button><button data-view="side">Side</button><button id="reset">Fit</button></div>
     <label class="toggle"><input type="checkbox" id="wireframe"> Wireframe</label>
     <a id="drive" href="./racer.html?review=01">Drive this segment ↗</a>
@@ -19,3 +20,6 @@
   <main><canvas id="viewer" aria-label="Interactive 3D asset viewer"></canvas></main>
   <script type="module" src="/src/library/main.js"></script>
 </body></html>
+
+
+

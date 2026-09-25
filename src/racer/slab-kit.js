@@ -3,12 +3,13 @@ import slabs from '../../public/assets/track/slab-surface-r1.js';
 import tubeSurface,{wrapTubeSurface} from '../../public/assets/track/tube-surface-r1.js';
 import lane from '../../public/assets/track/phase-lane-r1.js';
 import {PHASES,RADIUS,point,stripCenter} from './track.js';
+import {subtractRectangles} from './gap-geometry.js';
 
 export function slabReviewStrips(tube){
   const half=tube?Math.PI*RADIUS:18;
   return [{start:75,end:525,phase:2,from:-8/half,to:8/half,width:3.24/half}];
 }
-export function slabAssembly(THREE,{shape='flat',start=0,length=100,courseEnd=100,strips=[]}={}){
+export function slabAssembly(THREE,{shape='flat',start=0,length=100,courseEnd=100,strips=[],cutRanges=[]}={}){
   const tube=shape!=='flat',inside=shape==='inside',half=tube?Math.PI*RADIUS:18;
   const root=slabs(THREE,{width:half*2,length,columns:tube?24:6,index:Math.floor((start+50)/100)});
   if(tube)root.add(tubeSurface(THREE,{inside,length,services:false,wrap:false,cutRanges:[[0,length]],startCap:start===-50||start===0,endCap:start+length===courseEnd}));
@@ -26,11 +27,17 @@ export function slabAssembly(THREE,{shape='flat',start=0,length=100,courseEnd=10
       mesh.position.set(0,0,0);mesh.rotation.set(0,0,0);
     });root.add(module);
   }
+  const cuts=cutRanges.filter(([a,b])=>b>start&&a<start+length).map(([a,b])=>[-half-1,half+1,start+length/2-b,start+length/2-a]);
+  if(cuts.length){
+    root.updateMatrixWorld(true);
+    root.traverse(m=>{if(m.isMesh){m.geometry.applyMatrix4(m.matrixWorld);m.geometry=subtractRectangles(THREE,m.geometry,cuts);}});
+    root.traverse(m=>{m.position.set(0,0,0);m.rotation.set(0,0,0);m.scale.set(1,1,1);});
+  }
   return tube?wrapTubeSurface(THREE,root,inside):root;
 }
-export function slabChunk(THREE,start,shape,courseEnd,strips){
+export function slabChunk(THREE,start,shape,courseEnd,strips,cutRanges=[]){
   const length=Math.min(100,courseEnd-start),result=new THREE.Group();if(length<=0)return result;
-  const root=slabAssembly(THREE,{shape,start,length,courseEnd,strips}),groups=new Map(),materials=new Map(),disposed=new Set();
+  const root=slabAssembly(THREE,{shape,start,length,courseEnd,strips,cutRanges}),groups=new Map(),materials=new Map(),disposed=new Set();
   root.updateMatrixWorld(true);
   root.traverse(mesh=>{
     if(!mesh.isMesh)return;

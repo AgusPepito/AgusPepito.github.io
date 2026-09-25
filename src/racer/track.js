@@ -1,5 +1,6 @@
 import { Vector3 } from 'three';
 import { PHASE_CHAINS } from './sequences.js';
+import {transitionSection,transitionPoint} from './transition-profile.js';
 
 export let LENGTH = 6600;
 let profile = 'mixed';
@@ -17,7 +18,8 @@ export const wrap = u => ((u + 1) % 2 + 2) % 2 - 1;
 // Signed curvature: negative rolls away into an exterior, positive curls into an interior.
 // The same parameterization supplies geometry, collision, driving and the camera frame.
 export function section(s) {
-  if (profile === 'flat') return { curl: 0, halfWidth: 18, closed: false, name: 'OPEN ROAD' };
+  if(profile==='transition-09'||profile==='transition-10')return transitionSection(profile.slice(-2),s);
+  if (profile === 'flat'||profile==='gap-flat') return { curl: 0, halfWidth: 18, closed: false, name: 'OPEN ROAD' };
   if (profile === 'outside' || profile === 'inside') return { curl: profile === 'inside' ? 1 : -1, halfWidth: Math.PI * RADIUS, closed: true, name: profile === 'inside' ? 'INSIDE TUBE' : 'OUTSIDE TUBE' };
   let curl = 0, name = 'LAUNCH STRAIGHT';
   if (s >= 850 && s < 1300) { curl = -smooth((s - 850) / 450); name = 'ROLLING OUTWARD'; }
@@ -33,6 +35,8 @@ export function section(s) {
 }
 
 export function point(s, u) {
+  if(profile==='gap-flat')return new Vector3(u*18,0,-s);
+  if(profile==='transition-09'||profile==='transition-10')return new Vector3(...transitionPoint(profile.slice(-2),s,u));
   const { curl, halfWidth } = section(s), lateral = u * halfWidth, k = curl / RADIUS;
   const x = Math.abs(k) < 1e-7 ? lateral : Math.sin(k * lateral) / k;
   const y = Math.abs(k) < 1e-7 ? 0 : (1 - Math.cos(k * lateral)) / k;
@@ -83,5 +87,6 @@ export function lateralDistance(a, b, s) {
   return Math.abs(section(s).closed ? wrap(a - b) : a - b);
 }
 export function onStrip(strip, s, u) {
-  return s >= strip.start && s <= strip.end && lateralDistance(u, stripCenter(strip, s), s) <= strip.width;
+  const halfWidth=strip.widthMeters?strip.widthMeters/(2*section(s).halfWidth):strip.width;
+  return s >= strip.start && s <= strip.end && lateralDistance(u, stripCenter(strip, s), s) <= halfWidth;
 }

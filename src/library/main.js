@@ -10,6 +10,8 @@ import { detailedKit, addDetailedBays } from '../racer/detailed-kit.js';
 import { reviewCatalog } from './review-assets.js';
 import { slabAssembly, applySlabEnvironment } from '../racer/slab-kit.js';
 import slabs from '../../public/assets/track/slab-surface-r1.js';
+import {setEmitterColor} from '../racer/phase-emitter-kit.js';
+import {PHASES} from '../racer/track.js';
 
 const $ = id => document.getElementById(id);
 const catalog = {
@@ -102,7 +104,7 @@ try {
     const direction = view === 'top' ? new THREE.Vector3(0, 1, 0.001) : view === 'side' ? new THREE.Vector3(1, 0, 0) : view === 'front' ? new THREE.Vector3(0, 0.22, 1) : new THREE.Vector3(0.85, 0.9, 1);
     camera.position.copy(controls.target).addScaledVector(direction.normalize(), distance);
     controls.minDistance = radius * 0.1; controls.maxDistance = distance * 4;
-    camera.near = Math.max(0.005, radius / 1000); camera.far = Math.max(2000, distance * 8); camera.updateProjectionMatrix();
+    camera.near = Math.max(0.005, radius / (['12','13'].includes($('category').value)?100:1000)); camera.far = Math.max(2000, distance * 8); camera.updateProjectionMatrix();
     controls.update();
     $('dimensions').textContent = `${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)} m · width / height / length`;
   }
@@ -110,7 +112,10 @@ try {
     if (asset) { scene.remove(asset); release(asset); }
     const entry = catalog[$('category').value].find(a => a[0] === $('asset').value);
     asset = entry[2](THREE); scene.add(asset); asset.updateMatrixWorld(true);
-    if(entry[0].startsWith('slab-'))applySlabEnvironment(THREE,renderer,asset);
+    const emitterAsset=$('category').value==='12'&&entry[0].includes('-gate');
+    $('gate-controls').hidden=!emitterAsset;
+    if(emitterAsset)setEmitterColor(asset,PHASES[Number($('gate-phase').value)].hex);
+    if(entry[0].startsWith('slab-')||['09','10','11','12','13'].includes($('category').value))applySlabEnvironment(THREE,renderer,asset);
     nodes = []; asset.traverse(n => { if (n.isMesh) nodes.push(n); });
     $('node').replaceChildren(new Option('Whole asset', 'all'));
     nodes.forEach((node, i) => $('node').add(new Option(`${i + 1} · ${node.name || 'mesh'}`, String(i))));
@@ -128,6 +133,44 @@ try {
       if(detail)$('description').textContent='Approved twelve-metre ivory service section: 70 cm pipe/cooling recesses, stepped couplings, louvers, asymmetric access doors and replacement plates. Shared geometry follows either tube.';
       if(variation)$('description').textContent='Four variations of the approved 12 m section: twin-feed pipe manifolds, split cooling banks, reinforced access hatches and quiet replacement armor. Drive eight sections with unequal graphite intervals and shifted panel arrangements around the tube.';
     }
+    if(['09','10'].includes($('category').value)){
+      $('description').textContent='Shared closing/opening construction: approved brushed slabs, adaptive plate courses, converging ivory edges, service frames and articulated pipe sleeves. The lane keeps its 6.48 m physical width. Category 10 connects inside and outside sections through flat road.';
+      $('status').textContent=`${$('category').value} · Transitions R1 · awaiting review`;
+    }
+    if($('category').value==='11'){
+      $('description').textContent='Approved illuminated end style, extended to full and partial gaps on flat road and both tube surfaces. Twelve-metre aprons, sealed cut ends and recessed pearl-white border lights. Each course has a full gap at 450 m and an 18 m wide partial opening at 1050 m; both are 75 m long. T toggles quarter-speed review.';
+      $('status').textContent='11 · Complete gap set · approved';
+      const shape=entry[0].startsWith('outside-')?'outside':entry[0].startsWith('inside-')?'inside':'flat';
+      if(shape!=='flat')$('description').textContent+=(shape==='inside'?' New: a four-metre-deep collar outside the open bore, with ivory cartridge dividers, pipes, cooling fins and recessed energy segments.':' New: an opaque recessed bulkhead seals the tube interior, with radial metal plates, service cartridges and segmented energy rings.');
+      $('drive').href=`./racer.html?review=11&shape=${shape}`;
+    }
+    if($('category').value==='13'){
+      const shape=entry[0].split('-')[0];
+      $('description').textContent='Thirty-metre checkered checkpoint: broad ivory/graphite plates, recessed circular optical instruments, lamp cassettes and a central white-curtain emitter. No numbers or lettering. Hardware stays below the surface on flat road and both tubes. Every ship phase can cross.';
+      $('status').textContent='13 · Checkered checkpoint R1 · awaiting review';
+      $('drive').href=`./racer.html?review=13&shape=${shape}`;
+    }
+    if($('category').value==='12'){
+      const shape=entry[0].split('-')[0];
+      $('description').textContent='W4 R2: solid beveled ivory armor over a setback shell, real vent/lock apertures, recessed louvers, washer-mounted fasteners, service doors, pipe couplings and optical wells. Shared surfaces replace the overlapping R1 plates. Start/middle/end bays, four-bay runs and tube ring joins use the same construction. Drive samples retain steering bypasses.';
+      $('status').textContent='12 · W4 walls R2 · approved';
+      $('drive').href=`./racer.html?review=12&shape=${shape}`;
+      if(entry[0].includes('-barrier-')||entry[0].includes('-obstacle-')){
+        $('description').textContent='J3 louver banks with ivory frames, deep cooling fins, protected pipes, recessed white jump chevrons, top service trays and armored end caps. Assemblies include tall opening-only passages, a compact 4.2 m jump-or-opening frame with 3.5 m clearance, and full-width 2.4 m jump barriers. All obstacles remain 5 m deep.';
+        $('status').textContent='12 · J3 barriers and obstacle assemblies R1 · awaiting review';
+        $('drive').href=`./racer.html?review=12&element=obstacles&shape=${shape}`;
+      }
+      if(entry[0].includes('-passage')){
+        $('description').textContent='P3 service gantry: beveled ivory jambs, recessed pipes and cooling cassettes, cabinet hinges and locks, upper truss braces and pearl-white receiving lights. Clear opening is 10 m across the road and 3.5 m high; side structures and lintel follow tube curvature. W4 infill occupies the remaining road width. First geometry iteration for user review.';
+        $('status').textContent='12 · P3 passages R1 · approved';
+        $('drive').href=`./racer.html?review=12&element=passages&shape=${shape}`;
+      }
+      if(emitterAsset){
+        $('description').textContent='F1 + F2: deep capacitor wells, charging cables with ribbed sleeves and brass couplings, machined ivory frames, inset service hatches and segmented projector lenses. Extended to 24 metres along travel, with extra machinery at both ends. Hardware stays below the driving surface. Switch phase below to recolor this same model live.';
+        $('status').textContent='12 · Recessed phase gates R1 · awaiting review';
+        $('drive').href=`./racer.html?review=12&element=gates&shape=${shape}`;
+      }
+    }
     if($('asset').value.startsWith('slab-')){
       $('description').textContent='Initial shared slab candidate: shallow machined bevels, inset joints, asymmetric repair plates, flush fasteners and brushed metal grain. Soft environment highlights reveal changes in polish. The driving sample includes a crossing violet lane.';
       $('status').textContent=`${$('category').value} · Metal slab style · approved`;
@@ -139,12 +182,12 @@ try {
     }
     $('drive').hidden = $('asset').value === 'detail-r3';
     for (const n of nodes) n.material.wireframe = $('wireframe').checked;
-    const url = new URL(location.href); url.searchParams.set('category', $('category').value); url.searchParams.set('asset', entry[0]); url.searchParams.set('revision', ['05','06','07','08'].includes($('category').value) ? 'r1' : revision); history.replaceState(null, '', url);
+    const url = new URL(location.href); url.searchParams.set('category', $('category').value); url.searchParams.set('asset', entry[0]); url.searchParams.set('revision', ['05','06','07','08','09','10','11','12','13'].includes($('category').value) ? 'r1' : revision); history.replaceState(null, '', url);
     fit();
   }
   function category(preferred) {
     const id = $('category').value;
-    const newSample = ['05','06','07','08'].includes(id);
+    const newSample = ['05','06','07','08','09','10','11','12','13'].includes(id);
     $('revision').disabled = newSample;
     $('revision').value = newSample ? 'r1' : revision;
     $('revision').querySelector('[value="r1"]').textContent = newSample ? 'R1 · First category sample' : 'R1 · Shallow inserts';
@@ -162,6 +205,7 @@ try {
   }
   $('category').addEventListener('change', () => category());
   $('asset').addEventListener('change', choose); $('node').addEventListener('change', fit);
+  $('gate-phase').addEventListener('change',()=>{if(asset)setEmitterColor(asset,PHASES[Number($('gate-phase').value)].hex);});
   $('reset').addEventListener('click', fit);
   $('wireframe').addEventListener('change', () => { nodes.forEach(n => { n.material.wireframe = $('wireframe').checked; }); });
   document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { view = button.dataset.view; fit(); }));
@@ -171,6 +215,7 @@ try {
   new ResizeObserver(resize).observe($('viewer').parentElement);
   renderer.setAnimationLoop(() => { controls.update(); renderer.render(scene, camera); });
 } catch (error) { $('error').hidden = false; $('error').textContent = `Could not load viewer: ${error.message}`; }
+
 
 
 

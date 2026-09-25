@@ -1,7 +1,7 @@
 // Shared unwrapped slab candidate. Metres; +Y is the driving normal.
 // All relief lies below the nominal road except the flush lane placed by callers.
 let maps;
-function surfaceMaps(THREE){
+export function surfaceMaps(THREE){
   if(maps)return maps;
   const size=256,rough=new Uint8Array(size*size*4),normal=new Uint8Array(size*size*4);
   // Periodic directional grain: no seams, no per-frame randomness or painted highlights.
@@ -17,7 +17,8 @@ function surfaceMaps(THREE){
   const texture=data=>{
     const t=new THREE.DataTexture(data,size,size,THREE.RGBAFormat);
     t.wrapS=t.wrapT=THREE.RepeatWrapping;t.magFilter=THREE.LinearFilter;
-    t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;return t;
+    t.minFilter=THREE.LinearMipmapLinearFilter;t.generateMipmaps=true;t.needsUpdate=true;
+    t.userData.sharedTrackResource=true;return t;
   };
   maps={roughnessMap:texture(rough),normalMap:texture(normal)};return maps;
 }
@@ -71,8 +72,11 @@ export default function generate(THREE,{width=36,length=100,columns=6,index=0}={
   }
   face('slab-recess-floor',0,0,width,length,-.09,'joint');
   const cell=width/columns;
-  for(let col=0;col<columns;col++)for(let row=0,at=0;at<length;row++,at+=12.5){
-    const span=Math.min(12.5,length-at),x=-width/2+(col+.5)*cell,z=length/2-at-span/2;
+  for(let col=0;col<columns;col++)for(let row=0,at=0;at<length;row++){
+    // Absorb a short cut-end remainder into the preceding course so repair
+    // plates and bevels cannot collapse into slivers next to an authored lip.
+    const remaining=length-at,span=remaining>12.5&&remaining<14.5?remaining:Math.min(12.5,remaining);
+    const x=-width/2+(col+.5)*cell,z=length/2-at-span/2;
     const kind=(col*3+row+index*2)%5,w=cell-.055,l=span-.065;
     // Three quiet courses for every repair/split course; consistent construction logic.
     if(kind===0){
@@ -84,6 +88,7 @@ export default function generate(THREE,{width=36,length=100,columns=6,index=0}={
       plate(x,z-(short+gap)/2,w,long,-.018,'worn',false);
       plate(x,z+(long+gap)/2,w,short,-.006,'replacement',true);
     }else plate(x,z,w,l,kind===1?-.028:-.012,kind===2?'worn':'graphite',kind===4);
+    at+=span;
   }
   if(columns===6)for(const side of [-1,1])face('flush-ivory-edge-trim',side*(width/2-.12),0,.24,length,.002,'ivory');
   root.userData={length,width,revision:'slab-candidate-r1',depth:.09};return root;

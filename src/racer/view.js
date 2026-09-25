@@ -5,12 +5,21 @@ import { PassageGuide } from './guidance.js';
 import { OBSTACLES, solidSpans, openingSpans, WALL_HEIGHT, HOLE_HEIGHT } from './obstacles.js';
 import { LENGTH, PHASES, STRIPS, GATES, section, frame, point, stripCenter, clamp } from './track.js';
 import { GAPS, JUMP, gapAt, surfaceSlices } from './jumps.js';
-import { constructionReview, constructionBaseline, constructionCategory, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail } from './levels.js';
+import { constructionReview, constructionBaseline, constructionCategory, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail, constructionTransition, constructionGap, constructionGapShape } from './levels.js';
 import { foundationChunk } from './construction.js';
 import { tubeChunk } from './tube-kit.js';
 import { slabChunk, applySlabEnvironment, disposeSlabEnvironment } from './slab-kit.js';
+import {transitionChunk} from './transition-kit.js';
+import {gapChunk} from './gap-kit.js';
+import {constructionWalls,constructionWallShape,constructionEmitters,constructionObstacles,constructionCheckpoints} from './levels.js';
+import {checkpointStation,checkpointCutRanges,CHECKPOINT_REVIEW_AT} from './checkpoint-kit.js';
+import {modeledObstacle} from './obstacle-kit.js';
+import {emitterGate,emitterCutRanges,setEmitterColor} from './phase-emitter-kit.js';
+import {wallObstacle} from './wall-kit.js';
+import {passageObstacle} from './passage-kit.js';
+import {campaignChunk,campaignDecorations,campaignGate,campaignObstacle,campaignGap,campaignCheckpoint} from './campaign-kit.js';
 
-// Temporary procedural prototype geometry, pending the jam's final recipe art pass.
+// Lightweight ribbons remain for review baselines, guides and driving-mode gap fills.
 function surface(s, u, height = 0) {
   if (!height) return point(s, u);
   const f = frame(s, u); return f.p.addScaledVector(f.normal, height);
@@ -89,8 +98,12 @@ export class RaceView {
     this.scene.add(new THREE.HemisphereLight(0xb5d8ff, 0x465578, 2.4));
     const sun = new THREE.DirectionalLight(0xd6eeff, 2.4); sun.position.set(120, 180, 40); this.scene.add(sun);
     const fill = new THREE.DirectionalLight(0x6a9bdf, 1.5); fill.position.set(-70, -100, -60); this.scene.add(fill);
-    if (constructionCategory === '08') this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
+    if((constructionWalls||constructionCheckpoints)&&constructionWallShape==='inside')this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
+    if (constructionCategory === '08'||constructionTransition||(constructionGap&&constructionGapShape==='inside')) this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
     this.chunks = []; this.gates = []; this.energyGroups = []; this.walls = []; this.gapMarkers = [];
+    this.pendingAssets = [];
+    const decorations = !constructionReview ? campaignDecorations() : null;
+    if (!constructionReview) this.scene.add(new THREE.AmbientLight(0xbac6cf,.6));
     this.gapFills = new THREE.Group(); this.scene.add(this.gapFills);
     const asphalt = new THREE.MeshStandardMaterial({ color: 0x263649, roughness: 0.8, side: THREE.DoubleSide });
     const lane = new THREE.MeshBasicMaterial({ color: 0x678298, side: THREE.DoubleSide });
@@ -98,6 +111,25 @@ export class RaceView {
     const energy = PHASES.map(p => new THREE.MeshBasicMaterial({ color: p.hex, side: THREE.DoubleSide }));
     for (let start = -50; start < LENGTH + 200; start += 100) {
       const end = start + 100, group = new THREE.Group();
+      if (!constructionReview) {
+        this.queueAsset(group, () => {
+          const road = campaignChunk(THREE, start, decorations);
+          this.energyGroups.push(road.userData.energyGroup);
+          return road;
+        }, start, end);
+        this.chunks.push({start, group}); this.scene.add(group); continue;
+      }
+      if(constructionWalls||constructionCheckpoints){
+        group.add(slabChunk(THREE,start,constructionWallShape,LENGTH,[],constructionCheckpoints?checkpointCutRanges():constructionEmitters?emitterCutRanges(GATES):[]));
+        this.chunks.push({start,group});this.scene.add(group);continue;
+      }
+      if(constructionGap){
+        group.add(gapChunk(THREE,start,constructionGapShape));this.chunks.push({start,group});this.scene.add(group);continue;
+      }
+      if(constructionTransition){
+        group.add(transitionChunk(THREE,constructionCategory,start));
+        this.chunks.push({start,group});this.scene.add(group);continue;
+      }
       if(constructionSlabDetail){
         group.add(slabChunk(THREE,start,constructionCategory==='01'?'flat':constructionCategory==='08'?'inside':'outside',LENGTH,STRIPS));
         this.chunks.push({start,group});this.scene.add(group);continue;
@@ -132,13 +164,17 @@ export class RaceView {
       }
       this.chunks.push({ start, group }); this.scene.add(group);
     }
-    if(constructionSlabDetail)applySlabEnvironment(THREE,this.renderer,this.scene);
+    if(constructionSlabDetail||constructionTransition||constructionGap)applySlabEnvironment(THREE,this.renderer,this.scene);
     const gapEdge = new THREE.MeshBasicMaterial({ color: 0xffdf88, side: THREE.DoubleSide, fog: false });
-    for (const gap of GAPS) {
+    for (const gap of (constructionGap?[]:GAPS)) {
       const group = new THREE.Group(), left = gap.full ? -1 : gap.center - gap.width, right = gap.full ? 1 : gap.center + gap.width;
       // Driving-only mode fills the missing pavement back in.
       const fill = new THREE.Mesh(ribbon(gap.start, gap.end, () => left, () => right, 0, 64, false), asphalt);
       this.gapFills.add(fill);
+      if (!constructionReview) {
+        this.queueAsset(group, () => campaignGap(THREE, gap), gap.start - 12, gap.end + 12);
+        this.scene.add(group); this.gapMarkers.push({gap, group}); continue;
+      }
       for (const s of [gap.start - 0.8, gap.end])
         group.add(new THREE.Mesh(ribbon(s, s + 0.8, () => left, () => right, 0.04, 64, false), gapEdge));
       if (!gap.full) for (const u of [left, right])
@@ -147,6 +183,15 @@ export class RaceView {
       this.scene.add(group); this.gapMarkers.push({ gap, group });
     }
     for (const gate of GATES) {
+      if (!constructionReview) {
+        const group = new THREE.Group();
+        this.queueAsset(group, () => campaignGate(THREE, gate), gate.s - 15, gate.s + 9);
+        this.scene.add(group); this.gates.push({gate, group, displayedPhase:gate.phase}); continue;
+      }
+      if(constructionEmitters){
+        const group=emitterGate(THREE,gate,constructionWallShape);
+        this.scene.add(group);this.gates.push({gate,group,displayedPhase:gate.phase});continue;
+      }
       const group = new THREE.Group(), color = PHASES[gate.phase].hex;
       group.add(new THREE.Mesh(barrier(gate, 0.1, 7), new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity: 0.26, depthWrite: false })));
       const rim = new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide });
@@ -167,6 +212,15 @@ export class RaceView {
     const warningMaterial = new THREE.MeshBasicMaterial({ color: 0xff7662, side: THREE.DoubleSide });
     const openingMaterial = new THREE.MeshBasicMaterial({ color: 0xf1fff4, side: THREE.DoubleSide });
     for (const obstacle of OBSTACLES) {
+      if (!constructionReview) {
+        const group = new THREE.Group();
+        this.queueAsset(group, () => campaignObstacle(THREE, obstacle), obstacle.s - 24, obstacle.s + obstacle.depth);
+        this.scene.add(group); this.walls.push({obstacle, group}); continue;
+      }
+      if(constructionWalls){
+        const group=constructionObstacles?modeledObstacle(THREE,obstacle,constructionWallShape):obstacle.kind==='hole'?passageObstacle(THREE,obstacle,constructionWallShape):wallObstacle(THREE,obstacle,constructionWallShape);
+        this.scene.add(group);this.walls.push({obstacle,group});continue;
+      }
       const group = new THREE.Group(), height = obstacle.height ?? WALL_HEIGHT;
       const trim = height < 5 ? gapEdge : warningMaterial;
       for (const [a, b] of solidSpans(obstacle)) {
@@ -188,19 +242,8 @@ export class RaceView {
       }
       this.scene.add(group); this.walls.push({ obstacle, group });
     }
-    // Sparse distance beacons provide peripheral parallax without adding collision clutter.
-    const beaconGeometry = new THREE.BoxGeometry(0.4, 6, 0.4);
-    const beaconMaterial = new THREE.MeshBasicMaterial({ color: 0x53778d });
-    for (let s = 0; s <= LENGTH; s += 100) {
-      if (constructionReview) break;
-      if (section(s).closed) continue;
-      const chunk = this.chunks.find(c => s >= c.start && s < c.start + 100);
-      for (const side of [-1, 1]) {
-        if (gapAt(s, side)) continue;
-        const f = frame(s, side), mesh = new THREE.Mesh(beaconGeometry, beaconMaterial);
-        mesh.position.copy(f.p).addScaledVector(f.normal, 3); mesh.quaternion.setFromRotationMatrix(basis(f)); chunk?.group.add(mesh);
-      }
-    }
+    if(constructionCheckpoints){this.checkpointStation=checkpointStation(THREE,constructionWallShape);this.scene.add(this.checkpointStation);}
+    if(constructionWalls||constructionCheckpoints)applySlabEnvironment(THREE,this.renderer,this.scene);
     this.ship = new THREE.Group();
     this.hullMaterial = new THREE.MeshStandardMaterial({ color: 0xe9f2fa, metalness: 0.5, roughness: 0.3 });
     const hull = new THREE.Mesh(new THREE.ConeGeometry(0.9, 3.9, 4), this.hullMaterial); hull.rotation.x = -Math.PI / 2; this.ship.add(hull);
@@ -213,18 +256,16 @@ export class RaceView {
       transparent: true, opacity: 0.5, depthWrite: false, side: THREE.DoubleSide }));
     this.scene.add(this.shadow);
     this.finish = new THREE.Group();
-    const finishFrame = frame(LENGTH, 0);
-    const finishMat = new THREE.MeshBasicMaterial({ color: 0xe9f4ff });
-    const bar = new THREE.Mesh(new THREE.BoxGeometry(36, 0.5, 0.5), finishMat);
-    bar.position.copy(finishFrame.p).addScaledVector(finishFrame.normal, 9); bar.quaternion.setFromRotationMatrix(basis(finishFrame)); this.finish.add(bar);
-    for (const u of [-1, 1]) {
-      const f = frame(LENGTH, u), post = new THREE.Mesh(new THREE.BoxGeometry(0.5, 9, 0.5), finishMat);
-      post.position.copy(f.p).addScaledVector(f.normal, 4.5); post.quaternion.setFromRotationMatrix(basis(f)); this.finish.add(post);
-    }
+    if (!constructionReview) this.queueAsset(this.finish, () => campaignCheckpoint(THREE), LENGTH - 15, LENGTH + 15);
     this.scene.add(this.finish);
+    if (!constructionReview) applySlabEnvironment(THREE,this.renderer,this.scene);
     this.passageGuide = new PassageGuide(this.scene);
     this.reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.resize(); this.snap = true;
+  }
+  queueAsset(group, build, start, end) {
+    if (start < 850) group.add(build());
+    else this.pendingAssets.push({group, build, start, end});
   }
   badgeMaterial(phase) {
     this.badges ??= [];
@@ -243,12 +284,13 @@ export class RaceView {
     return this.badges[phase];
   }
   dispose() {
+    this.pendingAssets.length = 0;
     const geometries = new Set(), materials = new Set(), textures = new Set();
     this.scene.traverse(object => {
       if (object.geometry) geometries.add(object.geometry);
       for (const material of object.material ? Array.isArray(object.material) ? object.material : [object.material] : []) {
         materials.add(material);
-        for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
+        for (const value of Object.values(material)) if (value?.isTexture && !value.userData.sharedTrackResource) textures.add(value);
       }
     });
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose());
@@ -260,6 +302,14 @@ export class RaceView {
     this.camera.updateProjectionMatrix();
   }
   render(race, dt) {
+    // Prepare bounded work ahead of travel instead of building a whole detailed
+    // campaign at level entry. Deferred factories read the live gameplay data.
+    const next = this.pendingAssets.filter(a => a.start < race.s + 1100 && a.end > race.s - 180).sort((a,b) => a.start-b.start)[0];
+    if (next) {
+      next.group.add(next.build());
+      applySlabEnvironment(THREE,this.renderer,next.group);
+      this.pendingAssets.splice(this.pendingAssets.indexOf(next),1);
+    }
     const landingDip = this.reduced ? 0 : Math.sin(Math.PI * race.landing / 0.18) * 0.14;
     const f = frame(race.s, race.u), lift = JUMP.hover + race.height - landingDip + (this.reduced || race.airborne ? 0 : Math.sin(race.time * 7) * 0.055);
     this.ship.position.copy(f.p).addScaledVector(f.normal, lift);
@@ -286,13 +336,22 @@ export class RaceView {
     const fov = this.reduced ? 80 : 78 + clamp((race.speed - 95) / 190, 0, 1) * 16 + race.thrustBlend * 8;
     if (Math.abs(this.camera.fov - fov) > 0.05) { this.camera.fov = fov; this.camera.updateProjectionMatrix(); }
     for (const chunk of this.chunks) chunk.group.visible = chunk.start > race.s - 180 && chunk.start < race.s + 760;
+    if(this.checkpointStation)this.checkpointStation.visible=race.s<CHECKPOINT_REVIEW_AT+180;
     for (const group of this.energyGroups) group.visible = race.mode === 'phase';
-    for (const { gate, group } of this.gates) group.visible = race.mode === 'phase' && gate.s > race.s - 30 && gate.s < race.s + 730;
+    for (const entry of this.gates){
+      const {gate,group}=entry;
+      group.visible=(!constructionReview||race.mode==='phase')&&gate.s+9>race.s-30&&gate.s-15<race.s+760;
+      if (!constructionReview) group.traverse(m => { if(m.isMesh&&m.material.name.endsWith('-curtain'))m.visible=race.mode==='phase'; });
+      if((constructionEmitters||!constructionReview)&&entry.displayedPhase!==gate.phase){
+        setEmitterColor(group,PHASES[gate.phase].hex);entry.displayedPhase=gate.phase;
+      }
+    }
     for (const { obstacle, group } of this.walls) group.visible = race.mode === 'phase' && obstacle.s > race.s - 40 && obstacle.s < race.s + 730;
     this.gapFills.visible = race.mode === 'drive';
-    for (const { gap, group } of this.gapMarkers) group.visible = race.mode === 'phase' && gap.end > race.s - 50 && gap.start < race.s + 730;
+    for (const { gap, group } of this.gapMarkers) group.visible = (!constructionReview || race.mode === 'phase') && gap.end + 12 > race.s - 50 && gap.start - 12 < race.s + 760;
     this.finish.visible = !constructionReview && race.s > LENGTH - 750;
-    this.passageGuide.update(race, this.reduced);
+    if(constructionGap)this.passageGuide.group.visible=false;
+    else this.passageGuide.update(race, this.reduced);
     this.speedEffects.update({ speed: race.speed, time: race.time, distance: race.s,
       boostBlend: race.boostBlend, status: race.state }, {
       shake: EFFECT_DEFAULTS.shake + race.thrustBlend * 0.34,

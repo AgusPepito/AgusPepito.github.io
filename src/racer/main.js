@@ -4,7 +4,9 @@ import { RaceView } from './view.js';
 import { PHASES, GATES, LENGTH } from './track.js';
 import { OBSTACLES } from './obstacles.js';
 import { GAPS, gapJumpCue } from './jumps.js';
-import { configureLevel, levelInfo, constructionReview, constructionBaseline, constructionCategory, constructionRevision, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail } from './levels.js';
+import {constructionWalls,constructionWallShape,constructionPassages,constructionEmitters,constructionObstacles,constructionCheckpoints,constructionSurfaceCycle,emitterShapeFor} from './levels.js';
+import {CHECKPOINT_REVIEW_AT} from './checkpoint-kit.js';
+import { configureLevel, levelInfo, constructionReview, constructionBaseline, constructionCategory, constructionRevision, constructionTubeDetail, constructionTubeVariations, constructionSlabDetail, constructionTransition, constructionGap, constructionGapShape } from './levels.js';
 
 const touchLayout = matchMedia('(pointer: coarse), (max-width: 700px)');
 const pad = { pointer: null, steer: 0, jumpArmed: true, brakeArmed: true };
@@ -14,6 +16,14 @@ const progressKey = 'vector-shift-campaign-001-checkpoint';
 let currentLevel = 0, storageKey;
 let view, best = null, last = performance.now(), accumulator = 0, shown = '', resultSaved = false, jumpQueued = false, brakeQueued = false;
 let checkpointNotice = '';
+let checkpointNoticeAt=0,reviewCheckpointPassed=false;
+let reviewTimeScale = 1, reviewSpeedButton;
+function toggleReviewSpeed() {
+  if (!constructionReview) return;
+  reviewTimeScale = reviewTimeScale === 1 ? .25 : 1;
+  reviewSpeedButton.textContent = reviewTimeScale === 1 ? 'Speed 1× · T' : 'Slow ¼× · T';
+  reviewSpeedButton.setAttribute('aria-pressed', String(reviewTimeScale !== 1));
+}
 try {
   const saved = Number(localStorage.getItem(progressKey));
   if (Number.isSafeInteger(saved) && saved >= 0 && saved < 100000) currentLevel = saved;
@@ -21,7 +31,7 @@ try {
 if (constructionReview) {
   currentLevel = 0;
   const pipes = constructionCategory === '02';
-  const title = { '01': 'FLAT FOUNDATION', '02': 'PIPE BAYS', '03': 'GRILLE BAYS', '04': 'COVERED METAL', '05': 'MIXED HOUSINGS', '06': 'PHASE LANES', '07': 'OUTSIDE TUBE', '08': 'INSIDE TUBE' }[constructionCategory];
+  const title = { '01': 'FLAT FOUNDATION', '02': 'PIPE BAYS', '03': 'GRILLE BAYS', '04': 'COVERED METAL', '05': 'MIXED HOUSINGS', '06': 'PHASE LANES', '07': 'OUTSIDE TUBE', '08': 'INSIDE TUBE', '09':'OUTSIDE TRANSITIONS','10':'INSIDE TRANSITIONS','11':'FLAT GAP STUDY','12':'BUTTRESSED WALLS','13':'CHECKERED CHECKPOINTS' }[constructionCategory];
   document.title = `Track library · ${constructionCategory} · ${constructionRevision}`;
   $('menu').querySelector('.eyebrow').textContent = 'TRACK LIBRARY / AWAITING YOUR REVIEW';
   $('menu').querySelector('h1').textContent = `${title}.`;
@@ -96,11 +106,109 @@ if (constructionReview) {
     compare.href=`?review=${constructionCategory}&revision=r1`;compare.textContent='Compare original slabs ↗';
     library.href=`./library.html?category=${constructionCategory}&revision=r1&asset=slab-candidate`;
   }
+  if(constructionTransition){
+    $('mode').value='phase';
+    $('menu').querySelector('h1 + p').textContent=constructionCategory==='09'
+      ?'Flat road rolls into an outside tube and opens back out. Approved brushed metal slabs, ivory service sections and a continuous cyan lane follow the changing surface.'
+      :'Flat road curls into an inside tube, opens into a flat connector, then rolls into a short outside tube. Brushed metal slabs, changing service panels and a continuous violet lane.';
+    $('menu').querySelector('p.subtle').textContent='Check the closing edges, lane width, mechanical fittings and camera clearance while steering. No hazards. R retries.';
+    compare.href=constructionCategory==='09'?'?review=07&detail=slabs':'?review=09';
+    compare.textContent=constructionCategory==='09'?'Compare approved tube slabs ↗':'Compare outside transition ↗';
+    library.href=`./library.html?category=${constructionCategory}&revision=r1&asset=closing`;
+  }
+  if(constructionGap){
+    $('mode').value='phase';
+    $('level').options[0].textContent=`11 · ${constructionGapShape.toUpperCase()} GAPS`;
+    $('menu').querySelector('h1').textContent=`${constructionGapShape.toUpperCase()} GAPS`;
+    $('menu').querySelector('h1 + p').textContent='Illuminated takeoff arrows, receiving brackets and bright landing strips. The partial opening has recessed border lights and exposed metal cut faces. Both gaps are 75 m long, with twelve-metre illuminated ends.';
+    if(constructionGapShape!=='flat')$('menu').querySelector('h1 + p').textContent+=constructionGapShape==='inside'?' New deep service collars give the open tube ends thickness, with ivory armor and recessed energy lights.':' New plated end caps close the exposed tube interior, with mechanical service recesses and energy lights.';
+    $('menu').querySelector('p.subtle').textContent='Full gap at 450 m; 18 m wide partial opening at 1050 m. Space jumps, steering can bypass the partial gap. T toggles quarter speed. R retries.';
+    const prefix=constructionGapShape==='flat'?'':`${constructionGapShape}-`;
+    compare.href=`./library.html?category=11&revision=r1&asset=${prefix}takeoff`;compare.textContent='Inspect takeoff lip ↗';
+    library.href=`./library.html?category=11&revision=r1&asset=${prefix}landing`;library.textContent='Inspect landing lip ↗';
+    const shapes=document.createElement('p');shapes.className='subtle';
+    for(const shape of ['flat','outside','inside']){
+      const link=document.createElement('a');link.href=`?review=11&shape=${shape}`;
+      link.textContent=shape==='flat'?'Flat gaps':`${shape==='outside'?'Outside':'Inside'} tube gaps`;
+      if(shape===constructionGapShape)link.setAttribute('aria-current','page');
+      if(shapes.childNodes.length)shapes.append(' · ');shapes.append(link);
+    }
+    $('menu').querySelector('p.subtle').after(shapes);
+  }
+  if(constructionWalls){
+    $('mode').value='phase';
+    $('level').options[0].textContent=`12 · ${constructionWallShape.toUpperCase()} WALLS`;
+    $('menu').querySelector('h1').textContent=`${constructionWallShape.toUpperCase()} WALLS`;
+    $('menu').querySelector('h1 + p').textContent='W4 walls R2: beveled ivory armor, recessed vent and lock pockets, detailed service doors, crown pipe couplings and pearl-white optical wells. Rebuilt surface layers replace the overlapping first-pass plates.';
+    $('menu').querySelector('p.subtle').textContent='Solid walls at 350, 800 and 1250 m. Steer around them; these are not jump barriers. T toggles quarter speed. R retries.';
+    compare.href=`./library.html?category=12&revision=r1&asset=${constructionWallShape}-run`;compare.textContent='Inspect wall assembly ↗';
+    library.href=`./library.html?category=12&revision=r1&asset=${constructionWallShape}-middle`;library.textContent='Inspect repeatable module ↗';
+    const links=document.createElement('p');links.className='subtle';
+    for(const shape of ['flat','outside','inside']){
+      const a=document.createElement('a');a.href=`?review=12&shape=${shape}${constructionObstacles?'&element=obstacles':constructionEmitters?'&element=gates':constructionPassages?'&element=passages':''}`;a.textContent=`${shape==='flat'?'Flat':shape==='inside'?'Inside tube':'Outside tube'} ${constructionObstacles?'obstacles':constructionEmitters?'phase gates':constructionPassages?'passages':'walls'}`;
+      if(constructionSurfaceCycle)a.dataset.emitterShape=shape;
+      if(shape===constructionWallShape)a.setAttribute('aria-current','page');
+      if(links.childNodes.length)links.append(' · ');links.append(a);
+    }
+    $('menu').querySelector('p.subtle').after(links);
+    if(constructionPassages){
+      $('level').options[0].textContent=`12 · ${constructionWallShape.toUpperCase()} PASSAGES`;
+      $('menu').querySelector('h1').textContent=`${constructionWallShape.toUpperCase()} PASSAGES`;
+      $('menu').querySelector('h1 + p').textContent='P3 service gantries with ivory jambs, protected pipework, cabinet details, a recessed truss and pearl-white receiving lights. Approved W4 walls fill the road beside each opening.';
+      $('menu').querySelector('p.subtle').textContent='Passages at 350, 850 and 1350 m. Steer through the lit opening; jumping hits the lintel. T toggles quarter speed. R retries.';
+      compare.href=`./library.html?category=12&asset=${constructionWallShape}-passage`;compare.textContent='Inspect passage frame ↗';
+      library.href=`./library.html?category=12&asset=${constructionWallShape}-passage-infill`;library.textContent='Inspect passage with walls ↗';
+    }
+    if(constructionEmitters){
+      $('level').replaceChildren(...[0,1,2].map(i=>new Option(`12 · ${emitterShapeFor(i).toUpperCase()} PHASE GATES`,String(i))));
+      $('menu').querySelector('h1').textContent=`${constructionWallShape.toUpperCase()} PHASE GATES`;
+      $('menu').querySelector('h1 + p').textContent='Twenty-four-metre recessed power stations: additional cable and capacitor bays extend both ends for longer visibility. Deep service wells and segmented optical emitters sit below the road; only the light curtain projects above it.';
+      $('menu').querySelector('p.subtle').textContent='All three surfaces cycle automatically. Choose a starting surface above or use Next surface to skip ahead. Match gate colors with 1, 2 and 3. T slows; R retries the current surface.';
+      compare.id='gate-inspect';library.id='gate-module-link';
+      compare.href=`./library.html?category=12&asset=${constructionWallShape}-gate`;compare.textContent='Inspect complete phase gate ↗';
+      library.href=`./library.html?category=12&asset=${constructionWallShape}-gate-module`;library.textContent='Inspect detailed emitter module ↗';
+    }
+    if(constructionObstacles){
+      $('level').replaceChildren(...[0,1,2].map(i=>new Option(`12 · ${emitterShapeFor(i).toUpperCase()} OBSTACLES`,String(i))));
+      $('menu').querySelector('h1').textContent=`${constructionWallShape.toUpperCase()} OBSTACLES`;
+      $('menu').querySelector('h1 + p').textContent='Detailed louver barriers, armored end caps and a compact service passage. Drive through a tall opening, choose between jumping and an opening, then clear a full-width low barrier.';
+      $('menu').querySelector('p.subtle').textContent='350 m: opening only. 850 m: jump or opening. 1350 m: jump only. 1800 m: offset passage. Space jumps; T slows; R retries. Next surface switches between flat and both tubes.';
+      compare.id='obstacle-inspect';library.id='obstacle-module-link';
+      compare.textContent='Inspect jump-or-opening assembly ↗';library.textContent='Inspect J3 louver module ↗';
+    }
+  }
+  if(constructionCheckpoints){
+    $('mode').value='phase';
+    $('level').replaceChildren(...[0,1,2].map(i=>new Option(`13 · ${emitterShapeFor(i).toUpperCase()} CHECKPOINT`,String(i))));
+    $('menu').querySelector('h1 + p').textContent='Thirty metres of ivory-and-graphite checkers, recessed circular timing instruments and pearl-white lamp cassettes. A dedicated optical row projects the white checkpoint curtain.';
+    $('menu').querySelector('p.subtle').textContent='Checkpoint at 350 m. Every phase can pass. Boost refills without stopping the ship; clear road continues beyond it. T slows, R retries, Next surface switches between flat and both tubes.';
+    compare.id='checkpoint-inspect';library.id='checkpoint-module-link';
+    compare.textContent='Inspect complete checkpoint ↗';library.textContent='Inspect recessed instrument details ↗';
+  }
   const label = document.createElement('div'); label.id = 'construction-label';
   label.textContent = constructionBaseline ? `${constructionCategory} · ORIGINAL ROAD` : `${constructionCategory} · ${title} ${constructionRevision}`;
   if(constructionTubeDetail)label.textContent=`${constructionCategory} · R2 ${constructionTubeVariations?'SERVICE VARIATIONS':'APPROVED SERVICE SECTION'}`;
   if(constructionSlabDetail)label.textContent=`${constructionCategory} · BRUSHED METAL SLAB CANDIDATE`;
+  if(constructionGap)label.textContent=`11 · ${constructionGapShape.toUpperCase()} · FULL + PARTIAL GAPS`;
+  if(constructionWalls)label.textContent=`12 · ${constructionWallShape.toUpperCase()} · W4 WALLS R2`;
+  if(constructionPassages)label.textContent=`12 · ${constructionWallShape.toUpperCase()} · P3 PASSAGES R1`;
+  if(constructionEmitters)label.textContent=`12 · ${constructionWallShape.toUpperCase()} · RECESSED PHASE GATES R1`;
+  if(constructionObstacles)label.textContent=`12 · ${constructionWallShape.toUpperCase()} · J3 OBSTACLE ASSEMBLIES R1`;
   document.body.append(label);
+  reviewSpeedButton = document.createElement('button');
+  reviewSpeedButton.id = 'review-speed';
+  reviewSpeedButton.type = 'button';
+  reviewSpeedButton.textContent = 'Speed 1× · T';
+  reviewSpeedButton.setAttribute('aria-label', 'Quarter-speed review mode');
+  reviewSpeedButton.setAttribute('aria-pressed', 'false');
+  reviewSpeedButton.title = 'Toggle normal / quarter-speed review with T. Jump distance stays the same.';
+  reviewSpeedButton.addEventListener('click', toggleReviewSpeed);
+  document.body.append(reviewSpeedButton);
+  if(constructionSurfaceCycle){
+    const next=document.createElement('button');next.id='review-next-surface';next.type='button';
+    next.addEventListener('click',()=>{start((currentLevel+1)%3);checkpointNotice=`${constructionCategory} · ${constructionWallShape.toUpperCase()} ${constructionCheckpoints?'CHECKPOINT':constructionObstacles?'OBSTACLES':'GATES'}`;});
+    document.body.append(next);
+  }
 }
 function loadBest() {
   storageKey = `vector-shift-campaign-001-level-${currentLevel}`; best = null;
@@ -116,6 +224,25 @@ function updateLevelChoice() {
     option.textContent = `${currentLevel + 1} · ${levelInfo(currentLevel).name}`; $('level').append(option);
   }
   $('level').value = String(currentLevel);
+  if(constructionSurfaceCycle){
+    const shape=constructionWallShape;
+    $('construction-label').textContent=`${constructionCategory} · ${shape.toUpperCase()} · ${constructionCheckpoints?'CHECKERED CHECKPOINT':constructionObstacles?'J3 OBSTACLE ASSEMBLIES':'RECESSED PHASE GATES'} R1`;
+    $('menu').querySelector('h1').textContent=`${shape.toUpperCase()} ${constructionCheckpoints?'CHECKPOINT':constructionObstacles?'OBSTACLES':'PHASE GATES'}`;
+    $('review-next-surface').textContent=`Next surface: ${emitterShapeFor(currentLevel+1)} ↗`;
+    if(constructionCheckpoints){
+      $('checkpoint-inspect').href=`./library.html?category=13&asset=${shape}-checkpoint`;
+      $('checkpoint-module-link').href=`./library.html?category=13&asset=${shape}-checkpoint-module`;
+    }else if(constructionObstacles){
+      $('obstacle-inspect').href=`./library.html?category=12&asset=${shape}-obstacle-jump-or-opening`;
+      $('obstacle-module-link').href=`./library.html?category=12&asset=${shape}-barrier-middle`;
+    }else{
+      $('gate-inspect').href=`./library.html?category=12&asset=${shape}-gate`;
+      $('gate-module-link').href=`./library.html?category=12&asset=${shape}-gate-module`;
+    }
+    for(const link of document.querySelectorAll('[data-emitter-shape]')){
+      if(link.dataset.emitterShape===shape)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+    }
+  }
   updateLesson(currentLevel);
 }
 function updateLesson(index) {
@@ -140,6 +267,7 @@ function clearInput() {
 function phase(index) { if (race.state === 'running' || race.state === 'ready') race.phase = index; }
 function start(index = currentLevel, carry = null) {
   if (!view) return;
+  if(constructionSurfaceCycle)index%=3;
   if (index !== currentLevel) {
     currentLevel = index; configureLevel(currentLevel); view.dispose();
     try { view = new RaceView($('race-world')); }
@@ -148,6 +276,7 @@ function start(index = currentLevel, carry = null) {
   }
   if (!carry) { clearInput(); checkpointNotice = ''; }
   race.reset(); race.mode = $('mode').value;
+  reviewCheckpointPassed=false;checkpointNoticeAt=0;
   if (carry) Object.assign(race, carry);
   race.state = 'running'; resultSaved = false; accumulator = 0; view.snap = true;
   if (!carry) document.activeElement?.blur();
@@ -159,6 +288,7 @@ function start(index = currentLevel, carry = null) {
   sync();
 }
 function advanceCheckpoint() {
+  if(constructionSurfaceCycle){start((currentLevel+1)%3);checkpointNotice=`${constructionCategory} · ${constructionWallShape.toUpperCase()} ${constructionCheckpoints?'CHECKPOINT':constructionObstacles?'OBSTACLES':'GATES'}`;return;}
   if (constructionReview) { start(); checkpointNotice = `${constructionCategory} · SAMPLE RESTARTED`; return; }
   const completed = currentLevel, completedTime = race.time;
   if (race.mode === 'phase') {
@@ -338,6 +468,9 @@ thumbpad.addEventListener('contextmenu', e => e.preventDefault());
 touchLayout.addEventListener('change', () => { clearInput(); updateLesson(Number($('level').value)); });
 const controlCodes = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyS', 'KeyW', 'KeyJ', 'KeyA', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'Digit1', 'Digit2', 'Digit3', 'Numpad1', 'Numpad2', 'Numpad3', 'KeyR', 'KeyP', 'Escape'];
 window.addEventListener('keydown', e => {
+  if (constructionReview && e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault(); if (!e.repeat) toggleReviewSpeed(); return;
+  }
   if (!controlCodes.includes(e.code)) return;
   e.preventDefault();
   if (e.code === 'Escape' || e.code === 'KeyP') { if (!e.repeat) pause(); return; }
@@ -368,7 +501,7 @@ $('race-world').addEventListener('webglcontextlost', e => { e.preventDefault(); 
 
 function updateHud() {
   const running = race.state === 'running', touch = touchLayout.matches;
-  $('checkpoint-notice').hidden = !checkpointNotice || race.time >= 3 || !running;
+  $('checkpoint-notice').hidden = !checkpointNotice || race.time-checkpointNoticeAt >= 3 || !running;
   $('checkpoint-notice').textContent = checkpointNotice;
   $('level-notice').hidden = constructionReview || !running || race.time >= 2.5 || Boolean(checkpointNotice);
   $('level-notice').textContent = `L${currentLevel + 1} · ${levelInfo(currentLevel).name}`;
@@ -412,13 +545,17 @@ function updateHud() {
 }
 
 function loop(now) {
-  const dt = Math.min((now - last) / 1000, 0.06); last = now;
+  const dt = Math.min((now - last) / 1000, 0.06) * (constructionReview ? reviewTimeScale : 1); last = now;
   if (view) {
     accumulator += race.state === 'running' ? dt : 0;
     while (accumulator >= 1 / 120) {
       const keyboardSteer = Number(keys.has('ArrowRight') || keys.has('KeyD')) - Number(keys.has('ArrowLeft') || keys.has('KeyA'));
       const steer = Math.max(-1, Math.min(1, keyboardSteer + pad.steer));
       race.step(1 / 120, steer, keys.has('KeyW') || keys.has('ShiftLeft') || keys.has('ShiftRight') || actionPad.boost, jumpQueued, brakeQueued);
+      if(constructionCheckpoints&&!reviewCheckpointPassed&&race.s>=CHECKPOINT_REVIEW_AT){
+        reviewCheckpointPassed=true;race.boost.reset();checkpointNoticeAt=race.time;
+        checkpointNotice='CHECKPOINT · BOOST REFILLED';
+      }
       jumpQueued = false; brakeQueued = false;
       accumulator -= 1 / 120;
       if (race.state === 'checkpoint') { advanceCheckpoint(); break; }
