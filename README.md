@@ -1,4 +1,4 @@
-# VECTOR SHIFT — mechanics prototype
+# VECTOR SHIFT — orbital phase racer
 
 ## Play online
 
@@ -20,7 +20,7 @@ The mechanics include three phases, manual boost, braking, surface-relative jump
 
 Controls: **A/D or left/right** steer; **Space, Up, or J** jump; **W or Shift** boost; **1/2/3** select Ion/Sol/Flux; **S or Down** triggers a short brake pulse; **R** retries the current checkpoint; **P/Escape** pauses. Touch pads support simultaneous steering, boosting, and phase selection. Focus loss pauses the race.
 
-The racer uses separate `src/racer/` modules. These are temporary procedural prototype visuals, not final recipe art. User-owned gameplay testing remains pending; no tests or visual gameplay review were performed. See `docs/PHASE_RACER.md` for implementation details and tuning.
+The racer uses separate `src/racer/` modules and 38 standalone procedural model modules listed in [the recipe asset manifest](docs/recipe-assets.json). See [recipe integration](docs/RECIPE_ASSETS.md) and [the submission art inventory](docs/SUBMISSION_ART.md). The user has reviewed the rebuilt game; agent verification for the asset refactor was limited to source review and builds. `docs/PHASE_RACER.md` is a historical implementation log, not the current submission specification.
 
 If the default Vite config bundler encounters restricted-directory access on Windows, use `npm run build -- --configLoader native` (and the same flag for dev/preview).
 
